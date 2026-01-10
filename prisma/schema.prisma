@@ -1,0 +1,254 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPERADMIN
+}
+
+enum UserProvider {
+  GOOGLE
+  LOCAL
+}
+
+model User {
+  id        String  @id @default(uuid())
+  email     String   
+  password  String?
+  role      UserRole @default(USER)
+  provider  UserProvider
+  profileUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  referralCode String @default(uuid()) @unique
+
+  storeId String? @unique
+  store   Store?   @relation(fields: [storeId], references: [id])
+  
+  addresses UserAddress[] 
+  carts  Cart[]
+  order Order[]
+
+  @@unique([email, provider])
+}
+
+
+model UserAddress {
+  id         String   @id @default(uuid())
+  email      String
+  isDefault  Boolean @default(false)
+  longitude  Decimal @db.Decimal(8, 5)
+  latitude   Decimal @db.Decimal(8, 5)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId   String
+  user       User    @relation(fields: [userId], references: [id])
+}
+
+model Store {
+  id        String   @id @default(uuid())
+  name      String
+
+  longitude  Decimal @db.Decimal(8, 5)
+  latitude   Decimal @db.Decimal(8, 5)
+  employee      User?
+  addressId    String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  productStores ProductStore[] 
+  orders       Order[]
+  carts        Cart[]
+}
+
+enum OrderStatus {
+  PAYMENT_PENDING
+  PAYMENT_WAITING_CONFIRMATION
+  PAYMENT_EXPIRED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderPaymentType {
+  BANK_TRANSFER
+  PAYMENT_GATEWAY
+}
+
+model Order {
+  id         String   @id @default(uuid())
+  subtotal  Decimal @db.Decimal(20, 8) 
+  totalDiscount     Decimal @db.Decimal(20, 8)
+  shippingCost  Decimal @db.Decimal(20, 8)
+  grandTotal  Decimal @db.Decimal(20, 8)
+  status     OrderStatus
+  paymentType OrderPaymentType
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  paidAt      DateTime?
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  paymentDueAt DateTime?
+
+
+
+  cancelReason String?
+  paymentProofUrl String?
+
+  shippingAddress String
+  storeAddress String
+  storeName    String
+
+  storeId    String
+  store      Store    @relation(fields: [storeId], references: [id])
+  userId     String
+  user       User    @relation(fields: [userId], references: [id])
+
+  orderItems OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  quantity  Int
+  unitPrice Decimal @db.Decimal(20, 8)
+  productName String
+  productCategory String
+
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String  
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+enum MovementType {
+  PURCHASED        
+  SOLD             
+  REALLOCATED      
+  CANCELED         
+  ADJUSTMENT       
+}
+
+model ProductMovement {
+  id              String   @id @default(uuid())
+  orderId         String?
+  quantityChange  Int
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  productName     String
+  productCategory String
+  movementType     MovementType
+  description     String?
+  fromStoreName   String?     
+  toStoreName      String?  
+
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  cartItems CartItem[]
+
+  @@unique([userId, storeId])
+}
+
+model CartItem {
+  id           String   @id @default(uuid())
+  quantity     Int
+
+  productName String
+  productId   String  
+  product     Product  @relation(fields: [productId], references: [id])
+
+  cartId     String
+  cart       Cart    @relation(fields: [cartId], references: [id])
+}
+
+model Product {
+  id        String   @id @default(uuid())
+  name      String
+  description String?
+  price     Decimal @db.Decimal(20, 8)
+
+  createAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categoryId String
+  category  ProductCategory @relation(fields: [categoryId], references: [id])
+  cartItems  CartItem[]
+  productImages ProductImage[]
+  productStores  ProductStore[]
+  orderItems  OrderItem[]
+  productMovements ProductMovement[]
+}
+
+model ProductCategory {
+  id        String   @id @default(uuid())
+  category  String   @unique
+  products  Product[] 
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+} 
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  url       String
+
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductStore {
+  id       String   @id @default(uuid())
+  quantity Int 
+
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+  store     Store    @relation(fields: [storeId], references: [id])
+  storeId  String 
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, storeId])
+}
+
+model ShippingCost {
+  id                    String   @id @default(uuid())
+  costPerKilometer      Decimal @db.Decimal(20, 8)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
