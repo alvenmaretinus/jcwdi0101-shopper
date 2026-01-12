@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -13,18 +14,13 @@ enum UserRole {
   SUPERADMIN
 }
 
-enum UserProvider {
-  GOOGLE
-  LOCAL
-}
 
 model User {
   id        String  @id 
-  email     String   
+  email     String  @unique
 
   role      UserRole @default(USER)
-  provider  UserProvider
-  profileUrl String?
+  profileUrl String? 
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -37,8 +33,6 @@ model User {
   addresses UserAddress[] 
   carts  Cart[]
   orders Order[]
-
-  @@unique([email, provider])
 }
 
 
@@ -62,7 +56,7 @@ model Store {
 
   longitude  Decimal @db.Decimal(8, 5)
   latitude   Decimal @db.Decimal(8, 5)
-  employee      User?
+  employees     User[]
   addressId    String @unique
 
   createdAt DateTime @default(now())
@@ -220,7 +214,7 @@ model ProductCategory {
 model ProductImage {
   id        String   @id @default(uuid())
   url       String
-
+  
   product   Product  @relation(fields: [productId], references: [id])
   productId String
 
