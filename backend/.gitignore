@@ -6,3 +6,6 @@ node_modules/
 
 # Optional: ignore build output
 dist/
+
+# Prisma generated client
+prisma/generated/

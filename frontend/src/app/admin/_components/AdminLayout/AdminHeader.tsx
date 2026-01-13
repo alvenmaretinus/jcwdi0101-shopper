@@ -10,11 +10,11 @@ export const AdminHeader = ({ setIsOpenSidebar }: Props) => {
   const isMobile = useIsMobile();
 
   return (
-    <header className="h-14 flex items-center gap-4 border-b border-border px-4 sticky top-0 z-10">
+    <header className="h-14 flex items-center gap-4 border-b border-border px-4">
       {isMobile && (
         <>
           <SidebarTrigger
-            onClick={(prev) => setIsOpenSidebar(!prev)}
+            onClick={() => setIsOpenSidebar((prev) => !prev)}
             className="shrink-0"
           />
           <Separator orientation="vertical" className="h-6" />
