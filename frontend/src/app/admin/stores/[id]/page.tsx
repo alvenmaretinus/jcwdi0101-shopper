@@ -49,6 +49,7 @@ const stores = [
     name: "Downtown Branch",
     description: "A sample store description for Downtown Branch",
     addressName: "Jl. Sudirman No. 123, Jakarta Pusat",
+    phoneNumber: "08123456789",
     latitude: -6.2,
     longitude: 106.8,
     createdAt: new Date("2024-01-01T00:00:00.000Z"),
@@ -59,6 +60,7 @@ const stores = [
     name: "Bandung Central",
     description: "Main branch in Bandung with full services",
     addressName: "Jl. Asia Afrika No. 45, Bandung",
+    phoneNumber: "08123456789",
     latitude: -6.9147,
     longitude: 107.6098,
     createdAt: new Date("2024-02-01T00:00:00.000Z"),
@@ -69,6 +71,7 @@ const stores = [
     name: "Surabaya East",
     description: "Surabaya branch focusing on wholesale",
     addressName: "Jl. Pemuda No. 78, Surabaya",
+    phoneNumber: "08123456789",
     latitude: -7.2575,
     longitude: 112.7521,
     createdAt: new Date("2024-03-01T00:00:00.000Z"),
@@ -104,6 +107,7 @@ export default function StoreDetail() {
   // Local states
   const [isEditNameOpen, setIsEditNameOpen] = useState(false);
   const [isEditDescOpen, setIsEditDescOpen] = useState(false);
+  const [isEditPhoneOpen, setIsEditPhoneOpen] = useState(false);
   const [editName, setEditName] = useState(store?.name || "");
   const [editDesc, setEditDesc] = useState(store?.description || "");
 
@@ -111,6 +115,7 @@ export default function StoreDetail() {
   const [addAdminStep, setAddAdminStep] = useState<"search" | "confirm">(
     "search"
   );
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
   const [foundUser, setFoundUser] = useState<(typeof users)[0] | null>(null);
   const [searchError, setSearchError] = useState("");
@@ -217,6 +222,11 @@ export default function StoreDetail() {
               onEditClick={() => setIsEditDescOpen(true)}
             />
             <StoreInformationCardField
+              title="Phone Number"
+              value={store.phoneNumber}
+              onEditClick={() => setIsEditPhoneOpen(true)}
+            />
+            <StoreInformationCardField
               title="Location"
               value={store.addressName}
               onEditClick={() =>
@@ -295,6 +305,24 @@ export default function StoreDetail() {
           <Input
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditNameOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveName}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditPhoneOpen} onOpenChange={setIsEditPhoneOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Phone Number</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditNameOpen(false)}>

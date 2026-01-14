@@ -13,6 +13,7 @@ import { useLocationFormCard } from "@/hooks/useLocationFormCard";
 export default function StoreCreate() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [description, setDescription] = useState("");
   const { addressName, setAddressName, location, setLocation } =
     useLocationFormCard(MONAS_LOCATION, "");
@@ -37,6 +38,8 @@ export default function StoreCreate() {
         setName={setName}
         description={description}
         setDescription={setDescription}
+        phoneNumber={phoneNumber}
+        setPhoneNumber={setPhoneNumber}
       />
       <LocationFormCard
         title="Store Location"
