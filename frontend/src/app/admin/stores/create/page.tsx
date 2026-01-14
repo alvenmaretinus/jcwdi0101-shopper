@@ -8,6 +8,7 @@ import { MONAS_LOCATION } from "@/app/constants/location";
 import { LocationFormCard } from "@/components/Map/LocationFormCard";
 import StoreDetailFormCard from "./_components/StoreDetailFormCard";
 import { Location } from "@/types/Location";
+import { SectionHeader } from "../../_components/SectionHeader";
 
 export default function StoreCreate() {
   const router = useRouter();
@@ -25,20 +26,11 @@ export default function StoreCreate() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.push("/admin/stores")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Create Store</h1>
-          <p className="text-muted-foreground">Add a new store location</p>
-        </div>
-      </div>
+      <SectionHeader
+        title="Create Store"
+        description="Add a new store location"
+        isBackButtonEnabled={true}
+      />
 
       <StoreDetailFormCard
         name={name}
