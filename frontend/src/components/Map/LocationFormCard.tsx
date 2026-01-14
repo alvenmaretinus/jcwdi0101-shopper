@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -11,7 +13,19 @@ import { Navigation, Search } from "lucide-react";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { Dispatch, SetStateAction, useState } from "react";
-import { ReactMap } from "./ReactMap";
+
+import dynamic from "next/dynamic";
+
+const ReactMap = dynamic(
+  async () => {
+    const ReactMapModule = await import("@/components/Map/ReactMap");
+    return ReactMapModule.ReactMap;
+  },
+  {
+    ssr: false,
+  }
+);
+
 import { Location } from "@/types/Location";
 
 type Props = {
