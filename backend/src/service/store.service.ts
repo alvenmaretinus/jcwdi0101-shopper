@@ -1,5 +1,6 @@
 import { StoreRepository } from "../repository/store.repository";
 import { CreateStoreInput } from "../schema/store/CreateStoreSchema";
+import { GetStoreByIdInput } from "../schema/store/GetStoreByIdSchema";
 
 export class StoreService {
   static async createStore(data: CreateStoreInput) {
@@ -10,5 +11,13 @@ export class StoreService {
       longitude: location.lng,
       latitude: location.lat,
     });
+  }
+
+  static async getStoreById(data: GetStoreByIdInput) {
+    return await StoreRepository.getStoreById(data);
+  }
+
+  static async getStores() {
+    return await StoreRepository.getStores();
   }
 }
