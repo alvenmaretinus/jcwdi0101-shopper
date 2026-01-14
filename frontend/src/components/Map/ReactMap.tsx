@@ -13,7 +13,7 @@ type ReactMapProps = {
 export const ReactMap = ({
   location,
   setLocation,
-  zoom = 13,
+  zoom = 14,
   scrollWheelZoom = true,
   isShouldFly,
 }: ReactMapProps) => {
