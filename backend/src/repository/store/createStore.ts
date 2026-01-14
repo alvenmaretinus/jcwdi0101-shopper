@@ -1,5 +1,6 @@
 import { StoreUncheckedCreateInput } from "../../../prisma/generated/models";
 import { prisma } from "../../lib/db/prisma";
+import { storeSelect } from "../../select/store/StoreSelect";
 
 type CreateStoreInput = Omit<
   StoreUncheckedCreateInput,
@@ -7,5 +8,5 @@ type CreateStoreInput = Omit<
 >;
 
 export const createStore = async (data: CreateStoreInput) => {
-  return await prisma.store.create({ data });
+  return await prisma.store.create({ data, select: storeSelect });
 };

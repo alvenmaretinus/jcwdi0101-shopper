@@ -53,8 +53,8 @@ model Store {
   id        String   @id @default(uuid())
   name      String
   phone     String
-  longitude  Decimal @db.Decimal(8, 5)
-  latitude   Decimal @db.Decimal(8, 5)
+  longitude  Float
+  latitude   Float
   employees     User[]
 
   createdAt DateTime @default(now())
