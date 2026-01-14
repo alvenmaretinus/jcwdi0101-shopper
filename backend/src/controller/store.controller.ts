@@ -1,26 +1,28 @@
-import { CreateStoreSchema } from "../schema/store/CreateStoreSchema";
 import { Router } from "express";
-import { StoreService } from "../service/store.service";
-import { GetStoreByIdSchema } from "../schema/store/GetStoreByIdSchema";
+import { FindStoreByIdSchema } from "../schema/store/FindStoreByIdSchema";
+import { findStores } from "../service/store/findStores";
+import { findStoreById } from "../service/store/findStoreById";
+import { addStore } from "../service/store/addStore";
+import { AddStoreSchema } from "../schema/store/AddStoreSchema";
 
 const router = Router();
 
 // TODO: Use isSuperAdmin for some routes
 
 router.get("/", async (req, res) => {
-  const result = await StoreService.getStores();
+  const result = await findStores();
   return res.json({ result });
 });
 
 router.get("/:id", async (req, res) => {
-  const getStoreByIdData = GetStoreByIdSchema.parse(req.params);
-  const result = await StoreService.getStoreById(getStoreByIdData);
+  const FindStoreByIdData = FindStoreByIdSchema.parse(req.params);
+  const result = await findStoreById(FindStoreByIdData);
   return res.json({ result });
 });
 
 router.post("/", async (req, res) => {
-  const createStoreData = CreateStoreSchema.parse(req.body);
-  const result = await StoreService.createStore(createStoreData);
+  const AddStoreData = AddStoreSchema.parse(req.body);
+  const result = await addStore(AddStoreData);
   return res.json({ result });
 });
 

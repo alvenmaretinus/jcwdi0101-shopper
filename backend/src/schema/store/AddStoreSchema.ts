@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CreateStoreSchema = z.strictObject({
+export const AddStoreSchema = z.strictObject({
   name: z.string().min(1, "Store name is required"),
   location: z.object({ lat: z.number(), lng: z.number() }),
   description: z.string().optional(),
@@ -8,4 +8,4 @@ export const CreateStoreSchema = z.strictObject({
   phone: z.string().min(1, "Phone number is required"),
 });
 
-export type CreateStoreInput = z.infer<typeof CreateStoreSchema>;
+export type AddStoreInput = z.infer<typeof AddStoreSchema>;
