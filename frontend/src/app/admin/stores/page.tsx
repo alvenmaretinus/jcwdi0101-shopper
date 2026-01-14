@@ -15,6 +15,7 @@ import { Plus, Search, MapPin, Users } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { SectionHeader } from "../_components/SectionHeader";
 
 export const mockStores = [
   {
@@ -60,10 +61,11 @@ export default function Stores() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Stores</h1>
-          <p className="text-muted-foreground">Manage all store locations</p>
-        </div>
+        <SectionHeader
+          title="Stores"
+          description="Manage all store locations"
+        />
+
         <Button onClick={() => route.push("/admin/stores/create")}>
           <Plus className="h-4 w-4 mr-2" />
           Add Store
