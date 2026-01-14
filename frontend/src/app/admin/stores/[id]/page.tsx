@@ -40,37 +40,72 @@ import { UserPlus, UserMinus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { SectionHeader } from "../../_components/SectionHeader";
 import StoreInformationCardField from "./_components/StoreInformationCardField";
+import { useParams, useRouter } from "next/navigation";
 
 // ---------------- Static Mock Data ----------------
-const store = {
-  id: "store-1",
-  name: "Downtown Branch",
-  description: "A sample store description",
-  addressName: "Jl. Sudirman No. 123, Jakarta Pusat",
-  latitude: -6.2,
-  longitude: 106.8,
-  createdAt: new Date("2024-01-01T00:00:00.000Z"),
-  updatedAt: new Date("2024-01-05T00:00:00.000Z"),
-};
+const stores = [
+  {
+    id: "store-1",
+    name: "Downtown Branch",
+    description: "A sample store description for Downtown Branch",
+    addressName: "Jl. Sudirman No. 123, Jakarta Pusat",
+    latitude: -6.2,
+    longitude: 106.8,
+    createdAt: new Date("2024-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2024-01-05T00:00:00.000Z"),
+  },
+  {
+    id: "store-2",
+    name: "Bandung Central",
+    description: "Main branch in Bandung with full services",
+    addressName: "Jl. Asia Afrika No. 45, Bandung",
+    latitude: -6.9147,
+    longitude: 107.6098,
+    createdAt: new Date("2024-02-01T00:00:00.000Z"),
+    updatedAt: new Date("2024-02-03T00:00:00.000Z"),
+  },
+  {
+    id: "store-3",
+    name: "Surabaya East",
+    description: "Surabaya branch focusing on wholesale",
+    addressName: "Jl. Pemuda No. 78, Surabaya",
+    latitude: -7.2575,
+    longitude: 112.7521,
+    createdAt: new Date("2024-03-01T00:00:00.000Z"),
+    updatedAt: new Date("2024-03-05T00:00:00.000Z"),
+  },
+];
 
 const storeAdmins = [
-  { id: "u1", email: "admin1@example.com" },
-  { id: "u2", email: "admin2@example.com" },
+  { id: "u1", email: "admin1@example.com", storeId: "store-1" },
+  { id: "u2", email: "admin2@example.com", storeId: "store-1" },
+  { id: "u3", email: "bandungadmin@example.com", storeId: "store-2" },
+  { id: "u4", email: "surabayaadmin@example.com", storeId: "store-3" },
 ];
 
 const users = [
   { id: "u1", email: "admin1@example.com", role: "ADMIN" },
   { id: "u2", email: "admin2@example.com", role: "ADMIN" },
-  { id: "u3", email: "user@example.com", role: "USER" },
-  { id: "u4", email: "superadmin@example.com", role: "SUPERADMIN" },
+  { id: "u3", email: "bandungadmin@example.com", role: "ADMIN" },
+  { id: "u4", email: "surabayaadmin@example.com", role: "ADMIN" },
+  { id: "u5", email: "user@example.com", role: "USER" },
+  { id: "u6", email: "superadmin@example.com", role: "SUPERADMIN" },
 ];
 
-// ---------------- Component ----------------
 export default function StoreDetail() {
+  const router = useRouter();
+
+  // Get store ID from URL
+  const params = useParams<{ id: string }>();
+  const storeId = params.id;
+  const store = stores.find((s) => s.id === storeId);
+  const admins = storeAdmins.filter((a) => a.storeId === storeId);
+
+  // Local states
   const [isEditNameOpen, setIsEditNameOpen] = useState(false);
   const [isEditDescOpen, setIsEditDescOpen] = useState(false);
-  const [editName, setEditName] = useState(store.name);
-  const [editDesc, setEditDesc] = useState(store.description);
+  const [editName, setEditName] = useState(store?.name || "");
+  const [editDesc, setEditDesc] = useState(store?.description || "");
 
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [addAdminStep, setAddAdminStep] = useState<"search" | "confirm">(
@@ -83,6 +118,9 @@ export default function StoreDetail() {
   const [adminToRemove, setAdminToRemove] = useState<string | null>(null);
   const [isDeleteStoreOpen, setIsDeleteStoreOpen] = useState(false);
 
+  if (!store) return <p className="text-center py-12">Store not found</p>;
+
+  // ---------------- Handlers ----------------
   const handleSaveName = () => {
     if (!editName.trim()) return toast.error("Store name required");
     toast.success("Store name updated");
@@ -97,7 +135,7 @@ export default function StoreDetail() {
   const handleEmailSearch = () => {
     if (!emailSearch.trim()) return setSearchError("Enter email");
 
-    const existingAdmin = storeAdmins.find(
+    const existingAdmin = admins.find(
       (a) => a.email.toLowerCase() === emailSearch.toLowerCase()
     );
     if (existingAdmin) return setSearchError("User already admin");
@@ -124,7 +162,7 @@ export default function StoreDetail() {
   };
 
   const handleRemoveAdmin = () => {
-    const admin = storeAdmins.find((a) => a.id === adminToRemove);
+    const admin = admins.find((a) => a.id === adminToRemove);
     toast.success(`${admin?.email} removed from admin`);
     setIsRemoveAdminOpen(false);
     setAdminToRemove(null);
@@ -133,6 +171,7 @@ export default function StoreDetail() {
   const handleDeleteStore = () => {
     toast.success("Store deleted");
     setIsDeleteStoreOpen(false);
+    router.push("/admin/stores");
   };
 
   const openRemoveDialog = (id: string) => {
@@ -140,6 +179,7 @@ export default function StoreDetail() {
     setIsRemoveAdminOpen(true);
   };
 
+  // ---------------- Render ----------------
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -179,7 +219,9 @@ export default function StoreDetail() {
             <StoreInformationCardField
               title="Location"
               value={store.addressName}
-              onEditClick={() => toast.info("ogto")}
+              onEditClick={() =>
+                router.push(`/admin/stores/${store.id}/change-location`)
+              }
             />
             <StoreInformationCardField
               title="Created"
@@ -204,7 +246,7 @@ export default function StoreDetail() {
             </div>
           </CardHeader>
           <CardContent>
-            {storeAdmins.length === 0 ? (
+            {admins.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No admins assigned to this store</p>
                 <Button variant="link" onClick={() => setIsAddAdminOpen(true)}>
@@ -220,7 +262,7 @@ export default function StoreDetail() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {storeAdmins.map((admin) => (
+                  {admins.map((admin) => (
                     <TableRow key={admin.id}>
                       <TableCell className="font-medium">
                         {admin.email}
@@ -243,7 +285,7 @@ export default function StoreDetail() {
         </Card>
       </div>
 
-      {/* All Dialogs (Edit, Add, Remove, Delete) */}
+      {/* Dialogs (Edit/Add/Remove/Delete) */}
       {/* Edit Name */}
       <Dialog open={isEditNameOpen} onOpenChange={setIsEditNameOpen}>
         <DialogContent>

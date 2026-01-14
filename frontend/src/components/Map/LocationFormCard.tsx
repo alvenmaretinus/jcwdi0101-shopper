@@ -54,9 +54,6 @@ export const LocationFormCard = ({
       toast.error("Geolocation is not supported by your browser");
       return;
     }
-    navigator.geolocation.getCurrentPosition((pos) =>
-      toast.error(pos.coords.latitude)
-    );
 
     setIsGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
