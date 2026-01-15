@@ -1,7 +1,7 @@
 import axios from "axios";
 import { toast } from "sonner";
 
-const apiUrl = process.env.API_BASE_URL || "https://localhost:3000";
+const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3200";
 
 export const axiosInstance = axios.create({
   baseURL: apiUrl + "/api",
@@ -22,7 +22,7 @@ axiosInstance.interceptors.response.use(
       // await refreshToken();
       return axiosInstance(originalRequest);
     }
-
+    console.log(error);
     toast.error(error.message || "Internal Server Error");
     return null;
   }
