@@ -15,8 +15,8 @@ type Props = {
   setName: Dispatch<SetStateAction<string>>;
   description: string;
   setDescription: Dispatch<SetStateAction<string>>;
-  phoneNumber: string;
-  setPhoneNumber: Dispatch<SetStateAction<string>>;
+  phone: string;
+  setPhone: Dispatch<SetStateAction<string>>;
 };
 
 const StoreDetailFormCard = ({
@@ -24,8 +24,8 @@ const StoreDetailFormCard = ({
   setName,
   description,
   setDescription,
-  phoneNumber,
-  setPhoneNumber,
+  phone,
+  setPhone,
 }: Props) => {
   return (
     <Card>
@@ -44,12 +44,12 @@ const StoreDetailFormCard = ({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="name">Store Phone Number *</Label>
+          <Label htmlFor="name">Store Phone *</Label>
           <Input
             id="name"
             placeholder="e.g., 0812345566"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
           />
         </div>
         <div className="space-y-2">

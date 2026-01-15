@@ -4,29 +4,39 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { MONAS_LOCATION } from "@/app/constants/location";
-import { LocationFormCard } from "@/components/Map/LocationFormCard";
+import { LocationFormCard } from "@/components/LocationFormCard";
 import StoreDetailFormCard from "./_components/StoreDetailFormCard";
 import { SectionHeader } from "../../_components/SectionHeader";
 import { toast } from "sonner";
-import { useLocationFormCard } from "@/hooks/useLocationFormCard";
+import { CreateStoreSchema } from "@/schema/store/CreateStoreSchema";
+import { useLocationFormCard } from "@/components/LocationFormCard/useLocationFormCard";
 
 export default function StoreCreate() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phone, setPhone] = useState("");
   const [description, setDescription] = useState("");
-  const { addressName, setAddressName, location, setLocation } =
+  const { addressName, setAddressName, coords, setCoords } =
     useLocationFormCard(MONAS_LOCATION, "");
 
-  const handleCreate = (e: React.FormEvent) => {
-    console.log({ name, description, location, addressName });
+  const handleCreate = () => {
+    const inputData = { name, description, location, phone, addressName };
+    const result = CreateStoreSchema.safeParse(inputData);
+
+    if (result.error?.message) {
+      const firstError = result.error.issues[0].message;
+      console.log(result.error);
+      toast.error(firstError || "Invalid input");
+      return;
+    }
 
     toast.success("Store created successfully");
+
     // router.push("/admin/stores");
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-6xl mx-auto">
       <SectionHeader
         title="Create Store"
         description="Add a new store location"
@@ -38,22 +48,21 @@ export default function StoreCreate() {
         setName={setName}
         description={description}
         setDescription={setDescription}
-        phoneNumber={phoneNumber}
-        setPhoneNumber={setPhoneNumber}
+        phone={phone}
+        setPhone={setPhone}
       />
       <LocationFormCard
         title="Store Location"
         subtitle="Set the location on the map"
-        location={location}
-        setLocation={setLocation}
+        coords={coords}
+        setCoords={setCoords}
         addressName={addressName}
         setAddressName={setAddressName}
       />
 
-      <div className="flex gap-4">
+      <div className="flex justify-end gap-4">
         <Button
-          type="button"
-          variant="outline"
+          variant="secondary"
           onClick={() => router.push("/admin/stores")}
         >
           Cancel

@@ -3,8 +3,8 @@
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LocationFormCard } from "@/components/Map/LocationFormCard";
-import { useLocationFormCard } from "@/hooks/useLocationFormCard";
+import { LocationFormCard } from "@/components/LocationFormCard";
+import { useLocationFormCard } from "@/components/LocationFormCard/useLocationFormCard";
 
 // Mock Data
 const mockStores = [
@@ -32,7 +32,7 @@ export default function StoreChangeLocation() {
   const store = mockStores.find((s) => s.id === storeId);
   if (!store) return <p> Store Not Found</p>;
 
-  const { location, setLocation, addressName, setAddressName } =
+  const { coords, setCoords, addressName, setAddressName } =
     useLocationFormCard(
       { lat: store.latitude, lng: store.longitude },
       store.name
@@ -51,8 +51,8 @@ export default function StoreChangeLocation() {
       <LocationFormCard
         title="Change Location"
         subtitle="Set new location on the map"
-        location={location}
-        setLocation={setLocation}
+        coords={coords}
+        setCoords={setCoords}
         addressName={addressName}
         setAddressName={setAddressName}
       />

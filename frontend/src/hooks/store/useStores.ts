@@ -1,6 +1,6 @@
 import { Store } from "@/types/Store";
 
-import { useInitialFetch } from "../useInitialFetch";
+import { useInitialFetch } from "../generic/useInitialFetch";
 
 export function useStores() {
   const {

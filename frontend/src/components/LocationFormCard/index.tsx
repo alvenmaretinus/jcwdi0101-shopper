@@ -7,15 +7,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
 import { Navigation, Search } from "lucide-react";
-import { Button } from "../ui/button";
 import { toast } from "sonner";
 import { Dispatch, SetStateAction, useState } from "react";
-
+import { Coords } from "@/types/Coords";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
-
+import SearchBarLocation from "./SearchBarLocation";
+import { getReverseGeoIdn } from "@/lib/geolocation/getReverseGeoIdn";
 const ReactMap = dynamic(
   async () => {
     const ReactMapModule = await import("@/components/Map/ReactMap");
@@ -26,13 +27,11 @@ const ReactMap = dynamic(
   }
 );
 
-import { Location } from "@/types/Location";
-
 type Props = {
   title: string;
   subtitle: string;
-  location: Location;
-  setLocation: Dispatch<SetStateAction<Location>>;
+  coords: Coords;
+  setCoords: Dispatch<SetStateAction<Coords>>;
   addressName: string;
   setAddressName: Dispatch<SetStateAction<string>>;
 };
@@ -40,14 +39,13 @@ type Props = {
 export const LocationFormCard = ({
   title,
   subtitle,
-  location,
-  setLocation,
+  coords,
+  setCoords,
   addressName,
   setAddressName,
 }: Props) => {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isShouldFly, setIsShouldFly] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -59,7 +57,7 @@ export const LocationFormCard = ({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setIsShouldFly(true);
-        setLocation({
+        setCoords({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
@@ -72,6 +70,12 @@ export const LocationFormCard = ({
         setIsGettingLocation(false);
       },
       { enableHighAccuracy: true }
+    );
+  };
+
+  const handleAutoFill = async () => {
+    setAddressName(
+      await getReverseGeoIdn({ lat: coords.lat, lng: coords.lng })
     );
   };
 
@@ -94,22 +98,10 @@ export const LocationFormCard = ({
             size="sm"
             variant="link"
             className="text-xs text-muted-foreground"
+            onClick={handleAutoFill}
           >
             Click here to autofill the address
           </Button>
-        </div>
-
-        {/* Search Bar */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search for a location..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
         </div>
 
         {/* Current Location Button */}
@@ -126,12 +118,20 @@ export const LocationFormCard = ({
             : "Use My Current Location"}
         </Button>
 
-        <p>{`lat:${location.lat}, longi:${location.lng}`}</p>
-        <div className="relative w-full h-[400px] sm:h-[500px] lg:h-[600px] xl:h-[700px]">
+        {/* Search Bar */}
+        <div className="max-h-3.5">
+          <SearchBarLocation
+            setCoords={setCoords}
+            isShouldFly={isShouldFly}
+            setIsShouldFly={setIsShouldFly}
+          />
+        </div>
+
+        <div className="w-full mt-10 h-[400px] sm:h-[500px] lg:h-[600px] xl:h-[700px]">
           <ReactMap
             isShouldFly={isShouldFly}
-            location={location}
-            setLocation={setLocation}
+            coords={coords}
+            setCoords={setCoords}
           />
         </div>
       </CardContent>

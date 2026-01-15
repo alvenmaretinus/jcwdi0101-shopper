@@ -1,0 +1,1 @@
+export const MIN_LOCATION_SEARCH_LENGTH = 3;
