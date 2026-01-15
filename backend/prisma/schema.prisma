@@ -52,11 +52,13 @@ model UserAddress {
 model Store {
   id        String   @id @default(uuid())
   name      String
+  description String?
+  phone     String
+  longitude  Float
+  latitude   Float
+  addressName String
 
-  longitude  Decimal @db.Decimal(8, 5)
-  latitude   Decimal @db.Decimal(8, 5)
   employees     User[]
-  addressId    String @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
