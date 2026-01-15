@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,47 +16,33 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SectionHeader } from "../_components/SectionHeader";
-
-export const mockStores = [
-  {
-    id: "store-1",
-    name: "Downtown Branch",
-    addressName: "Jl. Sudirman No. 123, Jakarta Pusat",
-    createdAt: "2024-01-01T00:00:00.000Z",
-    updatedAt: "2024-01-01T00:00:00.000Z",
-    adminCount: 2,
-  },
-  {
-    id: "store-2",
-    name: "Bandung Central",
-    addressName: "Jl. Asia Afrika No. 45, Bandung",
-    createdAt: "2024-02-01T00:00:00.000Z",
-    updatedAt: "2024-02-01T00:00:00.000Z",
-    adminCount: 1,
-  },
-  {
-    id: "store-3",
-    name: "Surabaya East",
-    addressName: "Jl. Pemuda No. 78, Surabaya",
-    createdAt: "2024-03-01T00:00:00.000Z",
-    updatedAt: "2024-03-01T00:00:00.000Z",
-    adminCount: 0,
-  },
-];
+import { getStores } from "@/hooks/store/getStores";
+import { Store } from "@/types/Store";
 
 export default function Stores() {
   const route = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [stores, setStores] = useState<(Store & { employeeCount: number })[]>(
+    []
+  );
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredStores = mockStores.filter(
+  const filteredStores = stores.filter(
     (store) =>
       store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      store.addressName?.toLowerCase().includes(searchQuery.toLowerCase())
+      store.addressName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleRowClick = (storeId: string) => {
     route.push(`/admin/stores/${storeId}`);
   };
+
+  useEffect(() => {
+    getStores().then((data) => {
+      setStores(data);
+      setIsLoading(false);
+    });
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -98,8 +84,26 @@ export default function Stores() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredStores.map((store) => {
-                return (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-4 text-muted-foreground"
+                  >
+                    Please wait...
+                  </TableCell>
+                </TableRow>
+              ) : filteredStores.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-4 text-muted-foreground"
+                  >
+                    No stores found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredStores.map((store) => (
                   <TableRow
                     key={store.id}
                     className="cursor-pointer hover:bg-muted/50"
@@ -118,8 +122,8 @@ export default function Stores() {
                       <div className="flex items-center gap-1.5 text-muted-foreground">
                         <Users className="h-3.5 w-3.5" />
                         <span className="text-sm">
-                          {store.adminCount} admin
-                          {store.adminCount > 1 ? "s" : ""}
+                          {store.employeeCount} admin
+                          {store.employeeCount > 1 ? "s" : ""}
                         </span>
                       </div>
                     </TableCell>
@@ -130,8 +134,8 @@ export default function Stores() {
                       {format(store.updatedAt, "MMM dd, yyyy")}
                     </TableCell>
                   </TableRow>
-                );
-              })}
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

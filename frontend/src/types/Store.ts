@@ -4,5 +4,7 @@ export type Store = {
   phone: string;
   longitude: number;
   latitude: number;
+  addressName: string;
   createdAt: string;
+  updatedAt: string;
 };
