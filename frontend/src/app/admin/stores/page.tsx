@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,33 +16,24 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SectionHeader } from "../_components/SectionHeader";
-import { getStores } from "@/hooks/store/getStores";
-import { Store } from "@/types/Store";
+import { useStores } from "@/hooks/store/useStores";
 
 export default function Stores() {
   const route = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [stores, setStores] = useState<(Store & { employeeCount: number })[]>(
-    []
-  );
-  const [isLoading, setIsLoading] = useState(true);
+  const { stores, isLoading } = useStores();
 
-  const filteredStores = stores.filter(
-    (store) =>
-      store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      store.addressName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredStores = stores
+    ? stores.filter(
+        (store) =>
+          store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          store.addressName.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
 
   const handleRowClick = (storeId: string) => {
     route.push(`/admin/stores/${storeId}`);
   };
-
-  useEffect(() => {
-    getStores().then((data) => {
-      setStores(data);
-      setIsLoading(false);
-    });
-  }, []);
 
   return (
     <div className="space-y-6">
