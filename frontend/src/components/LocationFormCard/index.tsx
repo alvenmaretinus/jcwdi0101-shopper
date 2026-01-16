@@ -46,6 +46,7 @@ export const LocationFormCard = ({
 }: Props) => {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isShouldFly, setIsShouldFly] = useState(false);
+  const [isFetchingAddress, setIsFetchingAddress] = useState(false);
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -74,9 +75,16 @@ export const LocationFormCard = ({
   };
 
   const handleAutoFill = async () => {
-    setAddressName(
-      await getReverseGeoIdn({ lat: coords.lat, lng: coords.lng })
-    );
+    setIsFetchingAddress(true);
+    try {
+      setAddressName(
+        await getReverseGeoIdn({ lat: coords.lat, lng: coords.lng })
+      );
+    } catch (error) {
+      console.warn(error);
+    } finally {
+      setIsFetchingAddress(false);
+    }
   };
 
   return (
@@ -99,8 +107,11 @@ export const LocationFormCard = ({
             variant="link"
             className="text-xs text-muted-foreground"
             onClick={handleAutoFill}
+            disabled={isFetchingAddress}
           >
-            Click here to autofill the address
+            {isFetchingAddress
+              ? "Finding Address Name..."
+              : "Click here to autofill the address"}
           </Button>
         </div>
 

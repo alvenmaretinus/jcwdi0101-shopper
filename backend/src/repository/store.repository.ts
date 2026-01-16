@@ -3,6 +3,7 @@ import { Prisma } from "../../prisma/generated/client";
 import { storeSelect } from "../select/StoreSelect";
 import { userSelect } from "../select/UserSelect";
 import { UpdateStoreInput } from "../schema/store/UpdateStoreSchema";
+import { GetStoreByIdInput } from "../schema/store/GetStoreByIdSchema";
 
 type CreateStoreInput = Omit<
   Prisma.StoreUncheckedCreateInput,
@@ -14,10 +15,13 @@ export class StoreRepository {
     return await prisma.store.create({ data, select: storeSelect });
   }
 
-  static async getStoreById(data: { id: string }) {
+  static async getStoreById({ employee, ...data }: GetStoreByIdInput) {
     return await prisma.store.findUnique({
       where: { id: data.id },
-      select: { ...storeSelect, employees: { select: userSelect } },
+      select: {
+        ...storeSelect,
+        employees: employee ? { select: userSelect } : {},
+      },
     });
   }
 
@@ -27,10 +31,10 @@ export class StoreRepository {
     });
   }
 
-  static async updateStore({ id, ...data }: UpdateStoreInput) {
+  static async updateStore({ id, coords, ...data }: UpdateStoreInput) {
     return await prisma.store.update({
       where: { id },
-      data: { ...data },
+      data: { ...data, latitude: coords?.lat, longitude: coords?.lng },
       select: storeSelect,
     });
   }

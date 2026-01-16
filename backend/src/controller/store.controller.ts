@@ -14,7 +14,7 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/:id", async (req, res) => {
-  const inputData = GetStoreByIdSchema.parse(req.params);
+  const inputData = GetStoreByIdSchema.parse({ ...req.params, ...req.query });
   const result = await StoreService.getStoreById(inputData);
   return res.json(result);
 });
@@ -26,7 +26,10 @@ router.post("/", async (req, res) => {
 });
 
 router.patch("/:id", async (req, res) => {
-  const inputData = UpdateStoreSchema.parse({ ...req.params, ...req.body });
+  const inputData = UpdateStoreSchema.parse({
+    ...req.params,
+    ...req.body,
+  });
   const result = StoreService.updateStore(inputData);
   return res.json(result);
 });

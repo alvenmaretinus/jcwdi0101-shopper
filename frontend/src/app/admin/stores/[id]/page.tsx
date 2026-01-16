@@ -105,7 +105,7 @@ export default function StoreDetail() {
     data: store,
     isLoading,
     setData: setStore,
-  } = useInitialFetch(() => getStoreById(storeId));
+  } = useInitialFetch(() => getStoreById({ id: storeId, employee: true }));
 
   if (isLoading) return <Loading />;
   if (!store) return <p>Store not found</p>;

@@ -34,7 +34,7 @@ export default function StoreCreate() {
       setIsSubmitting(true);
       await createStore(inputData);
       toast.success("Store created successfully");
-      router.push("/admin/stores");
+      router.back();
     } catch (error) {
       setIsSubmitting(false);
       console.warn(error);
@@ -67,10 +67,7 @@ export default function StoreCreate() {
       />
 
       <div className="flex justify-end gap-4">
-        <Button
-          variant="secondary"
-          onClick={() => router.push("/admin/stores")}
-        >
+        <Button variant="secondary" onClick={() => router.back()}>
           Cancel
         </Button>
         <Button disabled={isSubmitting} onClick={handleCreate}>
