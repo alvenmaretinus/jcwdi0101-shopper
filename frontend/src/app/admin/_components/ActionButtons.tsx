@@ -7,7 +7,7 @@ type Props = {
   cancelText?: string;
   submitText?: string;
 };
-export const FormActions = ({
+export const ActionButtons = ({
   isSubmitting,
   cancelText = "Cancel",
   onSubmit,
