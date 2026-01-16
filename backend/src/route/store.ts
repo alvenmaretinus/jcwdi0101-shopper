@@ -6,6 +6,6 @@ import { isSuperAdmin } from "../middleware/isSuperAdmin";
 // const router = Router().use("/store", isAuth, isSuperAdmin, storeRouter);
 
 // TODO: Use isAuth and isSuperAdmin middleware
-const router = Router().use("/store", storeRouter);
+const router = Router().use("/stores", storeRouter);
 
 export default router;

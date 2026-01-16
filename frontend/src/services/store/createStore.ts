@@ -3,7 +3,7 @@ import { CreateStoreInput } from "@/schemas/store/CreateStoreSchema";
 import { Store } from "@/types/Store";
 
 export const createStore = async (inputData: CreateStoreInput) => {
-  const res = await axiosInstance.post<Store>("/store", inputData);
+  const res = await axiosInstance.post<Store>("/stores", inputData);
 
   return res.data;
 };

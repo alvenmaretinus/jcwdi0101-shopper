@@ -3,6 +3,7 @@ import { StoreService } from "../service/store.service";
 import { GetStoreByIdSchema } from "../schema/store/GetStoreByIdSchema";
 import { CreateStoreSchema } from "../schema/store/CreateStoreSchema";
 import { UpdateStoreSchema } from "../schema/store/UpdateStoreSchema";
+import { DeleteStoreByIdSchema } from "../schema/store/DeleteStoreByIdSchema";
 
 const router = Router();
 
@@ -14,7 +15,13 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/:id", async (req, res) => {
-  const inputData = GetStoreByIdSchema.parse({ ...req.params, ...req.query });
+  const inputData = GetStoreByIdSchema.parse(req.params);
+  const result = await StoreService.getStoreById(inputData);
+  return res.json(result);
+});
+
+router.get("/:id/employees/", async (req, res) => {
+  const inputData = GetStoreByIdSchema.parse(req.params);
   const result = await StoreService.getStoreById(inputData);
   return res.json(result);
 });
@@ -30,7 +37,13 @@ router.patch("/:id", async (req, res) => {
     ...req.params,
     ...req.body,
   });
-  const result = StoreService.updateStore(inputData);
+  const result = await StoreService.updateStore(inputData);
+  return res.json(result);
+});
+
+router.delete("/:id", async (req, res) => {
+  const inputData = DeleteStoreByIdSchema.parse(req.params);
+  const result = await StoreService.deleteStoreById(inputData);
   return res.json(result);
 });
 

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { CreateStoreSchema } from "@/schemas/store/CreateStoreSchema";
 import { useLocationFormCard } from "@/components/LocationFormCard/useLocationFormCard";
 import { createStore } from "@/services/store/createStore";
+import { ActionButtons } from "../../_components/ActionButtons";
 
 export default function StoreCreate() {
   const router = useRouter();
@@ -66,14 +67,11 @@ export default function StoreCreate() {
         setAddressName={setAddressName}
       />
 
-      <div className="flex justify-end gap-4">
-        <Button variant="secondary" onClick={() => router.back()}>
-          Cancel
-        </Button>
-        <Button disabled={isSubmitting} onClick={handleCreate}>
-          Create Store
-        </Button>
-      </div>
+      <ActionButtons
+        submitText="Create Store"
+        onSubmit={handleCreate}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import {
   PrismaClientInitializationError,
   PrismaClientValidationError,
 } from "@prisma/client/runtime/client";
-import { ErrorRequestHandler, NextFunction, Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 
 const isPrismaError = (
@@ -27,7 +27,7 @@ const isPrismaError = (
 };
 
 export const errorHandler = (
-  err: ErrorRequestHandler,
+  err: unknown,
   req: Request,
   res: Response,
   next: NextFunction

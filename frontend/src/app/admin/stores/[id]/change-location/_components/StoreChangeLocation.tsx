@@ -7,11 +7,14 @@ import { LocationFormCard } from "@/components/LocationFormCard";
 import { useLocationFormCard } from "@/components/LocationFormCard/useLocationFormCard";
 import { Store } from "@/types/Store";
 import { updateStore } from "@/services/store/updateStore";
+import { ActionButtons } from "@/app/admin/_components/ActionButtons";
+import { useState } from "react";
 
 type Props = { store: Store };
 
 export default function StoreChangeLocation({ store }: Props) {
   const router = useRouter();
+  const [isSubmittiing, setIsSubmitting] = useState(false);
 
   const { coords, setCoords, addressName, setAddressName } =
     useLocationFormCard(
@@ -24,8 +27,15 @@ export default function StoreChangeLocation({ store }: Props) {
       toast.info("Address cannot empty");
     }
     try {
-      await updateStore({ id: store.id, coords, addressName });
+      setIsSubmitting(true);
+      await updateStore({
+        id: store.id,
+        lat: coords.lat,
+        lng: coords.lng,
+        addressName,
+      });
     } catch (error) {
+      setIsSubmitting(false);
       console.warn(error);
     }
     toast.success("Location updated successfully");
@@ -43,12 +53,11 @@ export default function StoreChangeLocation({ store }: Props) {
         setAddressName={setAddressName}
       />
 
-      <div className="flex gap-4">
-        <Button type="button" variant="outline" onClick={() => router.back()}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave}>Save Location</Button>
-      </div>
+      <ActionButtons
+        isSubmitting={isSubmittiing}
+        onSubmit={handleSave}
+        submitText="Save Location"
+      />
     </div>
   );
 }

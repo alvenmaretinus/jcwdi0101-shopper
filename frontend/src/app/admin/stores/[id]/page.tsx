@@ -44,6 +44,10 @@ import { useInitialFetch } from "../../../../hooks/useInitialFetch";
 import { getStoreById } from "@/services/store/getStoreById";
 import { Loading } from "@/components/Loading";
 import { StoreInformation } from "./_components/StoreInformation";
+import { getStoreByIdWithEmployees } from "@/services/store/getStoreByIdWithEmployees";
+import { DeleteDialog } from "@/components/Dialog/DeleteDialog";
+import { deleteStoreById } from "@/services/store/deleteStoreById";
+import DeleteStoreDialog from "./_components/DeleteStoreDialog";
 
 // ---------------- Static Mock Data ----------------
 const stores = [
@@ -105,7 +109,8 @@ export default function StoreDetail() {
     data: store,
     isLoading,
     setData: setStore,
-  } = useInitialFetch(() => getStoreById({ id: storeId, employee: true }));
+  } = useInitialFetch(() => getStoreByIdWithEmployees({ id: storeId }));
+  const [isDeleteStoreOpen, setIsDeleteStoreOpen] = useState(false);
 
   if (isLoading) return <Loading />;
   if (!store) return <p>Store not found</p>;
@@ -122,7 +127,7 @@ export default function StoreDetail() {
         <Button
           variant="destructive"
           size="sm"
-          // onClick={() => setIsDeleteStoreOpen(true)}
+          onClick={() => setIsDeleteStoreOpen(true)}
         >
           <Trash2 className="h-4 w-4 mr-2" /> Delete Store
         </Button>
@@ -255,24 +260,11 @@ export default function StoreDetail() {
       </AlertDialog>
 
       {/* Delete Store */}
-      {/* <AlertDialog open={isDeleteStoreOpen} onOpenChange={setIsDeleteStoreOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Store?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setIsDeleteStoreOpen(false)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteStore}>
-              Yes, Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog> */}
+      <DeleteStoreDialog
+        isDeleteStoreOpen={isDeleteStoreOpen}
+        setIsDeleteStoreOpen={setIsDeleteStoreOpen}
+        storeId={store.id}
+      />
     </div>
   );
 }
