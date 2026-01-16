@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import SearchBarLocation from "./SearchBarLocation";
-import { getReverseGeoIdn } from "@/lib/geolocation/getReverseGeoIdn";
+import { getReverseGeoIdn } from "@/services/geolocation/getReverseGeoIdn";
 const ReactMap = dynamic(
   async () => {
     const ReactMapModule = await import("@/components/Map/ReactMap");

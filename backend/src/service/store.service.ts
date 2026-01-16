@@ -4,12 +4,12 @@ import { GetStoreByIdInput } from "../schema/store/GetStoreByIdSchema";
 
 export class StoreService {
   static async createStore(data: CreateStoreInput) {
-    const { name, phone, location, addressName, description } = data;
+    const { name, phone, coords, addressName, description } = data;
     return await StoreRepository.createStore({
       name,
       phone,
-      longitude: location.lng,
-      latitude: location.lat,
+      longitude: coords.lng,
+      latitude: coords.lat,
       addressName,
       description,
     });

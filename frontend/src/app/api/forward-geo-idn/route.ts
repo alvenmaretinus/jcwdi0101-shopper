@@ -1,4 +1,4 @@
-import { MIN_LOCATION_SEARCH_LENGTH } from "@/constant/geo";
+import { MIN_LOCATION_SEARCH_LENGTH } from "@/constants/geo";
 import axios from "axios";
 import { NextResponse } from "next/server";
 

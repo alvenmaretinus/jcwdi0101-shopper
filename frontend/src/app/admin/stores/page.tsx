@@ -16,12 +16,13 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SectionHeader } from "../_components/SectionHeader";
-import { useStores } from "@/hooks/store/useStores";
+import { useInitialFetch } from "@/hooks/useInitialFetch";
+import { getStores } from "@/services/store/getStores";
 
 export default function Stores() {
   const route = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const { stores, isLoading } = useStores();
+  const { data: stores, isLoading } = useInitialFetch(getStores);
 
   const filteredStores = stores
     ? stores.filter(
