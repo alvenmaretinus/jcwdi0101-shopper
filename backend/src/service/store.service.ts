@@ -1,6 +1,7 @@
 import { StoreRepository } from "../repository/store.repository";
 import { CreateStoreInput } from "../schema/store/CreateStoreSchema";
 import { GetStoreByIdInput } from "../schema/store/GetStoreByIdSchema";
+import { UpdateStoreInput } from "../schema/store/UpdateStoreSchema";
 
 export class StoreService {
   static async createStore(data: CreateStoreInput) {
@@ -21,5 +22,9 @@ export class StoreService {
 
   static async getStores() {
     return await StoreRepository.getStores();
+  }
+
+  static async updateStore(data: UpdateStoreInput) {
+    return await StoreRepository.updateStore(data);
   }
 }

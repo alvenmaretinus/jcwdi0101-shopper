@@ -1,6 +1,7 @@
 export type Store = {
   id: string;
   name: string;
+  description: string;
   phone: string;
   longitude: number;
   latitude: number;

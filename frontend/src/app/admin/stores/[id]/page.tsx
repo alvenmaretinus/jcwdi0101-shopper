@@ -39,8 +39,11 @@ import {
 import { UserPlus, UserMinus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { SectionHeader } from "../../_components/SectionHeader";
-import StoreInformationCardField from "./_components/StoreInformationCardField";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useInitialFetch } from "../../../../hooks/useInitialFetch";
+import { getStoreById } from "@/services/store/getStoreById";
+import { Loading } from "@/components/Loading";
+import { StoreInformation } from "./_components/StoreInformation";
 
 // ---------------- Static Mock Data ----------------
 const stores = [
@@ -96,95 +99,17 @@ const users = [
 ];
 
 export default function StoreDetail() {
-  const router = useRouter();
-
-  // Get store ID from URL
   const params = useParams<{ id: string }>();
   const storeId = params.id;
-  const store = stores.find((s) => s.id === storeId);
-  const admins = storeAdmins.filter((a) => a.storeId === storeId);
+  const {
+    data: store,
+    isLoading,
+    setData: setStore,
+  } = useInitialFetch(() => getStoreById(storeId));
 
-  // Local states
-  const [isEditNameOpen, setIsEditNameOpen] = useState(false);
-  const [isEditDescOpen, setIsEditDescOpen] = useState(false);
-  const [isEditPhoneOpen, setIsEditPhoneOpen] = useState(false);
-  const [editName, setEditName] = useState(store?.name || "");
-  const [editDesc, setEditDesc] = useState(store?.description || "");
+  if (isLoading) return <Loading />;
+  if (!store) return <p>Store not found</p>;
 
-  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
-  const [addAdminStep, setAddAdminStep] = useState<"search" | "confirm">(
-    "search"
-  );
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [emailSearch, setEmailSearch] = useState("");
-  const [foundUser, setFoundUser] = useState<(typeof users)[0] | null>(null);
-  const [searchError, setSearchError] = useState("");
-  const [isRemoveAdminOpen, setIsRemoveAdminOpen] = useState(false);
-  const [adminToRemove, setAdminToRemove] = useState<string | null>(null);
-  const [isDeleteStoreOpen, setIsDeleteStoreOpen] = useState(false);
-
-  if (!store) return <p className="text-center py-12">Store not found</p>;
-
-  // ---------------- Handlers ----------------
-  const handleSaveName = () => {
-    if (!editName.trim()) return toast.error("Store name required");
-    toast.success("Store name updated");
-    setIsEditNameOpen(false);
-  };
-
-  const handleSaveDesc = () => {
-    toast.success("Description updated");
-    setIsEditDescOpen(false);
-  };
-
-  const handleEmailSearch = () => {
-    if (!emailSearch.trim()) return setSearchError("Enter email");
-
-    const existingAdmin = admins.find(
-      (a) => a.email.toLowerCase() === emailSearch.toLowerCase()
-    );
-    if (existingAdmin) return setSearchError("User already admin");
-
-    const user = users.find(
-      (u) =>
-        u.email.toLowerCase() === emailSearch.toLowerCase() &&
-        u.role !== "SUPERADMIN"
-    );
-    if (!user) return setSearchError("User not found");
-
-    setFoundUser(user);
-    setSearchError("");
-    setAddAdminStep("confirm");
-  };
-
-  const handleConfirmAddAdmin = () => {
-    if (!foundUser) return;
-    toast.success(`${foundUser.email} promoted to admin`);
-    setIsAddAdminOpen(false);
-    setFoundUser(null);
-    setEmailSearch("");
-    setAddAdminStep("search");
-  };
-
-  const handleRemoveAdmin = () => {
-    const admin = admins.find((a) => a.id === adminToRemove);
-    toast.success(`${admin?.email} removed from admin`);
-    setIsRemoveAdminOpen(false);
-    setAdminToRemove(null);
-  };
-
-  const handleDeleteStore = () => {
-    toast.success("Store deleted");
-    setIsDeleteStoreOpen(false);
-    router.push("/admin/stores");
-  };
-
-  const openRemoveDialog = (id: string) => {
-    setAdminToRemove(id);
-    setIsRemoveAdminOpen(true);
-  };
-
-  // ---------------- Render ----------------
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -197,51 +122,18 @@ export default function StoreDetail() {
         <Button
           variant="destructive"
           size="sm"
-          onClick={() => setIsDeleteStoreOpen(true)}
+          // onClick={() => setIsDeleteStoreOpen(true)}
         >
           <Trash2 className="h-4 w-4 mr-2" /> Delete Store
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Store Info Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Store Information</CardTitle>
-            <CardDescription>Basic details about this store</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <StoreInformationCardField
-              title="Store Name"
-              value={store.name}
-              onEditClick={() => setIsEditNameOpen(true)}
-            />
-            <StoreInformationCardField
-              title="Description"
-              value={store.description}
-              onEditClick={() => setIsEditDescOpen(true)}
-            />
-            <StoreInformationCardField
-              title="Phone Number"
-              value={store.phoneNumber}
-              onEditClick={() => setIsEditPhoneOpen(true)}
-            />
-            <StoreInformationCardField
-              title="Location"
-              value={store.addressName}
-              onEditClick={() =>
-                router.push(`/admin/stores/${store.id}/change-location`)
-              }
-            />
-            <StoreInformationCardField
-              title="Created"
-              value={format(store.createdAt, "MMMM dd, yyyy")}
-            />
-          </CardContent>
-        </Card>
+      {/* <div className="grid gap-6 lg:grid-cols-2"> */}
+      {/* Store Info Card */}
+      <StoreInformation store={store} setStore={setStore} />
 
-        {/* Store Admins Card */}
-        <Card>
+      {/* Store Admins Card */}
+      {/* <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -293,67 +185,10 @@ export default function StoreDetail() {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Dialogs (Edit/Add/Remove/Delete) */}
-      {/* Edit Name */}
-      <Dialog open={isEditNameOpen} onOpenChange={setIsEditNameOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Store Name</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditNameOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveName}>Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isEditPhoneOpen} onOpenChange={setIsEditPhoneOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Phone Number</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditNameOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveName}>Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Description */}
-      <Dialog open={isEditDescOpen} onOpenChange={setIsEditDescOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Description</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={editDesc}
-            onChange={(e) => setEditDesc(e.target.value)}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDescOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveDesc}>Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </div> */}
 
       {/* Add Admin */}
-      <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
+      {/* <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Admin</DialogTitle>
@@ -398,8 +233,9 @@ export default function StoreDetail() {
         </DialogContent>
       </Dialog>
 
+      <StoreInformationDialog />
       {/* Remove Admin */}
-      <AlertDialog open={isRemoveAdminOpen} onOpenChange={setIsRemoveAdminOpen}>
+      {/* <AlertDialog open={isRemoveAdminOpen} onOpenChange={setIsRemoveAdminOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Admin?</AlertDialogTitle>
@@ -419,7 +255,7 @@ export default function StoreDetail() {
       </AlertDialog>
 
       {/* Delete Store */}
-      <AlertDialog open={isDeleteStoreOpen} onOpenChange={setIsDeleteStoreOpen}>
+      {/* <AlertDialog open={isDeleteStoreOpen} onOpenChange={setIsDeleteStoreOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Store?</AlertDialogTitle>
@@ -436,7 +272,7 @@ export default function StoreDetail() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog> */}
     </div>
   );
 }

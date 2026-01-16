@@ -1,8 +1,9 @@
-import { Prisma } from "../../../prisma/generated/client";
+import { Prisma } from "../../prisma/generated/client";
 
 export const storeSelect = {
   id: true,
   name: true,
+  description: true,
   phone: true,
   longitude: true,
   latitude: true,
