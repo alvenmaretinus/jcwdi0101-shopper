@@ -2,7 +2,7 @@ import { PrismaClient } from '../../../prisma/generated/client';
 import { UsersRepo } from './interface';
 import { UserCreateInput } from '../../../prisma/generated/models';
 import { UserRole } from '../../../prisma/generated/enums';
-import * as randomUUID from 'uuid';
+import {v4} from 'uuid';
 import { CreateUserReq, User } from './entities';
 import {ToDomainModel, ToDomainModels} from './mapper';
 
@@ -17,13 +17,13 @@ export class PostgresRepository implements UsersRepo {
     async CreateUser(
         data: CreateUserReq): Promise<User> {
         const userData: UserCreateInput = {
-            id: randomUUID.v4(),
+            id: v4(),
             email: data.email,
             role: data.role ?? UserRole.USER,
             profileUrl: data.profileUrl,
             createdAt: data.createdAt,
             updatedAt: data.updatedAt,
-            referralCode: randomUUID.v4(),
+            referralCode: v4(),
         };
         const createdUser = await this.prisma.user.create({
             data: userData,

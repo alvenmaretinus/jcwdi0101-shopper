@@ -85,4 +85,17 @@ export class UserService {
             res.status(500).json({ error: 'Internal Server Error' });
         }
     }
+
+    async DeleteUser(req: Request, res: Response): Promise<void> {
+        const userId = req.params.id as string;
+        await this.usersRepo.GetUsersByFilter({ id: userId }).then((users) => {
+            if (users.length === 0) {
+                res.status(404).json({ error: 'User not found' });
+                throw new Error('User not found');
+            }
+        });
+
+        await this.usersRepo.DeleteUser(userId);
+        res.status(204).send();
+    }
 }
