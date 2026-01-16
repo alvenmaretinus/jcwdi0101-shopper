@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { MONAS_LOCATION } from "@/app/constants/location";
+import { MONAS_LOCATION } from "@/constants/location";
 import { LocationFormCard } from "@/components/LocationFormCard";
 import StoreDetailFormCard from "./_components/StoreDetailFormCard";
 import { SectionHeader } from "../../_components/SectionHeader";
 import { toast } from "sonner";
-import { CreateStoreSchema } from "@/schema/store/CreateStoreSchema";
+import { CreateStoreSchema } from "@/schemas/store/CreateStoreSchema";
 import { useLocationFormCard } from "@/components/LocationFormCard/useLocationFormCard";
+import { createStore } from "@/services/store/createStore";
 
 export default function StoreCreate() {
   const router = useRouter();
@@ -18,21 +19,26 @@ export default function StoreCreate() {
   const [description, setDescription] = useState("");
   const { addressName, setAddressName, coords, setCoords } =
     useLocationFormCard(MONAS_LOCATION, "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleCreate = () => {
-    const inputData = { name, description, location, phone, addressName };
+  const handleCreate = async () => {
+    const inputData = { name, description, coords, phone, addressName };
     const result = CreateStoreSchema.safeParse(inputData);
 
     if (result.error?.message) {
       const firstError = result.error.issues[0].message;
-      console.log(result.error);
       toast.error(firstError || "Invalid input");
       return;
     }
-
-    toast.success("Store created successfully");
-
-    // router.push("/admin/stores");
+    try {
+      setIsSubmitting(true);
+      await createStore(inputData);
+      toast.success("Store created successfully");
+      router.push("/admin/stores");
+    } catch (error) {
+      setIsSubmitting(false);
+      console.warn(error);
+    }
   };
 
   return (
@@ -67,7 +73,9 @@ export default function StoreCreate() {
         >
           Cancel
         </Button>
-        <Button onClick={handleCreate}>Create Store</Button>
+        <Button disabled={isSubmitting} onClick={handleCreate}>
+          Create Store
+        </Button>
       </div>
     </div>
   );

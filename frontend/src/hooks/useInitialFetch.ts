@@ -10,6 +10,8 @@ export function useInitialFetch<T>(fetcher: () => Promise<T>) {
         setIsLoading(true);
         const result = await fetcher();
         setData(result);
+      } catch (err) {
+        console.error(err);
       } finally {
         setIsLoading(false);
       }

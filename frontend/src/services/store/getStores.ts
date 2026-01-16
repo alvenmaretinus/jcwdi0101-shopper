@@ -3,7 +3,7 @@ import { Store } from "@/types/Store";
 
 export const getStores = async () => {
   const res = await axiosInstance.get<(Store & { employeeCount: number })[]>(
-    "/stores"
+    "/store"
   );
 
   return res.data;

@@ -22,8 +22,9 @@ axiosInstance.interceptors.response.use(
       // await refreshToken();
       return axiosInstance(originalRequest);
     }
-    console.log(error);
+
     toast.error(error.message || "Internal Server Error");
-    return null;
+
+    throw error;
   }
 );

@@ -43,7 +43,6 @@ export default function StoreChangeLocation() {
       toast.info("Address will be fetched from coordinates");
     }
     toast.success("Location updated successfully");
-    console.log({ location, addressName });
   };
 
   return (
