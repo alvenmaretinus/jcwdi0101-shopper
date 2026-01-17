@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 
 type Props = {
   isSubmitting: boolean;
+  onCancel: () => void;
   onSubmit: () => void;
   cancelText?: string;
   submitText?: string;
@@ -11,13 +11,12 @@ export const ActionButtons = ({
   isSubmitting,
   cancelText = "Cancel",
   onSubmit,
+  onCancel,
   submitText = "Submit",
 }: Props) => {
-  const router = useRouter();
-
   return (
     <div className="flex justify-end gap-4">
-      <Button variant="secondary" onClick={() => router.back()}>
+      <Button variant="secondary" onClick={onCancel}>
         {cancelText}
       </Button>
       <Button disabled={isSubmitting} onClick={onSubmit}>

@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LocationFormCard } from "@/components/LocationFormCard";
 import { useLocationFormCard } from "@/components/LocationFormCard/useLocationFormCard";
@@ -15,11 +14,11 @@ type Props = { store: Store };
 export default function StoreChangeLocation({ store }: Props) {
   const router = useRouter();
   const [isSubmittiing, setIsSubmitting] = useState(false);
-
+  const { id } = useParams<{ id: string }>();
   const { coords, setCoords, addressName, setAddressName } =
     useLocationFormCard(
       { lat: store.latitude, lng: store.longitude },
-      store.name
+      store.addressName
     );
 
   const handleSave = async () => {
@@ -34,12 +33,11 @@ export default function StoreChangeLocation({ store }: Props) {
         lng: coords.lng,
         addressName,
       });
+      window.location.href = `/admin/stores/${id}`;
     } catch (error) {
       setIsSubmitting(false);
       console.warn(error);
     }
-    toast.success("Location updated successfully");
-    router.back();
   };
 
   return (
@@ -57,6 +55,7 @@ export default function StoreChangeLocation({ store }: Props) {
         isSubmitting={isSubmittiing}
         onSubmit={handleSave}
         submitText="Save Location"
+        onCancel={() => router.push(`/admin/stores/${id}`)}
       />
     </div>
   );

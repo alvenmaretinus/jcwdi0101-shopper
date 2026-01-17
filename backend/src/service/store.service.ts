@@ -1,7 +1,9 @@
 import { ConflictError } from "../error/ConflictError";
 import { NotFoundError } from "../error/NotFoundError";
 import { StoreRepository } from "../repository/store.repository";
+import { AddEmployeeInput } from "../schema/store/AddEmployeeSchema";
 import { CreateStoreInput } from "../schema/store/CreateStoreSchema";
+import { RemoveEmployeeInput } from "../schema/store/RemoveEmployeeSchema";
 import { DeleteStoreByIdInput } from "../schema/store/DeleteStoreByIdSchema";
 import { GetStoreByIdInput } from "../schema/store/GetStoreByIdSchema";
 import { UpdateStoreInput } from "../schema/store/UpdateStoreSchema";
@@ -21,12 +23,12 @@ export class StoreService {
 
   static async getStoreById(data: GetStoreByIdInput) {
     const { id } = data;
-    return await StoreRepository.getStoreById(id);
+    return await StoreRepository.getStoreById({ id });
   }
 
   static async getStoreByIdWithEmployee(data: GetStoreByIdInput) {
     const { id } = data;
-    return await StoreRepository.getStoreByIdWithEmployee(id);
+    return await StoreRepository.getStoreByIdWithEmployee({ id });
   }
 
   static async getStores() {
@@ -35,7 +37,7 @@ export class StoreService {
 
   static async updateStore(data: UpdateStoreInput) {
     const { id, name, lng, lat, description, addressName, phone } = data;
-    const store = await StoreRepository.getStoreByIdWithCounts(id);
+    const store = await StoreRepository.getStoreByIdWithCounts({ id });
     if (!store) throw new NotFoundError("Store Not Found");
 
     return await StoreRepository.updateStore({
@@ -51,7 +53,7 @@ export class StoreService {
 
   static async deleteStoreById(data: DeleteStoreByIdInput) {
     const { id } = data;
-    const store = await StoreRepository.getStoreByIdWithCounts(id);
+    const store = await StoreRepository.getStoreByIdWithCounts({ id });
     if (!store) throw new NotFoundError("Store Not Found");
     if (store.employees > 0) {
       throw new ConflictError("Employees still exist");
@@ -63,6 +65,31 @@ export class StoreService {
       throw new ConflictError("Products still exist");
     }
 
-    return await StoreRepository.deleteStoreById(data);
+    return await StoreRepository.deleteStoreById({ id });
+  }
+
+  static async addEmployee(data: AddEmployeeInput) {
+    const { id, userId } = data;
+    const store = await StoreRepository.getStoreByIdWithEmployee({ id });
+    if (!store) throw new NotFoundError("Store Not Found");
+
+    const employee = store.employees.find((emp) => emp.id === userId);
+    if (employee) throw new NotFoundError("Employee already in this store");
+
+    return await StoreRepository.addEmployeeToStore({ id, userId });
+  }
+
+  static async removeEmployee(data: RemoveEmployeeInput) {
+    const { id, employeeId } = data;
+    const store = await StoreRepository.getStoreByIdWithEmployee({ id });
+    if (!store) throw new NotFoundError("Store Not Found");
+
+    const employee = store.employees.find((emp) => emp.id === employeeId);
+    if (!employee) throw new NotFoundError("Employee not found in this store");
+
+    return await StoreRepository.removeEmployeeFromStore({
+      employeeId,
+      id,
+    });
   }
 }

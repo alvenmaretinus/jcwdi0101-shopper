@@ -2,25 +2,18 @@
 
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 type Props = {
   title: string;
   description: string;
-  isBackButtonEnabled?: boolean;
+  onBack?: () => void;
 };
 
-export const SectionHeader = ({
-  title,
-  description,
-  isBackButtonEnabled = false,
-}: Props) => {
-  const router = useRouter();
-
+export const SectionHeader = ({ title, description, onBack }: Props) => {
   return (
     <div className="flex items-center gap-4">
-      {isBackButtonEnabled && (
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+      {onBack && (
+        <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
       )}

@@ -2,8 +2,9 @@ import { prisma } from "../lib/db/prisma";
 import { Prisma } from "../../prisma/generated/client";
 import { storeSelect } from "../select/StoreSelect";
 import { userSelect } from "../select/UserSelect";
-import { GetStoreByIdInput } from "../schema/store/GetStoreByIdSchema";
 import { DeleteStoreByIdInput } from "../schema/store/DeleteStoreByIdSchema";
+import { RemoveEmployeeInput } from "../schema/store/RemoveEmployeeSchema";
+import { AddEmployeeInput } from "../schema/store/AddEmployeeSchema";
 
 type BaseOmit =
   | "employees"
@@ -23,21 +24,21 @@ export class StoreRepository {
     return await prisma.store.create({ data, select: storeSelect });
   }
 
-  static async getStoreById(id: string) {
+  static async getStoreById({ id }: { id: string }) {
     return await prisma.store.findUnique({
       where: { id },
       select: storeSelect,
     });
   }
 
-  static async getStoreByIdWithEmployee(id: string) {
+  static async getStoreByIdWithEmployee({ id }: { id: string }) {
     return await prisma.store.findUnique({
       where: { id },
       select: { ...storeSelect, employees: { select: userSelect } },
     });
   }
 
-  static async getStoreByIdWithCounts(id: string) {
+  static async getStoreByIdWithCounts({ id }: { id: string }) {
     const store = await prisma.store.findUnique({
       where: { id },
       select: {
@@ -66,9 +67,34 @@ export class StoreRepository {
     });
   }
 
-  static async deleteStoreById(data: DeleteStoreByIdInput) {
+  static async addEmployeeToStore({ id, userId }: AddEmployeeInput) {
+    return await prisma.user.update({
+      where: { id: userId },
+      data: {
+        role: "ADMIN",
+        employeeJoinedAt: new Date(),
+        storeId: id,
+      },
+    });
+  }
+
+  static async removeEmployeeFromStore({
+    employeeId,
+    id,
+  }: RemoveEmployeeInput) {
+    return await prisma.user.update({
+      where: { id: employeeId, storeId: id },
+      data: {
+        role: "USER",
+        employeeJoinedAt: null,
+        storeId: null,
+      },
+    });
+  }
+
+  static async deleteStoreById({ id }: { id: string }) {
     return await prisma.store.delete({
-      where: { id: data.id },
+      where: { id },
       select: storeSelect,
     });
   }

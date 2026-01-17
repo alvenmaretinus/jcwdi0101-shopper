@@ -9,5 +9,7 @@ export default async function StoreChangeLocationPage({
   const { id } = await params;
   const store = await getStoreById({ id });
 
+  if (!store) return <p> Store Not Found </p>;
+
   return <StoreChangeLocation store={store} />;
 }

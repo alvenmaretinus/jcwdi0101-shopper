@@ -1,6 +1,5 @@
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -9,6 +8,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Dispatch, SetStateAction } from "react";
+import { Button } from "../ui/button";
 
 type Props = {
   isOpen: boolean;
@@ -17,6 +17,7 @@ type Props = {
   description?: string;
   confirmText?: string;
   onConfirm: () => void;
+  disabled?: boolean;
 };
 
 export const DeleteDialog = ({
@@ -26,6 +27,7 @@ export const DeleteDialog = ({
   onConfirm,
   isOpen,
   setIsOpen,
+  disabled,
 }: Props) => {
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
@@ -40,9 +42,9 @@ export const DeleteDialog = ({
           <AlertDialogCancel onClick={() => setIsOpen(false)}>
             Cancel
           </AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>
+          <Button disabled={disabled} onClick={onConfirm}>
             {confirmText}
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

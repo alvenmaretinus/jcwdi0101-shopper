@@ -24,7 +24,7 @@ axiosInstance.interceptors.response.use(
       return axiosInstance(originalRequest);
     }
 
-    toast.error(error.message || "Internal Server Error");
+    toast.error(error.response?.data?.error || "Internal Server Error");
 
     throw error;
   }
