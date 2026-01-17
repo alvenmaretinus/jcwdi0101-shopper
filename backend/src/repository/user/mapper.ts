@@ -1,7 +1,8 @@
 
 import { User } from './entities';
+import { UserModel } from '../../../prisma/generated/models/User';
 
-export const ToDomainModel = (createdUser: any): User => {
+export const toDomainModel = (createdUser: UserModel): User => {
     return {
             id: createdUser.id,
             email: createdUser.email,
@@ -14,6 +15,6 @@ export const ToDomainModel = (createdUser: any): User => {
         };
 }
 
-export const ToDomainModels = (users: any[]): User[] => {
-    return users.map(user => ToDomainModel(user));
+export const toDomainModels = (users: UserModel[]): User[] => {
+    return users.map(user => toDomainModel(user));
 }

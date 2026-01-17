@@ -15,31 +15,31 @@ const router = Router();
 
 router.post("/user", async (req, res) => {
     const inputData = CreateUserSchema.parse(req.body);
-    const result = await userService.CreateUser(inputData, req.user);
+    const result = await userService.createUser(inputData, req.user);
     return res.status(201).json(result);
 });
 
 router.get("/user/:id", isAuth, async (req, res) => {
     const inputData = GetUserByIdSchema.parse(req.params);
-    const result = await userService.GetUserByID(inputData.id);
+    const result = await userService.getUserByID(inputData.id);
     return res.json(result);
 });
 
 router.get("/users", isAuth, async (req, res) => {
-    const result = await userService.GetUsersByFilter();
+    const result = await userService.getUsersByFilter();
     return res.json(result);
 });
 
 router.patch("/user/:id", isAuth, async (req, res) => {
     const { id } = GetUserByIdSchema.parse(req.params);
     const inputData = UpdateUserSchema.parse(req.body);
-    const result = await userService.UpdateUser(id, inputData, req.user);
+    const result = await userService.updateUser(id, inputData, req.user);
     return res.json(result);
 });
 
 router.delete("/user/:id", isAuth, isSuperAdmin, async (req, res) => {
     const { id } = GetUserByIdSchema.parse(req.params);
-    await userService.DeleteUser(id);
+    await userService.deleteUser(id);
     return res.status(204).send();
 });
 

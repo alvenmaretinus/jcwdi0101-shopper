@@ -1,4 +1,4 @@
-import { UnauthorizedError } from "../error/UnauthorizedError ";
+import { UnauthorizedError } from "../error/UnauthorizedError";
 import { NextFunction, Request, Response } from "express";
 import { UserRole } from "../../prisma/generated/enums";
 

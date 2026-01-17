@@ -1,8 +1,8 @@
-import { CreateUserReq, User } from "./entities";
+import { CreateUserReq as UserReq, User } from "./entities";
 
 export interface UsersRepo {
-    CreateUser(data: CreateUserReq): Promise<User>;
-    GetUsersByFilter(filter: any): Promise<User[]>;
-    UpdateUser(id: string, data: Partial<CreateUserReq>): Promise<User>;
-    DeleteUser(id: string): Promise<void>;
+    createUser(data: UserReq): Promise<User>;
+    getUsersByFilter(filter: any): Promise<User[]>;
+    updateUser(id: string, data: Partial<UserReq>): Promise<User>;
+    deleteUser(id: string): Promise<void>;
 }

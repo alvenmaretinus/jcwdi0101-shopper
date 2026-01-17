@@ -4,7 +4,7 @@ import { UserCreateInput } from '../../../prisma/generated/models';
 import { UserRole } from '../../../prisma/generated/enums';
 import {v4} from 'uuid';
 import { CreateUserReq, User } from './entities';
-import {ToDomainModel, ToDomainModels} from './mapper';
+import {toDomainModel, toDomainModels} from './mapper';
 
 
 export class PostgresRepository implements UsersRepo {
@@ -14,7 +14,7 @@ export class PostgresRepository implements UsersRepo {
         this.prisma = prisma;
     }
 
-    async CreateUser(
+    async createUser(
         data: CreateUserReq): Promise<User> {
         const userData: UserCreateInput = {
             id: v4(),
@@ -23,31 +23,31 @@ export class PostgresRepository implements UsersRepo {
             profileUrl: data.profileUrl,
             createdAt: data.createdAt,
             updatedAt: data.updatedAt,
-            referralCode: v4(),
+            referralCode: data.referralCode,
         };
         const createdUser = await this.prisma.user.create({
             data: userData,
         });
         
-        return ToDomainModel(createdUser);
+        return toDomainModel(createdUser);
     }
 
-    async GetUsersByFilter(filter: any): Promise<User[]> {
+    async getUsersByFilter(filter: any): Promise<User[]> {
         const users = await this.prisma.user.findMany({
             where: filter,
         });
-        return ToDomainModels(users);
+        return toDomainModels(users);
     }
 
-    async UpdateUser(id: string, data: Partial<CreateUserReq>): Promise<User> {
+    async updateUser(id: string, data: Partial<CreateUserReq>): Promise<User> {
         const updatedUser = await this.prisma.user.update({
             where: { id: id },
             data: data,
         });
-        return ToDomainModel(updatedUser);
+        return toDomainModel(updatedUser);
     }
 
-    async DeleteUser(id: string): Promise<void> {
+    async deleteUser(id: string): Promise<void> {
         await this.prisma.user.delete({
             where: { id: id },
         });
