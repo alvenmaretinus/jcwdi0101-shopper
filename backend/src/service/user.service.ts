@@ -1,7 +1,17 @@
-import {Request, Response} from 'express';
 import { UsersRepo } from '../repository/user/interface';
-import { CreateUserReq } from '../repository/user/entities';
+import { CreateUserReq, User } from '../repository/user/entities';
 import { UserRole } from '../../prisma/generated/client';
+import { CreateUserInput } from '../schema/user/CreateUserSchema';
+import { UpdateUserInput } from '../schema/user/UpdateUserSchema';
+import { BadRequestError } from '../error/BadRequestError ';
+import { NotFoundError } from '../error/NotFoundError';
+import { UnauthorizedError } from '../error/UnauthorizedError ';
+
+interface UserPayload {
+    id: string;
+    email: string;
+    role: UserRole;
+}
 
 export class UserService { 
     private usersRepo: UsersRepo;
@@ -10,92 +20,67 @@ export class UserService {
         this.usersRepo = usersRepo;
     }
 
-    async CreateUser(req: Request, res: Response): Promise<void> {
-        try {
-            const { email, role, profileUrl, createdAt, updatedAt, referralCode, storeId } = req.body;
-            // TODO: Do validation
-
-            let userRole = role as UserRole
-
-            if (userRole === UserRole.ADMIN && !(req.user?.role as UserRole === UserRole.SUPERADMIN)) {
-                res.status(403).json({ error: 'Only Super Admins can create Admin users' });
-                return;
-            }
-
-            const createUserReq: CreateUserReq = { 
-                email: email,
-                role: userRole,
-                profileUrl: profileUrl,
-                createdAt: createdAt,
-                updatedAt: updatedAt,
-                referralCode: referralCode,
-                storeId: storeId
-             };
-            const newUser = await this.usersRepo.CreateUser(createUserReq);
-
-            // TODO: Do proper JSON
-            res.status(201).json(newUser);
-        } catch (error) {
-            res.status(500).json({ error: 'Internal Server Error' });
+    async CreateUser(input: CreateUserInput, currentUser?: UserPayload): Promise<User> {
+        // Check if ADMIN role is being assigned by non-SUPERADMIN
+        if (input.role === UserRole.ADMIN && currentUser?.role !== UserRole.SUPERADMIN) {
+            throw new UnauthorizedError('Only Super Admins can create Admin users');
         }
+
+        const createUserReq: CreateUserReq = { 
+            email: input.email,
+            role: input.role as UserRole,
+            profileUrl: input.profileUrl,
+            referralCode: input.referralCode,
+            storeId: input.storeId
+        };
+
+        return await this.usersRepo.CreateUser(createUserReq);
     }
 
-    async GetUserByID(req: Request, res: Response): Promise<void> {
-        const userId = req.params.id;
-        this.usersRepo.GetUsersByFilter({ id: userId }).then((users) => {
-            if (users.length === 0) {
-                res.status(404).json({ error: 'User not found' });
-            } else {
-                res.status(200).json(users[0]);
-            }
-        }).catch((error) => {
-            res.status(500).json({ error: 'Internal Server Error' });
-        });
-    }
-
-
-    async GetUsersByFilter(req: Request, res: Response): Promise<void> {
-        this.usersRepo.GetUsersByFilter({}).then((users) => {
-            res.status(200).json(users);
-        }).catch((error) => {
-            res.status(500).json({ error: 'Internal Server Error' });
-        });
-    }
-
-    async UpdateUser(req: Request, res: Response): Promise<void> {
-        try {
-            // TODO: Validate String
-            const userId = req.params.id as string;
-            const createUserReq: Partial<CreateUserReq> = req.body;
-
-            await this.usersRepo.GetUsersByFilter({ id: userId }).then((users) => {
-                if (users.length === 0) {
-                    res.status(404).json({ error: 'User not found' });
-                    throw new Error('User not found');
-                }
-                if (users[0].role === UserRole.ADMIN && !(req.user?.role as UserRole === UserRole.SUPERADMIN)) {
-                    res.status(403).json({ error: 'Only Super Admins can update Admin users' });
-                    throw new Error('Forbidden');
-                }
-            });
-
-            const updatedUser = await this.usersRepo.UpdateUser(userId, createUserReq);
-            res.status(200).json(updatedUser);
-        } catch (error) {
-            res.status(500).json({ error: 'Internal Server Error' });
+    async GetUserByID(userId: string): Promise<User> {
+        const users = await this.usersRepo.GetUsersByFilter({ id: userId });
+        
+        if (users.length === 0) {
+            throw new NotFoundError('User not found');
         }
+        
+        return users[0];
     }
 
-    async DeleteUser(req: Request, res: Response): Promise<void> {
-        const userId = req.params.id as string;
-        await this.usersRepo.GetUsersByFilter({ id: userId }).then((users) => {
-            if (users.length === 0) {
-                res.status(404).json({ error: 'User not found' });
-                throw new Error('User not found');
-            }
-        });
+    async GetUsersByFilter(): Promise<User[]> {
+        return await this.usersRepo.GetUsersByFilter({});
+    }
+
+    async UpdateUser(userId: string, input: UpdateUserInput, currentUser?: UserPayload): Promise<User> {
+        const users = await this.usersRepo.GetUsersByFilter({ id: userId });
+        
+        if (users.length === 0) {
+            throw new NotFoundError('User not found');
+        }
+
+        // Check if trying to update an ADMIN user without SUPERADMIN privileges
+        if (users[0].role === UserRole.ADMIN && currentUser?.role !== UserRole.SUPERADMIN) {
+            throw new UnauthorizedError('Only Super Admins can update Admin users');
+        }
+
+        const updateUserReq: Partial<CreateUserReq> = {
+            email: input.email,
+            role: input.role as UserRole | undefined,
+            profileUrl: input.profileUrl ?? undefined,
+            referralCode: input.referralCode,
+            storeId: input.storeId ?? undefined,
+        };
+
+        return await this.usersRepo.UpdateUser(userId, updateUserReq);
+    }
+
+    async DeleteUser(userId: string): Promise<void> {
+        const users = await this.usersRepo.GetUsersByFilter({ id: userId });
+        
+        if (users.length === 0) {
+            throw new NotFoundError('User not found');
+        }
 
         await this.usersRepo.DeleteUser(userId);
-        res.status(204).send();
     }
 }
