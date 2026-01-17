@@ -7,6 +7,7 @@ import { isAuth } from "../middleware/isAuth";
 import { CreateUserSchema } from "../schema/user/CreateUserSchema";
 import { UpdateUserSchema } from "../schema/user/UpdateUserSchema";
 import { GetUserByIdSchema } from "../schema/user/GetUserByIdSchema";
+import { GetUsersByFilterSchema } from "../schema/user/GetUsersByFilterSchema";
 
 const usersRepo = new UsersRepository(prisma);
 const userService = new UserService(usersRepo);
@@ -26,6 +27,7 @@ router.get("/user/:id", isAuth, async (req, res) => {
 });
 
 router.get("/users", isAuth, async (req, res) => {
+    const inputData = GetUsersByFilterSchema.parse(req.query);
     const result = await userService.getUsersByFilter();
     return res.json(result);
 });

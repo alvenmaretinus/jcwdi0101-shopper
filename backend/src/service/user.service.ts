@@ -1,8 +1,9 @@
 import { UsersRepo } from '../repository/user/interface';
-import { CreateUserReq as UserReq, User } from '../repository/user/entities';
+import { UserReq as UserReq, User } from '../repository/user/entities';
 import { UserRole } from '../../prisma/generated/client';
 import { CreateUserInput } from '../schema/user/CreateUserSchema';
 import { UpdateUserInput } from '../schema/user/UpdateUserSchema';
+import { GetUsersByFilterInput } from '../schema/user/GetUsersByFilterSchema';
 import { NotFoundError } from '../error/NotFoundError';
 import { UnauthorizedError } from '../error/UnauthorizedError';
 import {v4} from "uuid";
@@ -32,12 +33,15 @@ export class UserService {
             throw new UnauthorizedError('Cannot create Super Admin users');
         }
 
-        const createUserReq: UserReq = { 
+        const now: Date = new Date();
+
+        const createUserReq: UserReq = {
+            id: v4(),
             email: input.email,
             role: input.role as UserRole,
-            profileUrl: input.profileUrl,
-            referralCode: v4(),
-            storeId: input.storeId
+            profileUrl: input.profileUrl ?? "https://placehold.co/600x400/png", // TODO: replace with actual default profile URL logic
+            referralCode: input.role as UserRole == UserRole.USER ? v4() : undefined, // Only USERs get referral codes
+            storeId: input.storeId,
         };
 
         return await this.usersRepo.createUser(createUserReq);
@@ -53,8 +57,8 @@ export class UserService {
         return users[0];
     }
 
-    async getUsersByFilter(): Promise<User[]> {
-        return await this.usersRepo.getUsersByFilter({});
+    async getUsersByFilter(input: GetUsersByFilterInput): Promise<User[]> {
+        return await this.usersRepo.getUsersByFilter(input);
     }
 
     async updateUser(userId: string, input: UpdateUserInput, currentUser?: UserPayload): Promise<User> {

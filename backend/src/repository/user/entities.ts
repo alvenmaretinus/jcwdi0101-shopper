@@ -1,11 +1,10 @@
 import { UserRole } from '../../../prisma/generated/enums';
 
-export type CreateUserReq = {
+export type UserReq = {
+    id: string;
     email: string;
-    role?: UserRole;
-    profileUrl?: string;
-    createdAt?: Date | string;
-    updatedAt?: Date | string;
+    role: UserRole;
+    profileUrl: string;
     referralCode?: string;
     storeId?: string;
 };

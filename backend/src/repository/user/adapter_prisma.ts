@@ -1,9 +1,9 @@
 import { PrismaClient } from '../../../prisma/generated/client';
 import { UsersRepo } from './interface';
-import { UserCreateInput } from '../../../prisma/generated/models';
+import { UserCreateInput, UserUpdateInput } from '../../../prisma/generated/models';
 import { UserRole } from '../../../prisma/generated/enums';
 import {v4} from 'uuid';
-import { CreateUserReq, User } from './entities';
+import { UserReq, User } from './entities';
 import {toDomainModel, toDomainModels} from './mapper';
 
 
@@ -15,14 +15,15 @@ export class PostgresRepository implements UsersRepo {
     }
 
     async createUser(
-        data: CreateUserReq): Promise<User> {
+        data: UserReq): Promise<User> {
+        const now: Date = new Date();
         const userData: UserCreateInput = {
-            id: v4(),
+            id: data.id,
             email: data.email,
             role: data.role ?? UserRole.USER,
             profileUrl: data.profileUrl,
-            createdAt: data.createdAt,
-            updatedAt: data.updatedAt,
+            createdAt: now,
+            updatedAt: now,
             referralCode: data.referralCode,
         };
         const createdUser = await this.prisma.user.create({
@@ -32,17 +33,18 @@ export class PostgresRepository implements UsersRepo {
         return toDomainModel(createdUser);
     }
 
-    async getUsersByFilter(filter: any): Promise<User[]> {
+    async getUsersByFilter(filter: Partial<UserReq>): Promise<User[]> {
         const users = await this.prisma.user.findMany({
             where: filter,
         });
         return toDomainModels(users);
     }
 
-    async updateUser(id: string, data: Partial<CreateUserReq>): Promise<User> {
+    async updateUser(id: string, data: Partial<UserReq>): Promise<User> {
+        const userData: UserUpdateInput = { ...data, updatedAt: new Date() };
         const updatedUser = await this.prisma.user.update({
             where: { id: id },
-            data: data,
+            data: userData,
         });
         return toDomainModel(updatedUser);
     }
