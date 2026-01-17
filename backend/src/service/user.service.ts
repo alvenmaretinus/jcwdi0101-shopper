@@ -6,6 +6,7 @@ import { UpdateUserInput } from '../schema/user/UpdateUserSchema';
 import { GetUsersByFilterInput } from '../schema/user/GetUsersByFilterSchema';
 import { NotFoundError } from '../error/NotFoundError';
 import { UnauthorizedError } from '../error/UnauthorizedError';
+import { BadRequestError } from '../error/BadRequestError';
 import {v4} from "uuid";
 
 
@@ -96,11 +97,22 @@ export class UserService {
         return updateUserReq;
     }
 
-    async deleteUser(userId: string): Promise<void> {
+    async deleteUser(userId: string, currentUser?: UserPayload): Promise<void> {
         const users = await this.usersRepo.getUsersByFilter({ id: userId });
         
         if (users.length === 0) {
             throw new NotFoundError('User not found');
+        }
+
+        const targetUser = users[0];
+
+        // Prevent users from deleting themselves
+        if (currentUser && currentUser.id === targetUser.id) {
+            throw new BadRequestError('Users cannot delete themselves');
+        }
+        // Prevent deletion of SUPERADMIN users
+        if (currentUser && targetUser.role === UserRole.SUPERADMIN) {
+            throw new UnauthorizedError('Super Admin users cannot be deleted');
         }
 
         await this.usersRepo.deleteUser(userId);

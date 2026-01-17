@@ -4,6 +4,6 @@ import { Router } from "express";
 
 // const router = Router().use("/store", isAuth, isSuperAdmin, storeRouter);
 
-const router = Router().use("/user", userRouter);
+const router = Router().use("", userRouter);
 
 export default router;

@@ -28,7 +28,7 @@ router.get("/user/:id", isAuth, async (req, res) => {
 
 router.get("/users", isAuth, async (req, res) => {
     const inputData = GetUsersByFilterSchema.parse(req.query);
-    const result = await userService.getUsersByFilter();
+    const result = await userService.getUsersByFilter(inputData);
     return res.json(result);
 });
 
@@ -41,7 +41,7 @@ router.patch("/user/:id", isAuth, async (req, res) => {
 
 router.delete("/user/:id", isAuth, isSuperAdmin, async (req, res) => {
     const { id } = GetUserByIdSchema.parse(req.params);
-    await userService.deleteUser(id);
+    await userService.deleteUser(id, req.user);
     return res.status(204).send();
 });
 
