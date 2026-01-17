@@ -7,6 +7,7 @@ import { GetUsersByFilterInput } from '../schema/user/GetUsersByFilterSchema';
 import { NotFoundError } from '../error/NotFoundError';
 import { UnauthorizedError } from '../error/UnauthorizedError';
 import { BadRequestError } from '../error/BadRequestError';
+import { StoreRepository } from '../repository/store.repository';
 import {v4} from "uuid";
 
 
@@ -32,6 +33,14 @@ export class UserService {
         //Check if the created role is a Super Admin
         if (input.role === UserRole.SUPERADMIN) {
             throw new UnauthorizedError('Cannot create Super Admin users');
+        }
+
+        // Validate that the store exists if storeId is provided
+        if (input.storeId) {
+            const store = await StoreRepository.getStoreById({ id: input.storeId });
+            if (!store) {
+                throw new NotFoundError('Store not found');
+            }
         }
 
         const now: Date = new Date();

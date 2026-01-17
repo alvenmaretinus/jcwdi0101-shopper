@@ -25,6 +25,7 @@ export class PostgresRepository implements UsersRepo {
             createdAt: now,
             updatedAt: now,
             referralCode: data.referralCode,
+            store: data.storeId ? { connect: { id: data.storeId } } : undefined,
         };
         const createdUser = await this.prisma.user.create({
             data: userData,
