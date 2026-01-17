@@ -14,6 +14,7 @@ const userService = new UserService(usersRepo);
 
 const router = Router();
 
+// Non logged in user can create a User account. For admin cases, the checks will be done in the service layer.
 router.post("/user", async (req, res) => {
     const inputData = CreateUserSchema.parse(req.body);
     const result = await userService.createUser(inputData, req.user);
