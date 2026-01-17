@@ -2,7 +2,7 @@ import { PrismaClient } from '../../../prisma/generated/client';
 import { UsersRepo } from './interface';
 import { UserCreateInput, UserUpdateInput } from '../../../prisma/generated/models';
 import { UserRole } from '../../../prisma/generated/enums';
-import {v4} from 'uuid';
+import { v4 } from 'uuid';
 import { UserReq, User } from './entities';
 import {toDomainModel, toDomainModels} from './mapper';
 
