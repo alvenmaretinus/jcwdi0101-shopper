@@ -1,4 +1,4 @@
-import { UnauthorizedError } from "../error/UnauthorizedError ";
+import { UnauthorizedError } from "../error/UnauthorizedError";
 import { prisma } from "../lib/db/prisma";
 import { supabase } from "../lib/supabase/server";
 import { NextFunction, Request, Response } from "express";

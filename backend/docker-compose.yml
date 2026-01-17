@@ -1,0 +1,7 @@
+services:
+  postgres:
+    image: "postgres:18.1-alpine3.23"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    
