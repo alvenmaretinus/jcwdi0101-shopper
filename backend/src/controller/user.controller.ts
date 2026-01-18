@@ -8,6 +8,7 @@ import { CreateUserSchema } from "../schema/user/CreateUserSchema";
 import { UpdateUserSchema } from "../schema/user/UpdateUserSchema";
 import { GetUserByIdSchema } from "../schema/user/GetUserByIdSchema";
 import { GetUsersByFilterSchema } from "../schema/user/GetUsersByFilterSchema";
+import { addUser } from "../middleware/addUser";
 
 const usersRepo = new UsersRepository(prisma);
 const userService = new UserService(usersRepo);
@@ -15,7 +16,7 @@ const userService = new UserService(usersRepo);
 const router = Router();
 
 // Non logged in user can create a User account. For admin cases, the checks will be done in the service layer.
-router.post("/user", async (req, res) => {
+router.post("/user", addUser, async (req, res) => {
     const inputData = CreateUserSchema.parse(req.body);
     const result = await userService.createUser(inputData, req.user);
     return res.status(201).json(result);
