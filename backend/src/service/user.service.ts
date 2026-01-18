@@ -71,7 +71,7 @@ export class UserService {
         return await this.usersRepo.getUsersByFilter(input);
     }
 
-    async updateUser(userId: string, input: UpdateUserInput, currentUser?: UserPayload): Promise<User> {
+    async updateUser(userId: string, input: UpdateUserInput, currentUser: UserPayload): Promise<User> {
         const users = await this.usersRepo.getUsersByFilter({ id: userId });
         
         if (users.length === 0) {
@@ -79,7 +79,7 @@ export class UserService {
         }
 
         // Check if trying to update an ADMIN user without SUPERADMIN privileges
-        if ((users[0].role === UserRole.ADMIN || users[0].role === UserRole.SUPERADMIN) && currentUser?.role !== UserRole.SUPERADMIN) {
+        if ((users[0].role === UserRole.ADMIN || users[0].role === UserRole.SUPERADMIN) && currentUser.role !== UserRole.SUPERADMIN) {
             throw new UnauthorizedError('Only Super Admins can update Admin users');
         }
 
@@ -106,7 +106,7 @@ export class UserService {
         return updateUserReq;
     }
 
-    async deleteUser(userId: string, currentUser?: UserPayload): Promise<void> {
+    async deleteUser(userId: string, currentUser: UserPayload): Promise<void> {
         const users = await this.usersRepo.getUsersByFilter({ id: userId });
         
         if (users.length === 0) {
@@ -116,11 +116,11 @@ export class UserService {
         const targetUser = users[0];
 
         // Prevent users from deleting themselves
-        if (currentUser && currentUser.id === targetUser.id) {
+        if (currentUser.id === targetUser.id) {
             throw new BadRequestError('Users cannot delete themselves');
         }
         // Prevent deletion of SUPERADMIN users
-        if (currentUser && targetUser.role === UserRole.SUPERADMIN) {
+        if (targetUser.role === UserRole.SUPERADMIN) {
             throw new UnauthorizedError('Super Admin users cannot be deleted');
         }
 

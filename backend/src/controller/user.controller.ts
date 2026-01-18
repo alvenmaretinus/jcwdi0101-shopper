@@ -8,6 +8,7 @@ import { CreateUserSchema } from "../schema/user/CreateUserSchema";
 import { UpdateUserSchema } from "../schema/user/UpdateUserSchema";
 import { GetUserByIdSchema } from "../schema/user/GetUserByIdSchema";
 import { GetUsersByFilterSchema } from "../schema/user/GetUsersByFilterSchema";
+import { addUser } from "../middleware/addUser";
 
 const usersRepo = new UsersRepository(prisma);
 const userService = new UserService(usersRepo);
@@ -15,7 +16,7 @@ const userService = new UserService(usersRepo);
 const router = Router();
 
 // Non logged in user can create a User account. For admin cases, the checks will be done in the service layer.
-router.post("/user", async (req, res) => {
+router.post("/user", addUser, async (req, res) => {
     const inputData = CreateUserSchema.parse(req.body);
     const result = await userService.createUser(inputData, req.user);
     return res.status(201).json(result);
@@ -36,13 +37,13 @@ router.get("/users", isAuth, async (req, res) => {
 router.patch("/user/:id", isAuth, async (req, res) => {
     const { id } = GetUserByIdSchema.parse(req.params);
     const inputData = UpdateUserSchema.parse(req.body);
-    const result = await userService.updateUser(id, inputData, req.user);
+    const result = await userService.updateUser(id, inputData, req.user!);
     return res.json(result);
 });
 
 router.delete("/user/:id", isAuth, isSuperAdmin, async (req, res) => {
     const { id } = GetUserByIdSchema.parse(req.params);
-    await userService.deleteUser(id, req.user);
+    await userService.deleteUser(id, req.user!);
     return res.status(204).send();
 });
 
