@@ -37,13 +37,13 @@ router.get("/users", isAuth, async (req, res) => {
 router.patch("/user/:id", isAuth, async (req, res) => {
     const { id } = GetUserByIdSchema.parse(req.params);
     const inputData = UpdateUserSchema.parse(req.body);
-    const result = await userService.updateUser(id, inputData, req.user);
+    const result = await userService.updateUser(id, inputData, req.user!);
     return res.json(result);
 });
 
 router.delete("/user/:id", isAuth, isSuperAdmin, async (req, res) => {
     const { id } = GetUserByIdSchema.parse(req.params);
-    await userService.deleteUser(id, req.user);
+    await userService.deleteUser(id, req.user!);
     return res.status(204).send();
 });
 
