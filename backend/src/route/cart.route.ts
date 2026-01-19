@@ -1,8 +1,10 @@
-import express from "express";
-import { addToCart } from "../controller/cart.controller";
 
-const router = express.Router();
+import addToCartRouter from "../controller/cart.controller";
+import { Router } from "express";
 
-router.post("/cart", addToCart);
+
+const router = Router().use("/cart", addToCartRouter);
+
+
 
 export default router;
