@@ -10,7 +10,13 @@ export class ProductService implements Service {
     }
 
 
-    async getProductsByFilterWithOptionalStock(filter: Partial<FilterInput>, withStock: boolean): Promise<any[]> {
+    async getProductsByFilterWithOptionalStock(
+        filter: Partial<FilterInput>,
+        withStock: boolean
+    ): Promise<
+        | Awaited<ReturnType<ProductsRepo['getProductsByFilterWithStock']>>
+        | Awaited<ReturnType<ProductsRepo['getProductsByFilter']>>
+    > {
         if (withStock) {
             return this.productRepo.getProductsByFilterWithStock(filter);
         } else {
