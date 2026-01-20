@@ -10,6 +10,7 @@ export function CategorySection() {
 
         <CategorySectionGrid />
 
+        {/* Mobile view all */}
         <div className="mt-6 text-center sm:hidden">
           <Link
             href="/categories"
