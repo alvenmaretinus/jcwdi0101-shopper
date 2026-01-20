@@ -29,6 +29,18 @@ export type Product = {
     categoryId: string;
 }
 
+export type Store = {
+    id: string;
+    name: string;
+    description: string | null;
+    phone: string;
+    longitude: number;
+    latitude: number;
+    addressName: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
 export type ProductWithStock = ({
     productStores: {
         storeId: string;
@@ -37,7 +49,7 @@ export type ProductWithStock = ({
         updatedAt: Date;
         quantity: number;
         productId: string;
-        store: Record<string, unknown>;
+        store: Store;
     }[];
 } & {
     id: string;
