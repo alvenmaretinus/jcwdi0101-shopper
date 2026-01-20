@@ -25,7 +25,7 @@ export type Product = {
     description: string | null;
     updatedAt: Date;
     price: number;
-    createAt: Date;
+    createAt: Date; //TODO: Have this be changed to createdAt in future refactors
     categoryId: string;
 }
 
@@ -57,6 +57,6 @@ export type ProductWithStock = ({
     description: string | null;
     updatedAt: Date;
     price: number;
-    createAt: Date;
+    createAt: Date; //TODO: Have this be changed to createdAt in future refactors
     categoryId: string;
 });
