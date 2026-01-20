@@ -11,7 +11,7 @@ const router = Router();
 
 router.get("/products", async (req, res) => {
     const inputData: GetProductsByFilterInput = GetProductsByFilterSchema.parse(req.query);
-    const filter: FilterInput = inputData.filter
+    const filter: FilterInput = inputData.filter;
     const result = await productService.getProductsByFilterWithOptionalStock(filter, inputData.withStock);
     return res.json(result);    
 });
