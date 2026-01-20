@@ -1,3 +1,4 @@
+import { ACCESS_TOKEN_NAME } from "../../constant/cookies";
 import { UnauthorizedError } from "../error/UnauthorizedError";
 import { prisma } from "../lib/db/prisma";
 import { supabase } from "../lib/supabase/server";
@@ -8,7 +9,7 @@ export const isAuth = async (
   res: Response,
   next: NextFunction
 ) => {
-  const accessToken = req.cookies["sb-access-token"];
+  const accessToken = req.cookies[ACCESS_TOKEN_NAME];
   if (!accessToken) throw new UnauthorizedError("No access token provided");
 
   const {

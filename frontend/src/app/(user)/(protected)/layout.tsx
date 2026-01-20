@@ -1,11 +1,20 @@
-type UserPayload = {
-  id: string;
-  email: string;
-  role: "USER" | "ADMIN" | "SUPERADMIN";
-};
+import { getSession } from "@/services/auth/getSession";
+import { redirect } from "next/navigation";
+import React from "react";
 
-export const UserProtectedLayoutPage = () => {
-  const user = useUser();
+export default async function UserProtectedLayoutPage({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  try {
+    const user = await getSession();
 
-  return <div></div>;
-};
+    const isAdmin = user.role === "ADMIN" || user.role === "SUPERADMIN";
+
+    if (isAdmin) redirect("/admin");
+  } catch (error) {
+    redirect("/");
+  }
+  return children;
+}
