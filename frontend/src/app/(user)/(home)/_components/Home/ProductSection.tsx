@@ -9,7 +9,6 @@ const featuredProducts = [
     originalPrice: 45000,
     image: "🍎",
     category: "Fruits",
-    rating: 4.8,
     stock: 25,
     unit: "per kg",
     discount: 22,
@@ -20,7 +19,6 @@ const featuredProducts = [
     price: 28000,
     image: "🥦",
     category: "Vegetables",
-    rating: 4.6,
     stock: 18,
     unit: "per piece",
     isNew: true,
@@ -32,7 +30,6 @@ const featuredProducts = [
     originalPrice: 150000,
     image: "🐟",
     category: "Meat & Fish",
-    rating: 4.9,
     stock: 8,
     unit: "per 500g",
     discount: 17,
@@ -43,7 +40,6 @@ const featuredProducts = [
     price: 32000,
     image: "🥚",
     category: "Dairy & Eggs",
-    rating: 4.7,
     stock: 45,
     unit: "per dozen",
     isBuyOneGetOne: true,
@@ -54,7 +50,6 @@ const featuredProducts = [
     price: 55000,
     image: "🥑",
     category: "Fruits",
-    rating: 4.5,
     stock: 3,
     unit: "per 3 pcs",
   },
@@ -64,7 +59,6 @@ const featuredProducts = [
     price: 18000,
     image: "🥛",
     category: "Dairy & Eggs",
-    rating: 4.8,
     stock: 30,
     unit: "per liter",
   },
@@ -94,40 +88,42 @@ const featuredProducts = [
 ];
 
 export function ProductSection() {
-  return <section className="py-12 md:py-16 bg-muted/30">
-    <div className="container mx-auto px-6">
-      {/* Section header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h2 className="section-title">Featured Products</h2>
-          <p className="text-muted-foreground mt-2">
-            Handpicked fresh items just for you
-          </p>
+  return (
+    <section className="py-12 md:py-16 bg-muted/30">
+      <div className="container mx-auto px-6">
+        {/* Section header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="section-title">Featured Products</h2>
+            <p className="text-muted-foreground mt-2">
+              Handpicked fresh items just for you
+            </p>
+          </div>
+          <Link
+            href="/products"
+            className="text-primary font-semibold hover:underline hidden sm:block"
+          >
+            View All →
+          </Link>
         </div>
-        <Link
-          href="/products"
-          className="text-primary font-semibold hover:underline hidden sm:block"
-        >
-          View All →
-        </Link>
-      </div>
 
-      {/* Products grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-        {featuredProducts.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
+        {/* Products grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+          {featuredProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
 
-      {/* Mobile view all */}
-      <div className="mt-8 text-center sm:hidden">
-        <Link
-          href="/products"
-          className="text-primary font-semibold hover:underline"
-        >
-          View All Products →
-        </Link>
+        {/* Mobile view all */}
+        <div className="mt-8 text-center sm:hidden">
+          <Link
+            href="/products"
+            className="text-primary font-semibold hover:underline"
+          >
+            View All Products →
+          </Link>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  );
 }
