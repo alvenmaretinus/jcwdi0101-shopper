@@ -11,5 +11,5 @@ export const signup = async (inputData: SignupInput) => {
     throw new Error(firstError);
   }
 
-  await axiosInstance.post("/auth/signup");
+  await axiosInstance.post("/auth/signup", inputData);
 };

@@ -10,6 +10,8 @@ import { supabase } from "../lib/supabase/server";
 import { prisma } from "../lib/db/prisma";
 import { SignupInput } from "../schema/auth/SignupSchema";
 import { ConflictError } from "../error/ConflictError";
+import { SignupInput } from "../schema/auth/SignupSchema";
+import { ConflictError } from "../error/ConflictError";
 
 export class AuthService {
   static async getSession(req: Request, res: Response) {
