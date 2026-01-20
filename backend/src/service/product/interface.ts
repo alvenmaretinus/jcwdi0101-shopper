@@ -1,3 +1,5 @@
-export interface Service {
-    getProductsByFilterWithOptionalStock(filter: Partial<FilterInput>, withStock: boolean): Promise<any[]>
+export interface ProductService {
+    getProductsByFilterWithOptionalStock(filter: Partial<any>, withStock: boolean): Promise<any[]>
 }
+
+export type Service = ProductService;
