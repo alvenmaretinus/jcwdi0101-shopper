@@ -10,8 +10,6 @@ import { supabase } from "../lib/supabase/server";
 import { prisma } from "../lib/db/prisma";
 import { SignupInput } from "../schema/auth/SignupSchema";
 import { ConflictError } from "../error/ConflictError";
-import { SignupInput } from "../schema/auth/SignupSchema";
-import { ConflictError } from "../error/ConflictError";
 
 export class AuthService {
   static async getSession(req: Request, res: Response) {
@@ -63,19 +61,19 @@ export class AuthService {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (user) {
-      const now = new Date();
-      const verificationExpiry = new Date(user.createdAt);
-      verificationExpiry.setHours(verificationExpiry.getHours() + 1);
-      const isVerificationLinkExpired = now > verificationExpiry;
-      if (!isVerificationLinkExpired) {
-        throw new ConflictError(
-          "You already signing up. Check your email for the verification link, or signup again after 1hours from the initial signup."
-        );
-      }
-
       const { data } = await supabase.auth.admin.getUserById(user.id);
       const supabaseUser = data.user;
       if (supabaseUser && !supabaseUser.email_confirmed_at) {
+        const now = new Date();
+        const verificationExpiry = new Date(user.createdAt);
+        verificationExpiry.setHours(verificationExpiry.getHours() + 1);
+        const isVerificationLinkExpired = now > verificationExpiry;
+        if (!isVerificationLinkExpired) {
+          throw new ConflictError(
+            "You already signing up. Check your email for the verification link, or signup again after 1hours from the initial signup."
+          );
+        }
+
         const { error } = await supabase.auth.admin.deleteUser(supabaseUser.id);
         if (error) throw error;
         await prisma.user.delete({ where: { id: user.id } });

@@ -2,7 +2,6 @@ import { Router } from "express";
 import { isAuth } from "../middleware/isAuth";
 import { AuthService } from "../service/auth.service";
 import { SignupSchema } from "../schema/auth/SignupSchema";
-import { SignupSchema } from "../schema/auth/SignupSchema";
 
 const router = Router();
 
