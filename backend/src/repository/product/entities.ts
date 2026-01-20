@@ -2,6 +2,7 @@ export type ProductReq = {
     id: string;
     name: string;
     categoryId: string;
+    storeId: string;
 }
 
 export type ProductWhereClause = {
@@ -10,6 +11,11 @@ export type ProductWhereClause = {
     name?: {
         contains: string;
         mode: 'insensitive';
+    };
+    productStores?: {
+        some: {
+            storeId: string;
+        };
     };
 }
 

@@ -23,20 +23,32 @@ export class PrismaRepository implements ProductsRepo {
         const products: ProductWithStock[] = await this.prisma.product.findMany({
             where,
             include: {
-                productStores: true,
+                productStores: {
+                    include: {
+                        store: true,
+                    },
+                },
             },
         });
         return products;
     }
 
     private buildWhereClause(filter: Partial<ProductReq>): ProductWhereClause {
-        const { name, ...restFilter } = filter;
+        const { name, storeId, ...restFilter } = filter;
         const where: ProductWhereClause = { ...restFilter };
 
         if (name) {
             where.name = {
                 contains: name,
                 mode: 'insensitive'
+            };
+        }
+
+        if (storeId) {
+            where.productStores = {
+                some: {
+                    storeId
+                }
             };
         }
 
