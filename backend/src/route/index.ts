@@ -5,6 +5,7 @@ import authRouter from "./auth";
 
 export const appRouter = Router();
 
+appRouter.use(authRouter);
 appRouter.use(storeRouter);
 appRouter.use(userRouter);
 appRouter.use(authRouter);
