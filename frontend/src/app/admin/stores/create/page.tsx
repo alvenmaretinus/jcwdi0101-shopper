@@ -1,36 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
-import { MONAS_LOCATION } from "@/app/constants/location";
-import { LocationFormCard } from "@/components/Map/LocationFormCard";
+import { MONAS_LOCATION } from "@/constants/location";
+import { LocationFormCard } from "@/components/LocationFormCard";
 import StoreDetailFormCard from "./_components/StoreDetailFormCard";
 import { SectionHeader } from "../../_components/SectionHeader";
-import { toast } from "sonner";
-import { useLocationFormCard } from "@/hooks/useLocationFormCard";
+import { useLocationFormCard } from "@/components/LocationFormCard/useLocationFormCard";
+import { createStore } from "@/services/store/createStore";
+import { ActionButtons } from "../../_components/ActionButtons";
+import { useRouter } from "next/navigation";
 
 export default function StoreCreate() {
-  const router = useRouter();
   const [name, setName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phone, setPhone] = useState("");
   const [description, setDescription] = useState("");
-  const { addressName, setAddressName, location, setLocation } =
+  const { addressName, setAddressName, coords, setCoords } =
     useLocationFormCard(MONAS_LOCATION, "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
-  const handleCreate = (e: React.FormEvent) => {
-    console.log({ name, description, location, addressName });
+  const handleCreate = async () => {
+    const inputData = { name, description, coords, phone, addressName };
 
-    toast.success("Store created successfully");
-    // router.push("/admin/stores");
+    try {
+      setIsSubmitting(true);
+      await createStore(inputData);
+      window.location.href = "/admin/stores/";
+    } catch (error) {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-6xl mx-auto">
       <SectionHeader
         title="Create Store"
         description="Add a new store location"
-        isBackButtonEnabled={true}
+        onBack={() => router.push("/admin/stores")}
       />
 
       <StoreDetailFormCard
@@ -38,28 +44,24 @@ export default function StoreCreate() {
         setName={setName}
         description={description}
         setDescription={setDescription}
-        phoneNumber={phoneNumber}
-        setPhoneNumber={setPhoneNumber}
+        phone={phone}
+        setPhone={setPhone}
       />
       <LocationFormCard
         title="Store Location"
         subtitle="Set the location on the map"
-        location={location}
-        setLocation={setLocation}
+        coords={coords}
+        setCoords={setCoords}
         addressName={addressName}
         setAddressName={setAddressName}
       />
 
-      <div className="flex gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.push("/admin/stores")}
-        >
-          Cancel
-        </Button>
-        <Button onClick={handleCreate}>Create Store</Button>
-      </div>
+      <ActionButtons
+        onCancel={() => router.push("/admin/stores")}
+        submitText="Create Store"
+        onSubmit={handleCreate}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 }

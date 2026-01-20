@@ -6,6 +6,7 @@ const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
 export const axiosInstance = axios.create({
   baseURL: apiUrl + "/api",
   timeout: 30000,
+  // withCredentials: true,
 });
 
 axiosInstance.interceptors.response.use(
@@ -22,8 +23,9 @@ axiosInstance.interceptors.response.use(
       // await refreshToken();
       return axiosInstance(originalRequest);
     }
-    console.log(error);
-    toast.error(error.message || "Internal Server Error");
-    return null;
+
+    toast.error(error.response?.data?.error || "Internal Server Error");
+
+    throw error;
   }
 );

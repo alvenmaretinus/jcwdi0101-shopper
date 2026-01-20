@@ -28,7 +28,8 @@ model User {
 
   storeId String? @unique
   store   Store?   @relation(fields: [storeId], references: [id])
-  
+  employeeJoinedAt  DateTime?
+
   addresses UserAddress[] 
   carts  Cart[]
   orders Order[]
