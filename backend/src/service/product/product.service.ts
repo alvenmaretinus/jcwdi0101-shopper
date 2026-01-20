@@ -1,5 +1,6 @@
-import {Service} from '../interface';
-import {ProductsRepo} from '../../../repository/product/interface';
+import {Service} from './interface';
+import {ProductsRepo} from '../../repository/product/interface';
+import { FilterInput } from '../../schema/product/GetProductsByFilterSchema';
 
 export class ProductService implements Service {
     private productRepo: ProductsRepo;
@@ -9,7 +10,7 @@ export class ProductService implements Service {
     }
 
 
-    async getProductsByFilterWithOptionalStock(filter: Partial<any>, withStock: boolean): Promise<any[]> {
+    async getProductsByFilterWithOptionalStock(filter: Partial<FilterInput>, withStock: boolean): Promise<any[]> {
         if (withStock) {
             return this.productRepo.getProductsByFilterWithStock(filter);
         } else {

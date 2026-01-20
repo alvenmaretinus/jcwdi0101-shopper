@@ -1,5 +1,16 @@
 export type ProductReq = {
+    id: string;
     name: string;
+    categoryId: string;
+}
+
+export type ProductWhereClause = {
+    id?: string;
+    categoryId?: string;
+    name?: {
+        contains: string;
+        mode: 'insensitive';
+    };
 }
 
 export type Product = {
