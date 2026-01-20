@@ -1,8 +1,21 @@
 import { ACCESS_TOKEN_NAME } from "../../constant/cookies";
+import { UserRole } from "../../prisma/generated/enums";
 import { UnauthorizedError } from "../error/UnauthorizedError";
 import { prisma } from "../lib/db/prisma";
 import { supabase } from "../lib/supabase/server";
 import { NextFunction, Request, Response } from "express";
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        role: UserRole;
+      };
+    }
+  }
+}
 
 export const isAuth = async (
   req: Request,
@@ -23,7 +36,7 @@ export const isAuth = async (
   });
   if (!user) throw new UnauthorizedError("User not found");
 
-  req.user = { id: user.id, email: user.email!, role: user.role };
-
+  const userP = { id: user.id, email: user.email!, role: user.role };
+  req.user = userP;
   next();
 };
