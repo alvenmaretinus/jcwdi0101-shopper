@@ -1,6 +1,7 @@
 import { UserService } from "../service/user.service";
 import { Router } from "express";
 import { prisma } from "../lib/db/prisma";
+import { prisma } from "../lib/db/prisma";
 import { PostgresRepository as UsersRepository } from "../repository/user/adapter_prisma";
 import { isSuperAdmin } from "../middleware/isSuperAdmin";
 import { isAuth } from "../middleware/isAuth";

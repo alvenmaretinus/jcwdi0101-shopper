@@ -18,7 +18,7 @@ declare global {
 }
 
 export const isAuth = async (
-  req: Request,
+  req: UserRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -35,8 +35,6 @@ export const isAuth = async (
     where: { id: supabaseUser.id },
   });
   if (!user) throw new UnauthorizedError("User not found");
-
-  const userP = { id: user.id, email: user.email!, role: user.role };
-  req.user = userP;
+  req.body.user = { id: user.id, email: user.email, role: user.role };
   next();
 };

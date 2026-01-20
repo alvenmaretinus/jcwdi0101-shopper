@@ -6,6 +6,7 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel";
 import Link from "next/link";
+import { NAVBAR_HEIGHT } from "@/constants/navbar";
 
 const heroSlides = [
   {
@@ -74,7 +75,9 @@ export function HeroSection() {
   return (
     <section className="relative overflow-hidden">
       {/* Hero Carousel */}
-      <div className="bg-gradient-to-br h-[calc(100vh-108px)] px-10 flex items-center from-primary via-primary to-fresh-green-dark text-primary-foreground">
+      <div
+        className={`bg-gradient-to-br h-[calc(100vh-${NAVBAR_HEIGHT}px)] px-10 flex items-center from-primary via-primary to-fresh-green-dark text-primary-foreground`}
+      >
         <Carousel
           opts={{
             align: "start",
