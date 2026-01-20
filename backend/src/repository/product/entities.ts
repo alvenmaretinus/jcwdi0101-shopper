@@ -37,6 +37,7 @@ export type ProductWithStock = ({
         updatedAt: Date;
         quantity: number;
         productId: string;
+        store: Record<string, unknown>;
     }[];
 } & {
     id: string;
