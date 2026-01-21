@@ -2,7 +2,7 @@ import { axiosInstance } from "@/lib/axiosInstance";
 import { SignupInput, SignupSchema } from "@/schemas/auth/SignupSchema";
 import { toast } from "sonner";
 
-export const signup = async (inputData: SignupInput) => {
+export const signupEmail = async (inputData: SignupInput) => {
   const parseResult = SignupSchema.safeParse(inputData);
 
   if (!parseResult.success) {

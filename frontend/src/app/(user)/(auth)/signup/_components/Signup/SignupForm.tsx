@@ -10,9 +10,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
-import { signup } from "@/services/auth/signup";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase/client";
+import { signupEmail } from "@/services/auth/signupEmail";
 
 export function SignupForm() {
   const [email, setEmail] = useState("");
@@ -26,12 +27,33 @@ export function SignupForm() {
     try {
       setIsLoading(true);
       const inputData = { email, password, confirmPassword };
-      await signup(inputData);
+      await signupEmail(inputData);
       router.push("/login");
       toast.success("Click link in your email and login again.", {
         duration: 5000,
       });
     } catch (error) {
+      console.log(error);
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback`,
+        },
+      });
+      if (error) {
+        toast.error("Something went wrong.");
+        console.log(error);
+        setIsLoading(false);
+      }
+    } catch (error) {
+      toast.error("Something went wrong.");
       console.log(error);
       setIsLoading(false);
     }
@@ -96,7 +118,12 @@ export function SignupForm() {
         <FieldSeparator>Or continue with</FieldSeparator>
 
         <Field>
-          <Button disabled={isLoading} variant="outline" type="button">
+          <Button
+            disabled={isLoading}
+            onClick={handleGoogleSignup}
+            variant="outline"
+            type="button"
+          >
             <FcGoogle />
             Sign up with Google
           </Button>

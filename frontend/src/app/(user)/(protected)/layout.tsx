@@ -8,6 +8,7 @@ export default async function UserProtectedLayoutPage({
   children: React.ReactNode;
 }) {
   const user = await getSession();
+  console.log(user);
   if (!user) redirect("/login");
 
   const isAdmin = user.role === "ADMIN" || user.role === "SUPERADMIN";
