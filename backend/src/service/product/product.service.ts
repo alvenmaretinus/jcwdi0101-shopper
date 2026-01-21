@@ -9,7 +9,6 @@ export class ProductService implements Service {
         this.productRepo = productRepo;
     }
 
-
     async getProductsByFilterWithOptionalStock(
         filter: Partial<FilterInput>,
         withStock: boolean
@@ -23,4 +22,17 @@ export class ProductService implements Service {
             return this.productRepo.getProductsByFilter(filter);
         }
     }
+
+    async createProduct(data: any): Promise<any> {
+        return this.productRepo.createProduct(data);
+    }
+
+    async updateProduct(id: string, data: any): Promise<any> {
+        return this.productRepo.updateProduct(id, data);
+    }
+
+    async deleteProduct(id: string): Promise<void> {
+        return this.productRepo.deleteProduct(id);
+    }
 } 
+
