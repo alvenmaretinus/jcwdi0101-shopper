@@ -16,12 +16,12 @@ export type CreateProductReq = {
 }
 
 export type UpdateProductReq = {
-    name: string | undefined
+    name?: string 
     description?: string | null | undefined
-    price: number
+    price?: number
     createAt?: Date | string //TODO: Have this be changed to createdAt in future refactors
     updatedAt?: Date | string
-    categoryId: string
+    categoryId?: string
 }
 
 export type ProductWhereClause = {

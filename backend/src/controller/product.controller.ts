@@ -7,7 +7,6 @@ import { CreateProductInput, CreateProductSchema, GetProductByIdInput,
     GetProductsByFilterInput, UpdateProductSchema } from '../schema/product';
 import { isAuth } from '../middleware/isAuth';
 import { isSuperAdmin } from '../middleware/isSuperAdmin';
-import { id } from 'zod/v4/locales';
 
 const productsRepo = new PrismaRepository(prisma);
 const productService = new ProductService(productsRepo);
