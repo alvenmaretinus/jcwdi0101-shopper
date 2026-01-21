@@ -3,10 +3,11 @@ import { PrismaRepository } from '../repository/product/adapter_prisma';
 import { prisma } from '../lib/db/prisma';
 import { ProductService } from '../service/product/product.service';
 import { CreateProductInput, CreateProductSchema, GetProductByIdInput, 
-    GetProductByIdSchema,  FilterInput, GetProductsByFilterSchema, 
+    GetProductByIdSchema, DeleteProductByIdSchema, DeleteProductByIdInput,  FilterInput, GetProductsByFilterSchema, 
     GetProductsByFilterInput, UpdateProductSchema } from '../schema/product';
 import { isAuth } from '../middleware/isAuth';
 import { isSuperAdmin } from '../middleware/isSuperAdmin';
+import { id } from 'zod/v4/locales';
 
 const productsRepo = new PrismaRepository(prisma);
 const productService = new ProductService(productsRepo);
@@ -33,14 +34,13 @@ router.post("/product", isAuth, isSuperAdmin, async (req, res) => {
 });
 
 router.patch("/product/:id", isAuth, isSuperAdmin, async (req, res) => {
-    const { id } = req.params;
-    const data = UpdateProductSchema.parse({ id, ...req.body });
-    const updatedProduct = await productService.updateProduct(id, data);
+    const data = UpdateProductSchema.parse({ id: req.params.id, ...req.body });
+    const updatedProduct = await productService.updateProduct(data.id, data);
     return res.json(updatedProduct);
 });
 
 router.delete("/product/:id", isAuth, isSuperAdmin, async (req, res) => {
-    const inputData: GetProductByIdInput = GetProductByIdSchema.parse(req.params);
+    const inputData: DeleteProductByIdInput = DeleteProductByIdSchema.parse(req.params);
     await productService.deleteProduct(inputData.id);
     return res.status(204).send();
 });
