@@ -1,18 +1,36 @@
+"use client";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getSession } from "@/services/auth/getSession";
-import { redirect } from "next/navigation";
-import React from "react";
 
-export default async function UserProtectedLayoutPage({
+export default function UserProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getSession();
-  console.log(user);
-  if (!user) redirect("/login");
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
-  const isAdmin = user.role === "ADMIN" || user.role === "SUPERADMIN";
-  if (isAdmin) redirect("/admin");
+  useEffect(() => {
+    const checkAuth = async () => {
+      const user = await getSession();
+      if (!user) {
+        router.replace(`/login?redirectTo=${window.location.pathname}`);
+        return;
+      }
 
-  return children;
+      if (user.role === "ADMIN" || user.role === "SUPERADMIN") {
+        router.replace("/admin");
+        return;
+      }
+
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  if (loading) return <p>Please wait...</p>;
+
+  return <>{children}</>;
 }

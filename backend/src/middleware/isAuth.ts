@@ -23,18 +23,27 @@ export const isAuth = async (
   next: NextFunction
 ) => {
   const accessToken = req.cookies[ACCESS_TOKEN_NAME];
-  if (!accessToken) throw new UnauthorizedError("No access token provided");
+  if (!accessToken) {
+    console.info("No access token provided from isAuth");
+    throw new UnauthorizedError("No access token provided");
+  }
 
   const {
     data: { user: supabaseUser },
     error,
   } = await supabase.auth.getUser(accessToken);
-  if (error || !supabaseUser) throw new UnauthorizedError("Invalid token");
+  if (error || !supabaseUser) {
+    console.info("Invalid token from isAuth");
+    throw new UnauthorizedError("Invalid token");
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: supabaseUser.id },
   });
-  if (!user) throw new UnauthorizedError("User not found");
-  req.body.user = { id: user.id, email: user.email, role: user.role };
+  if (!user) {
+    console.info("User not found from isAuth");
+    throw new UnauthorizedError("User not found");
+  }
+  req.user = { id: user.id, email: user.email, role: user.role };
   next();
 };

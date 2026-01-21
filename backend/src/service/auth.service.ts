@@ -11,54 +11,11 @@ import { prisma } from "../lib/db/prisma";
 import { SignupInput } from "../schema/auth/SignupSchema";
 import { ConflictError } from "../error/ConflictError";
 import { CallbackInput } from "../schema/auth/CallbackSchema";
+import { LoginInput } from "../schema/auth/LoginSchema";
 
 export class AuthService {
-  static async getSession(req: Request, res: Response) {
-    const accessToken = req.cookies[ACCESS_TOKEN_NAME];
-    const refreshToken = req.cookies[REFRESH_TOKEN_NAME];
-
-    if (!accessToken && !refreshToken) throw new UnauthorizedError();
-
-    let userEmail: string | null = null;
-
-    const { data: accessTokenData, error: accessTokenError } =
-      await supabase.auth.getClaims(accessToken);
-
-    if (accessTokenError || !accessTokenData) {
-      const { data: refreshTokenData, error: refreshTokenError } =
-        await supabase.auth.refreshSession({
-          refresh_token: refreshToken,
-        });
-      if (refreshTokenError || !refreshTokenData.session)
-        throw new UnauthorizedError();
-      res.cookie(
-        ACCESS_TOKEN_NAME,
-        refreshTokenData.session.access_token,
-        ACCESS_TOKEN_OPTIONS
-      );
-      res.cookie(
-        REFRESH_TOKEN_NAME,
-        refreshTokenData.session.refresh_token,
-        REFRESH_TOKEN_OPTIONS
-      );
-
-      if (!refreshTokenData.session.user.email) throw new UnauthorizedError();
-      userEmail = refreshTokenData.session.user.email;
-    } else {
-      if (!accessTokenData.claims.email) throw new UnauthorizedError();
-      userEmail = accessTokenData.claims.email;
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail },
-    });
-    if (!user) throw new UnauthorizedError();
-
-    return { id: user.id, email: user.email, role: user.role };
-  }
-
-  static async signup(data: SignupInput) {
-    const { email, password } = data;
+  static async signup(inputData: SignupInput) {
+    const { email, password } = inputData;
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (user) {
@@ -97,12 +54,43 @@ export class AuthService {
     });
   }
 
+  static async login(inputData: LoginInput, res: Response) {
+    const { email, password } = inputData;
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) throw new UnauthorizedError("Invalid credentials");
+
+    const { data:{user:supabaseUser} } = await supabase.auth.admin.getUserById(user.id);
+    if (!supabaseUser || !supabaseUser.email_confirmed_at) {
+      throw new UnauthorizedError("Please verify your email address first, by clicking on the verification link sent to your email");
+    }
+
+    const { data:{session}, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error || !session){
+      throw new UnauthorizedError("Invalid credentials")}
+
+    res.cookie(
+      ACCESS_TOKEN_NAME,
+      session.access_token,
+      ACCESS_TOKEN_OPTIONS
+    );
+    res.cookie(
+      REFRESH_TOKEN_NAME,
+      session.refresh_token,
+      REFRESH_TOKEN_OPTIONS
+    );
+  }
+
   static async callback(inputData: CallbackInput, res: Response) {
     const { accessToken, refreshToken } = inputData;
     const { data, error } = await supabase.auth.getUser(accessToken);
 
     if (error || !data.user) {
-      console.error("Auth check failed:", error);
+      console.error("Callback error:", error);
       throw new UnauthorizedError();
     }
 
@@ -114,5 +102,23 @@ export class AuthService {
     }
     res.cookie(ACCESS_TOKEN_NAME, accessToken, ACCESS_TOKEN_OPTIONS);
     res.cookie(REFRESH_TOKEN_NAME, refreshToken, REFRESH_TOKEN_OPTIONS);
+  }
+
+  static async refresh(req: Request, res: Response) {
+    const refreshToken = req.cookies[REFRESH_TOKEN_NAME];
+    const { data, error } = await supabase.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+    if (error || !data.session) throw new UnauthorizedError("Invalid Token");
+    res.cookie(
+      ACCESS_TOKEN_NAME,
+      data.session.access_token,
+      ACCESS_TOKEN_OPTIONS
+    );
+    res.cookie(
+      REFRESH_TOKEN_NAME,
+      data.session.refresh_token,
+      REFRESH_TOKEN_OPTIONS
+    );
   }
 }
