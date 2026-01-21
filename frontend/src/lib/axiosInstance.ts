@@ -6,8 +6,29 @@ const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
 export const axiosInstance = axios.create({
   baseURL: apiUrl + "/api",
   timeout: 30000,
-  // withCredentials: true,
+  withCredentials: true,
 });
+
+axiosInstance.interceptors.request.use(
+  async (config) => {
+    if (typeof window === "undefined") {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      const allCookies = cookieStore.getAll();
+
+      if (allCookies.length > 0) {
+        const cookieString = allCookies
+          .map((c) => `${c.name}=${c.value}`)
+          .join("; ");
+        config.headers.set("Cookie", cookieString);
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 axiosInstance.interceptors.response.use(
   (res) => res,

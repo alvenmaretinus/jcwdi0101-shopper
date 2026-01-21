@@ -18,7 +18,7 @@ declare global {
 }
 
 export const isAuth = async (
-  req: UserRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
