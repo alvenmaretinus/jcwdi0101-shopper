@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {ProductByIdSchema} from './ProductByIdSchema';
 
-export const GetProductByIdSchema = ProductByIdSchema
+export const DeleteProductByIdSchema = ProductByIdSchema  
 
-export type GetProductByIdInput = z.infer<typeof GetProductByIdSchema>;
+export type DeleteProductByIdInput = z.infer<typeof DeleteProductByIdSchema>;

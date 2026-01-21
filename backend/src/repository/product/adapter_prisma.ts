@@ -1,6 +1,6 @@
 import { ProductsRepo } from './interface';
 import { PrismaClient } from '../../../prisma/generated/client';
-import { Product, CreateProductReq, GetProductReq, ProductWithStock, ProductWhereClause } from './entities';
+import { Product, CreateProductReq, GetProductReq, ProductWithStock, ProductWhereClause, UpdateProductReq } from './entities';
 import { ProductCreateInput} from '../../../prisma/generated/models';
 import { toDomainModel, toDomainModels } from './mapper';
 
@@ -76,11 +76,14 @@ export class PrismaRepository implements ProductsRepo {
         return toDomainModel(createdProduct);
     }
     
-    async updateProduct(id: string, data: Partial<CreateProductReq>): Promise<Product> {
+    async updateProduct(id: string, data: Partial<UpdateProductReq>): Promise<Product> {
         const productUpdateData: Partial<ProductCreateInput> = {
             ...data,
             updatedAt: new Date(),
+            category: data.categoryId? { connect:  { id: data.categoryId } } : undefined
         };
+
+
         const updatedProduct = await this.prisma.product.update({
             where: { id: id },
             data: productUpdateData,

@@ -1,4 +1,4 @@
-import { ProductModel, ProductStoreModel } from '../../../prisma/generated/models';
+import { ProductModel } from '../../../prisma/generated/models';
 import { Product } from './entities';
 
 export function toDomainModel (prismaModel: ProductModel): Product {

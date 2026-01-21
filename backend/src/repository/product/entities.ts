@@ -7,9 +7,17 @@ export type GetProductReq = {
 }
 
 export type CreateProductReq = {
-    id?: string
     name: string
     description?: string | null
+    price: number
+    createAt?: Date | string //TODO: Have this be changed to createdAt in future refactors
+    updatedAt?: Date | string
+    categoryId: string
+}
+
+export type UpdateProductReq = {
+    name: string | undefined
+    description?: string | null | undefined
     price: number
     createAt?: Date | string //TODO: Have this be changed to createdAt in future refactors
     updatedAt?: Date | string
@@ -40,10 +48,6 @@ export type Product = {
     categoryId: string;
 }
 
-export type ProductStore = {
-    id: string;
-
-}
 
 export type Store = {
     id: string;

@@ -1,6 +1,7 @@
 import {Service} from './interface';
 import {ProductsRepo} from '../../repository/product/interface';
 import { FilterInput } from '../../schema/product/GetProductsByFilterSchema';
+import { CreateProductInput, UpdateProductInput } from '../../schema/product';
 
 export class ProductService implements Service {
     private productRepo: ProductsRepo;
@@ -23,11 +24,11 @@ export class ProductService implements Service {
         }
     }
 
-    async createProduct(data: any): Promise<any> {
+    async createProduct(data: CreateProductInput): Promise<any> {
         return this.productRepo.createProduct(data);
     }
 
-    async updateProduct(id: string, data: any): Promise<any> {
+    async updateProduct(id: string, data: UpdateProductInput): Promise<any> {
         return this.productRepo.updateProduct(id, data);
     }
 

@@ -3,6 +3,6 @@ export { GetProductByIdSchema, GetProductByIdInput } from './GetProductByIdSchem
 export { GetProductsByFilterSchema, GetProductsByFilterInput, FilterInput } from './GetProductsByFilterSchema';
 export { CreateProductSchema, CreateProductInput } from './CreateProductSchema';
 export { UpdateProductSchema, UpdateProductInput } from './UpdateProductSchema';
-export { GetProductByIdSchema as DeleteProductByIdSchema, GetProductByIdInput as DeleteProductByIdInput } from './DeleteProductByIdSchema';
+export { DeleteProductByIdSchema, DeleteProductByIdInput } from './DeleteProductByIdSchema';
 
 // ProductByIdSchema is NOT exported - internal use only within this package
