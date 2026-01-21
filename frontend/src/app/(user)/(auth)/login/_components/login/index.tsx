@@ -1,6 +1,6 @@
-import { LoginForm } from "@/components/login-form";
 import { NAVBAR_HEIGHT } from "@/constants/navbar";
 import Image from "next/image";
+import { LoginForm } from "./LoginForm";
 
 export const Login = () => {
   return (

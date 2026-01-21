@@ -7,6 +7,7 @@ import cors from "cors";
 
 const app = express();
 const port = process.env.PORT! || 3001;
+const clientUrl = process.env.CLIENT_URL!;
 
 // Parse JSON bodies
 app.use(express.json());
@@ -16,7 +17,7 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: "*", // TODO: Only ur frontend origin
+    origin: clientUrl || "http://localhost:3000",
     credentials: true,
   })
 );
