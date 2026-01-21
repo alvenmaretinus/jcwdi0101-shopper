@@ -1,9 +1,9 @@
 
-import addToCartRouter from "../controller/cart.controller";
+import cartRouter from "../controller/cart.controller";
 import { Router } from "express";
 
 
-const router = Router().use("/cart", addToCartRouter);
+const router = Router().use("/cart", cartRouter);
 
 
 
