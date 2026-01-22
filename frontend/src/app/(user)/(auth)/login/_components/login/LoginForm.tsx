@@ -15,7 +15,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { authClient } from "@/lib/authClient";
-import { LoginSchema } from "@/schemas/auth/LoginSchema";
+import { z } from "zod";
+
+export const LoginSchema = z.object({
+  email: z.email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
