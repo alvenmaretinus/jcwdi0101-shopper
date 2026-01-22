@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { authClient } from "@/lib/authClient";
+import { SignupSchema } from "@/schemas/auth/SignupSchema";
 
 export function SignupForm() {
   const [email, setEmail] = useState("");
@@ -26,6 +27,12 @@ export function SignupForm() {
 
   const handleSignup = async () => {
     try {
+      const { error } = SignupSchema.safeParse({ email, password });
+      if (error) {
+        const firstError = error.issues[0].message;
+        toast.error(firstError || "Invalid input");
+        return;
+      }
       await authClient.signUp.email(
         {
           email,
