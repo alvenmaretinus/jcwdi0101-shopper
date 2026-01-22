@@ -31,10 +31,22 @@ export function LoginForm() {
   const redirectTo = search.get("redirectTo") || "/";
   const handleLogin = async () => {
     try {
-      setIsLoading(true);
-      await loginEmail({ email, password });
-      toast.success("Logged in successfully!");
-      router.replace(redirectTo);
+      await authClient.signIn.email(
+        { email, password, callbackURL: "/" },
+        {
+          onRequest: (ctx) => {
+            setIsLoading(true);
+          },
+          onSuccess: (ctx) => {
+            toast.success("Logged in successfully.");
+            router.replace(redirectTo);
+          },
+          onError: (ctx) => {
+            toast.error(ctx.error.message);
+            setIsLoading(false);
+          },
+        }
+      );
     } catch (err) {
       console.error(err);
       setIsLoading(false);
