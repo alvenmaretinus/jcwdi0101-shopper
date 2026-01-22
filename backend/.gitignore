@@ -9,6 +9,7 @@ dist/
 
 # Prisma generated client
 prisma/generated/
+prisma/migrations/
 
 # node_modules
 node_modules/
