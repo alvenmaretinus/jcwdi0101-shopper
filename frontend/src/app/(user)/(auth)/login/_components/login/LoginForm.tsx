@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { authClient } from "@/lib/authClient";
+import { LoginSchema } from "@/schemas/auth/LoginSchema";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -25,6 +26,12 @@ export function LoginForm() {
   const redirectTo = search.get("redirectTo") || "/";
   const handleLogin = async () => {
     try {
+      const { error } = LoginSchema.safeParse({ email, password });
+      if (error) {
+        const firstError = error.issues[0].message;
+        toast.error(firstError || "Invalid input");
+        return;
+      }
       await authClient.signIn.email(
         { email, password, callbackURL: "/" },
         {

@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./db/prisma";
 import { LRUCache } from "lru-cache";
-import { sendEmailVerification } from "./email/mailer";
+import { sendEmailVerification, sendResetPasswordEmail } from "./email/mailer";
 import { AppError } from "../error/AppError";
 
 const rateLimit = new LRUCache<string, { email: string; lastRequest: Date }>({
@@ -17,6 +17,15 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    sendResetPassword: async ({ user, token }) => {
+      const url = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
+      sendResetPasswordEmail({
+        email: user.email,
+        subject: "Reset your password",
+        text: "Click the link to reset your password.",
+        url,
+      });
+    },
   },
   trustedOrigins: [process.env.CLIENT_URL || "http://localhost:3000"],
   socialProviders: {
