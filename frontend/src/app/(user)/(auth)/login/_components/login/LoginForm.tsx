@@ -31,28 +31,10 @@ export function LoginForm() {
   const redirectTo = search.get("redirectTo") || "/";
   const handleLogin = async () => {
     try {
-      const { error } = LoginSchema.safeParse({ email, password });
-      if (error) {
-        const firstError = error.issues[0].message;
-        toast.error(firstError || "Invalid input");
-        return;
-      }
-      await authClient.signIn.email(
-        { email, password, callbackURL: "/" },
-        {
-          onRequest: (ctx) => {
-            setIsLoading(true);
-          },
-          onSuccess: (ctx) => {
-            toast.success("Logged in successfully.");
-            router.replace(redirectTo);
-          },
-          onError: (ctx) => {
-            toast.error(ctx.error.message);
-            setIsLoading(false);
-          },
-        }
-      );
+      setIsLoading(true);
+      await loginEmail({ email, password });
+      toast.success("Logged in successfully!");
+      router.replace(redirectTo);
     } catch (err) {
       console.error(err);
       setIsLoading(false);
