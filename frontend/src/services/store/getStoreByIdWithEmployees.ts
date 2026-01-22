@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axiosInstance";
+import { apiFetch } from "@/lib/apiFetch";
 import {
   GetStoreByIdInput,
   GetStoreByIdSchema,
@@ -14,13 +14,16 @@ export const getStoreByIdWithEmployees = async (
 
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0].message;
-    toast.error(firstError || "Invalid input");
+    if (typeof window !== "undefined") {
+      toast.error(firstError || "Invalid input");
+    }
     throw new Error(firstError);
   }
 
-  const res = await axiosInstance.get<Store & { employees: User[] }>(
-    `/stores/${inputData.id}/employees`
+  const res = await apiFetch<Store & { employees: User[] }>(
+    `/stores/${inputData.id}/employees`,
+    { method: "GET" }
   );
 
-  return res.data;
+  return res;
 };

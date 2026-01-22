@@ -1,11 +1,11 @@
-import { axiosInstance } from "@/lib/axiosInstance";
+import { apiFetch } from "@/lib/apiFetch";
 import { UserPayload } from "@/types/Session";
 
 export const getSession = async () => {
   try {
-    const res = await axiosInstance.get<UserPayload>("/auth/session");
+    const res = await apiFetch<UserPayload>("/auth/session", { method: "GET" });
 
-    return res.data;
+    return res;
   } catch (error) {
     return null;
   }

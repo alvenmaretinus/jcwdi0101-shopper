@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axiosInstance";
+import { apiFetch } from "@/lib/apiFetch";
 import {
   GetStoreByIdInput,
   GetStoreByIdSchema,
@@ -15,6 +15,8 @@ export const deleteStoreById = async (inputData: GetStoreByIdInput) => {
     throw new Error(firstError);
   }
 
-  const res = await axiosInstance.delete<Store>(`/stores/${inputData.id}`);
-  return res.data;
+  const res = await apiFetch<Store>(`/stores/${inputData.id}`, {
+    method: "DELETE",
+  });
+  return res;
 };

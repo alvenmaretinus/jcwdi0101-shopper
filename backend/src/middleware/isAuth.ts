@@ -1,6 +1,6 @@
 import { ACCESS_TOKEN_NAME } from "../../constant/cookies";
 import { UserRole } from "../../prisma/generated/enums";
-import { UnauthorizedError } from "../error/UnauthorizedError";
+import { InvalidTokenError } from "../error/InvalidTokenError";
 import { prisma } from "../lib/db/prisma";
 import { supabase } from "../lib/supabase/server";
 import { NextFunction, Request, Response } from "express";
@@ -25,16 +25,15 @@ export const isAuth = async (
   const accessToken = req.cookies[ACCESS_TOKEN_NAME];
   if (!accessToken) {
     console.info("No access token provided from isAuth");
-    throw new UnauthorizedError("No access token provided");
+    throw new InvalidTokenError();
   }
-
   const {
     data: { user: supabaseUser },
     error,
   } = await supabase.auth.getUser(accessToken);
   if (error || !supabaseUser) {
     console.info("Invalid token from isAuth");
-    throw new UnauthorizedError("Invalid token");
+    throw new InvalidTokenError();
   }
 
   const user = await prisma.user.findUnique({
@@ -42,8 +41,9 @@ export const isAuth = async (
   });
   if (!user) {
     console.info("User not found from isAuth");
-    throw new UnauthorizedError("User not found");
+    throw new InvalidTokenError();
   }
   req.user = { id: user.id, email: user.email, role: user.role };
+
   next();
 };

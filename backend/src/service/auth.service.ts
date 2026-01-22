@@ -60,24 +60,28 @@ export class AuthService {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) throw new UnauthorizedError("Invalid credentials");
 
-    const { data:{user:supabaseUser} } = await supabase.auth.admin.getUserById(user.id);
+    const {
+      data: { user: supabaseUser },
+    } = await supabase.auth.admin.getUserById(user.id);
     if (!supabaseUser || !supabaseUser.email_confirmed_at) {
-      throw new UnauthorizedError("Please verify your email address first, by clicking on the verification link sent to your email");
+      throw new UnauthorizedError(
+        "Please verify your email address first, by clicking on the verification link sent to your email"
+      );
     }
 
-    const { data:{session}, error } = await supabase.auth.signInWithPassword({
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error || !session){
-      throw new UnauthorizedError("Invalid credentials")}
+    if (error || !session) {
+      throw new UnauthorizedError("Invalid credentials");
+    }
 
-    res.cookie(
-      ACCESS_TOKEN_NAME,
-      session.access_token,
-      ACCESS_TOKEN_OPTIONS
-    );
+    res.cookie(ACCESS_TOKEN_NAME, session.access_token, ACCESS_TOKEN_OPTIONS);
     res.cookie(
       REFRESH_TOKEN_NAME,
       session.refresh_token,

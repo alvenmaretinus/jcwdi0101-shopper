@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axiosInstance";
+import { apiFetch } from "@/lib/apiFetch";
 import {
   AddEmployeeInput,
   AddEmployeeSchema,
@@ -16,7 +16,10 @@ export const addEmployee = async (inputData: AddEmployeeInput) => {
   }
 
   const { id, ...data } = inputData;
-  const res = await axiosInstance.patch<User>(`/stores/${id}/employees/`, data);
+  const res = await apiFetch<User>(`/stores/${id}/employees/`, {
+    method: "PATCH",
+    body: data,
+  });
 
-  return res.data;
+  return res;
 };
