@@ -1,5 +1,4 @@
 import { MIN_LOCATION_SEARCH_LENGTH } from "@/constants/geo";
-import axios from "axios";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -12,7 +11,6 @@ export async function GET(request: Request) {
     }
 
     const results = await getForwardGeoIdnOpenCage(location);
-
     return NextResponse.json(results);
   } catch (err) {
     console.error(err);
@@ -26,26 +24,30 @@ type ForwardGeoResponse = {
     geometry: { lat: number; lng: number };
   }[];
 };
+
 async function getForwardGeoIdnOpenCage(location: string) {
   const API_KEY = process.env.OPEN_CAGE_API_KEY;
   if (!location) return null;
 
   try {
-    const res = await axios.get<ForwardGeoResponse>(
-      "https://api.opencagedata.com/geocode/v1/json",
-      {
-        params: {
-          key: API_KEY,
-          q: location,
-          countrycode: "id",
-          limit: 4,
-          no_annotations: 1,
-        },
-      }
-    );
-    const results = res.data.results;
+    const params = new URLSearchParams({
+      key: API_KEY!,
+      q: location,
+      countrycode: "id",
+      limit: "4",
+      no_annotations: "1",
+    });
 
-    if (!results || results.length === 0) return null;
+    const res = await fetch(
+      `https://api.opencagedata.com/geocode/v1/json?${params}`
+    );
+
+    if (!res.ok) throw new Error();
+
+    const data = (await res.json()) as ForwardGeoResponse;
+    const results = data.results;
+
+    if (!results?.length) return null;
 
     return results.map((r) => ({
       lat: r.geometry.lat,

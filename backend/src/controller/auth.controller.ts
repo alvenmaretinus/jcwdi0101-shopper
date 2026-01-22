@@ -8,7 +8,7 @@ import { LoginSchema } from "../schema/auth/LoginSchema";
 const router = Router();
 
 router.get("/session", isAuth, async (req, res) => {
-  const user=req.user!
+  const user = req.user!;
   return res.json(user);
 });
 

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
         }),
       });
 
-      const url = new URL(origin); 
+      const url = new URL(origin);
       const nextResponse = NextResponse.redirect(url);
 
       const setCookieHeader = response.headers.get("set-cookie");

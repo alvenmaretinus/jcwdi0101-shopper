@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export const ProfileLogo = () => {
   return (
-    <Link href="/profile" className="hidden md:flex">
+    <Link href="/profile/profile" className="hidden md:flex">
       <Button
         variant="ghost"
         size="icon"

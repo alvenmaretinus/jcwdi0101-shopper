@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axiosInstance";
+import { apiFetch } from "@/lib/apiFetch";
 import {
   CreateStoreInput,
   CreateStoreSchema,
@@ -15,6 +15,9 @@ export const createStore = async (inputData: CreateStoreInput) => {
     throw new Error(firstError);
   }
 
-  const res = await axiosInstance.post<Store>("/stores", inputData);
-  return res.data;
+  const res = await apiFetch<Store>("/stores", {
+    method: "POST",
+    body: inputData,
+  });
+  return res;
 };

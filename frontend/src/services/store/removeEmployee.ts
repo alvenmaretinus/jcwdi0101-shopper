@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axiosInstance";
+import { apiFetch } from "@/lib/apiFetch";
 import {
   RemoveEmployeeInput,
   RemoveEmployeeSchema,
@@ -16,9 +16,9 @@ export const removeEmployee = async (inputData: RemoveEmployeeInput) => {
   }
 
   const { id, employeeId } = inputData;
-  const res = await axiosInstance.delete<User>(
-    `/stores/${id}/employees/${employeeId}`
-  );
+  const res = await apiFetch<User>(`/stores/${id}/employees/${employeeId}`, {
+    method: "DELETE",
+  });
 
-  return res.data;
+  return res;
 };

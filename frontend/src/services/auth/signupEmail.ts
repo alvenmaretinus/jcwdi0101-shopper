@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axiosInstance";
+import { apiFetch } from "@/lib/apiFetch";
 import { SignupInput, SignupSchema } from "@/schemas/auth/SignupSchema";
 import { toast } from "sonner";
 
@@ -11,5 +11,5 @@ export const signupEmail = async (inputData: SignupInput) => {
     throw new Error(firstError);
   }
 
-  await axiosInstance.post("/auth/signup", inputData);
+  await apiFetch("/auth/signup", { method: "POST", body: inputData });
 };

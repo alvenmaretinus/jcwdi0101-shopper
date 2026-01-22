@@ -1,25 +1,21 @@
-import { MIN_LOCATION_SEARCH_LENGTH } from "@/constants/geo";
-import axios from "axios";
-import { toast } from "sonner";
-
-export async function getForwardGeoIdn(location: string) {
-  if (!location || location.length < MIN_LOCATION_SEARCH_LENGTH) return null;
+export async function getReverseGeoIdn({
+  lat,
+  lng,
+}: {
+  lat: number;
+  lng: number;
+}): Promise<string> {
+  if (!lat || !lng) return "";
 
   try {
-    const res = await axios.get<
-      {
-        lat: number;
-        lng: number;
-        name: string;
-      }[]
-    >("/api/forward-geo-idn", {
-      params: { q: location },
-    });
+    const res = await fetch(`/api/reverse-geo-idn?lat=${lat}&lng=${lng}`, {});
 
-    return res.data;
-  } catch (err: any) {
+    if (!res.ok) throw new Error();
+
+    const results = await res.json();
+    return results as string;
+  } catch (err) {
     console.error(err);
-    toast.error("Failed to get location");
-    return null;
+    return "";
   }
 }

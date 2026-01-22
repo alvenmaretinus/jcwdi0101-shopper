@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axiosInstance";
+import { apiFetch } from "@/lib/apiFetch";
 import {
   GetStoreByIdInput,
   GetStoreByIdSchema,
@@ -11,10 +11,14 @@ export const getStoreById = async (inputData: GetStoreByIdInput) => {
 
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0].message;
-    toast.error(firstError || "Invalid input");
+    if (typeof window !== "undefined") {
+      toast.error(firstError || "Invalid input");
+    }
     throw new Error(firstError);
   }
 
-  const res = await axiosInstance.get<Store | null>(`/stores/${inputData.id}`);
-  return res.data;
+  const res = await apiFetch<Store | null>(`/stores/${inputData.id}`, {
+    method: "GET",
+  });
+  return res;
 };
