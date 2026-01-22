@@ -12,10 +12,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
-import { useRouter, useSearchParams, redirect } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase/client";
-import { loginEmail } from "@/services/auth/loginEmail";
+import { authClient } from "@/lib/authClient";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -26,10 +25,22 @@ export function LoginForm() {
   const redirectTo = search.get("redirectTo") || "/";
   const handleLogin = async () => {
     try {
-      setIsLoading(true);
-      await loginEmail({ email, password });
-      toast.success("Logged in successfully!");
-      router.replace(redirectTo);
+      await authClient.signIn.email(
+        { email, password, callbackURL: "/" },
+        {
+          onRequest: (ctx) => {
+            setIsLoading(true);
+          },
+          onSuccess: (ctx) => {
+            toast.success("Logged in successfully.");
+            router.replace(redirectTo);
+          },
+          onError: (ctx) => {
+            toast.error(ctx.error.message);
+            setIsLoading(false);
+          },
+        }
+      );
     } catch (err) {
       console.error(err);
       setIsLoading(false);
@@ -37,22 +48,17 @@ export function LoginForm() {
   };
 
   const handleGoogleLogin = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
+      await authClient.signIn.social({
         provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/api/auth/callback`,
-        },
+        callbackURL: `${window.location.origin}/`,
       });
-      if (error) {
-        toast.error("Something went wrong.");
-        console.error(error);
-        setIsLoading(false);
-      }
-    } catch (err) {
-      toast.error("Something went wrong.");
-      console.error(err);
+    } catch (err: any) {
+      const message = err?.message || "Something went wrong.";
+      toast.error(message);
+      console.error("Login error:", err);
+    } finally {
       setIsLoading(false);
     }
   };

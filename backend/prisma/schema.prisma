@@ -61,15 +61,14 @@ model Verification {
   @@map("verification")
 }
 
-
 model User {
   id            String    @id
-  name          String
+  name          String?
   email         String
   emailVerified Boolean   @default(false)
-  role      UserRole @default(USER)
-  image         String?
-  referralCode String @default(uuid()) @unique
+  role          UserRole @default(USER)
+  profileUrl    String?
+  referralCode  String @default(uuid()) @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   storeId String? @unique
