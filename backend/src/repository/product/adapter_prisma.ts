@@ -1,6 +1,8 @@
 import { ProductsRepo } from './interface';
 import { PrismaClient } from '../../../prisma/generated/client';
-import { Product, ProductReq, ProductWithStock, ProductWhereClause } from './entities';
+import { Product, CreateProductReq, GetProductReq, ProductWithStock, ProductWhereClause, UpdateProductReq } from './entities';
+import { ProductCreateInput} from '../../../prisma/generated/models';
+import { toDomainModel, toDomainModels } from './mapper';
 
 
 export class PrismaRepository implements ProductsRepo {
@@ -10,15 +12,15 @@ export class PrismaRepository implements ProductsRepo {
         this.prisma = prisma;
     }
 
-    async getProductsByFilter(filter: Partial<ProductReq>): Promise<Product[]> {
+    async getProductsByFilter(filter: Partial<GetProductReq>): Promise<Product[]> {
         const where = this.buildWhereClause(filter);
         const products = await this.prisma.product.findMany({
             where,
         });
-        return products;
+        return toDomainModels(products);
     }
 
-    async getProductsByFilterWithStock(filter: Partial<ProductReq>): Promise<ProductWithStock[]> {
+    async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<ProductWithStock[]> {
         const where = this.buildWhereClause(filter);
         const products: ProductWithStock[] = await this.prisma.product.findMany({
             where,
@@ -33,7 +35,7 @@ export class PrismaRepository implements ProductsRepo {
         return products;
     }
 
-    private buildWhereClause(filter: Partial<ProductReq>): ProductWhereClause {
+    private buildWhereClause(filter: Partial<GetProductReq>): ProductWhereClause {
         const { name, storeId, ...restFilter } = filter;
         const where: ProductWhereClause = { ...restFilter };
 
@@ -53,5 +55,45 @@ export class PrismaRepository implements ProductsRepo {
         }
 
         return where;
+    }
+
+    async createProduct(data: CreateProductReq): Promise<Product> {
+        const now = new Date();
+    
+        const productCreateInput: ProductCreateInput = {
+            //ID will be created automatically
+            name: data.name,
+            description: data.description,
+            price: data.price,
+            createAt: now,
+            updatedAt: now,
+            category: { connect: { id: data.categoryId } }, 
+        };
+
+        const createdProduct = await this.prisma.product.create({
+            data: productCreateInput,
+        });
+        return toDomainModel(createdProduct);
+    }
+    
+    async updateProduct(id: string, data: Partial<UpdateProductReq>): Promise<Product> {
+        const productUpdateData: Partial<ProductCreateInput> = {
+            ...data,
+            updatedAt: new Date(),
+            category: data.categoryId? { connect:  { id: data.categoryId } } : undefined
+        };
+
+
+        const updatedProduct = await this.prisma.product.update({
+            where: { id: id },
+            data: productUpdateData,
+        });
+        return toDomainModel(updatedProduct);
+    }
+
+    async deleteProduct(id: string): Promise<void> {
+        await this.prisma.product.delete({
+            where: { id: id },
+        });
     }
 }

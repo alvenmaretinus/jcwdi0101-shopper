@@ -1,6 +1,7 @@
 import {Service} from './interface';
 import {ProductsRepo} from '../../repository/product/interface';
 import { FilterInput } from '../../schema/product/GetProductsByFilterSchema';
+import { CreateProductInput, UpdateProductInput } from '../../schema/product';
 
 export class ProductService implements Service {
     private productRepo: ProductsRepo;
@@ -8,7 +9,6 @@ export class ProductService implements Service {
     constructor(productRepo: ProductsRepo) {
         this.productRepo = productRepo;
     }
-
 
     async getProductsByFilterWithOptionalStock(
         filter: Partial<FilterInput>,
@@ -23,4 +23,17 @@ export class ProductService implements Service {
             return this.productRepo.getProductsByFilter(filter);
         }
     }
+
+    async createProduct(data: CreateProductInput): Promise<any> {
+        return this.productRepo.createProduct(data);
+    }
+
+    async updateProduct(id: string, data: UpdateProductInput): Promise<any> {
+        return this.productRepo.updateProduct(id, data);
+    }
+
+    async deleteProduct(id: string): Promise<void> {
+        return this.productRepo.deleteProduct(id);
+    }
 } 
+
