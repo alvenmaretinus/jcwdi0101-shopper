@@ -56,13 +56,21 @@ router.patch ("/", isAuth, validateRequest(AddToCartSchema), async (req: Request
   }
 });
 
-router.delete ("/", isAuth, validateRequest(AddToCartSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.delete("/", isAuth, validateRequest(AddToCartSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    return res.status(200).json({ success: true, message: "Delete cart item - to be implemented" });
+    const userId = req.user?.id;
+    const { storeId, productId } = req.body;
+
+    if (!userId || !storeId || !productId) {
+      return res.status(400).json({ success: false, message: "Missing parameters" });
+    }
+
+    await CartService.deleteCartItem(userId, storeId, productId);
+    return res.status(200).json({ success: true, message: "Cart item deleted" });
   } catch (err: any) {
     next(err);
   }
-}); 
+});
 
 
 

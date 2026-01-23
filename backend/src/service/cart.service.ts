@@ -85,4 +85,18 @@ export class CartService {
 
     return CartRepository.updateCartItemQuantity(cartItem.id, quantity);
   }
+
+  static async deleteCartItem(userId: string, storeId: string, productId: string) {
+    const cart = await CartRepository.findCartByUserAndStore(userId, storeId);
+    if (!cart) {
+      throw new BadRequestError("Cart not found.");
+    }
+
+    const cartItem = await CartRepository.findCartItem(cart.id, productId);
+    if (!cartItem) {
+      throw new BadRequestError("Cart item not found.");
+    }
+
+    return CartRepository.deleteCartItem(cartItem.id);
+  }
 }

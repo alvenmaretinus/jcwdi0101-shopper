@@ -3,7 +3,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/src/index.js",
-    "dev": "nodemon src/index.ts"
+    "dev": "nodemon src/index.ts",
+    "test-db": "ts-node scripts/test-db.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.2.0",

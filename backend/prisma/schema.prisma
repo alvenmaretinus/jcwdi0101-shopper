@@ -296,5 +296,15 @@ model ProductStore {
 
   @@unique([productId, storeId])
 }
+model ProductTotal{
+  id       String   @id @default(uuid())
+  totalQuantity Int
+  productId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId])
+}
 
 
