@@ -29,17 +29,21 @@ export function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const redirectTo = search.get("redirectTo") || "/";
+
   const handleLogin = async () => {
     try {
       await authClient.signIn.email(
-        { email, password, callbackURL: "/" },
+        {
+          email,
+          password,
+          callbackURL: `${window.location.origin}${redirectTo}`,
+        },
         {
           onRequest: (ctx) => {
             setIsLoading(true);
           },
           onSuccess: (ctx) => {
             toast.success("Logged in successfully.");
-            router.replace(redirectTo);
           },
           onError: (ctx) => {
             toast.error(ctx.error.message);
@@ -47,6 +51,7 @@ export function LoginForm() {
           },
         }
       );
+      router.replace(redirectTo);
     } catch (err) {
       console.error(err);
       setIsLoading(false);
@@ -58,7 +63,7 @@ export function LoginForm() {
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: `${window.location.origin}/`,
+        callbackURL: `${window.location.origin}${redirectTo}`,
       });
     } catch (err: any) {
       const message = err?.message || "Something went wrong.";

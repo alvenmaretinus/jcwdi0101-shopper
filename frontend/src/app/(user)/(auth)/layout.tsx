@@ -3,12 +3,14 @@
 import { apiFetch } from "@/lib/apiFetch";
 import { authClient } from "@/lib/authClient";
 import { User } from "@/types/User";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 
 export default function AuthLayoutPage({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const search = useSearchParams();
+  const redirectTo = search.get("redirectTo") || "/";
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -30,7 +32,7 @@ export default function AuthLayoutPage({ children }: { children: ReactNode }) {
         if (isAdmin) {
           router.replace("/admin");
         } else {
-          router.replace("/");
+          router.replace(redirectTo);
         }
       } catch (error) {
         console.log(error);

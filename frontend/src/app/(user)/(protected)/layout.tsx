@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/authClient";
 import { apiFetch } from "@/lib/apiFetch";
@@ -12,29 +12,23 @@ export default function UserProtectedLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { data } = authClient.useSession();
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data } = await authClient.getSession();
-      if (!data?.session || !data?.user) {
+      if (!data) {
         router.replace(`/login?redirectTo=${window.location.pathname}`);
-        return;
+      } else {
+        const userId = data.user.id;
+        const user = await apiFetch<User>(`/user/${userId}`, { method: "GET" });
+        if (user.role === "ADMIN" || user.role === "SUPERADMIN") {
+          router.replace("/admin");
+        }
       }
-      const userId = data.session.userId;
-      const user = await apiFetch<User>(`/user/${userId}`, { method: "GET" });
-      if (user.role === "ADMIN" || user.role === "SUPERADMIN") {
-        router.replace("/admin");
-        return;
-      }
-
-      setLoading(false);
     };
 
     checkAuth();
   }, []);
-
-  if (loading) return <p>Please wait...</p>;
 
   return <>{children}</>;
 }

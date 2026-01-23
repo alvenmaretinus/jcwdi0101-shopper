@@ -1,0 +1,93 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/authClient";
+import { Edit2, KeyRound, Mail } from "lucide-react";
+import { ChangeNameDialog } from "./ChangeNameDialog";
+import { useState } from "react";
+import { ChangeEmailDialog } from "./ChangeEmailDialog";
+
+const InfoItem = ({
+  label,
+  value,
+  buttonText,
+  icon,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  buttonText?: string;
+  icon?: React.ReactNode;
+  onClick: () => void;
+}) => (
+  <div className="flex items-center justify-between p-4 rounded-xl border border-border">
+    <div>
+      <Label className="text-muted-foreground text-sm">{label}</Label>
+      <p className="font-medium mt-1">{value}</p>
+    </div>
+    {buttonText && (
+      <Button onClick={onClick} variant="outline" size="sm">
+        {icon && <span className="mr-2">{icon}</span>}
+        {buttonText}
+      </Button>
+    )}
+  </div>
+);
+
+export const UserCard = () => {
+  const [isChangeNameOpen, setIsChangeNameOpen] = useState(false);
+  const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
+
+  const { data } = authClient.useSession();
+  const user = data?.user;
+
+  const handleChangePassword = () => {
+    // Handle password change logic here
+  };
+
+  return (
+    <div className="bg-card rounded-2xl p-6 shadow-soft">
+      <h2 className="text-xl font-bold mb-6">Personal Information</h2>
+
+      <div className="space-y-4">
+        <InfoItem
+          label="Name"
+          value={user?.name || "-"}
+          buttonText="Change Name"
+          icon={<Edit2 className="h-4 w-4" />}
+          onClick={() => setIsChangeNameOpen(true)}
+        />
+        {isChangeNameOpen && (
+          <ChangeNameDialog
+            open={isChangeNameOpen}
+            onOpenChange={setIsChangeNameOpen}
+            currentName={user?.name}
+          />
+        )}
+
+        <InfoItem
+          label="Email"
+          value={user?.email || "-"}
+          buttonText="Change Email"
+          icon={<Mail className="h-4 w-4" />}
+          onClick={() => setIsChangeEmailOpen(true)}
+        />
+        {isChangeEmailOpen && (
+          <ChangeEmailDialog
+            open={isChangeEmailOpen}
+            onOpenChange={setIsChangeEmailOpen}
+          />
+        )}
+
+        <InfoItem
+          label="Password"
+          value={user ? "••••••••" : "-"}
+          buttonText="Change Password"
+          icon={<KeyRound className="h-4 w-4" />}
+          onClick={handleChangePassword}
+        />
+      </div>
+    </div>
+  );
+};
