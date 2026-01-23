@@ -26,6 +26,8 @@ export class ProductService implements Service {
 
     async createProduct(data: CreateProductInput): Promise<any> {
         return this.productRepo.createProduct(data);
+
+        // TODO: Create initial product stock in ProductStore table
     }
 
     async updateProduct(id: string, data: UpdateProductInput): Promise<any> {

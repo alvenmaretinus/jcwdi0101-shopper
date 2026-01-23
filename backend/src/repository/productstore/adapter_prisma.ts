@@ -1,6 +1,5 @@
 import { PrismaClient } from "../../../prisma/generated/client";
 import { ProductStoreCreateInput, ProductStoreUpdateInput } from "../../../prisma/generated/models";
-import { Product } from "../product/entities";
 import { ProductStoreRepo } from "./interface";
 
 export class ProductStoreRepository implements ProductStoreRepo {
