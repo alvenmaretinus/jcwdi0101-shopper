@@ -3,7 +3,7 @@ import {
   GetStoreByIdInput,
   GetStoreByIdSchema,
 } from "@/schemas/store/GetStoreByIdSchema";
-import { User } from "@/types/User";
+import { Employee } from "@/types/Employee";
 import { Store } from "@/types/Store";
 import { toast } from "sonner";
 
@@ -20,7 +20,7 @@ export const getStoreByIdWithEmployees = async (
     throw new Error(firstError);
   }
 
-  const res = await apiFetch<Store & { employees: User[] }>(
+  const res = await apiFetch<Store & { employees: Employee[] }>(
     `/stores/${inputData.id}/employees`,
     { method: "GET" }
   );

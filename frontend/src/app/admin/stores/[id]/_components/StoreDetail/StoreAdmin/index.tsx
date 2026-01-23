@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { User } from "@/types/User";
+import { Employee } from "@/types/Employee";
 import { UserMinus, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AddAdminDialog } from "./AddAdminDialog";
@@ -25,7 +25,7 @@ import { Store } from "@/types/Store";
 
 type Props = {
   storeWithEmployees: Store & {
-    employees: User[];
+    employees: Employee[];
   };
 };
 
@@ -34,7 +34,7 @@ export const StoreAdmin = ({ storeWithEmployees }: Props) => {
 
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [isRemoveAdminOpen, setIsRemoveAdminOpen] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState<User | null>(null);
+  const [selectedAdmin, setSelectedAdmin] = useState<Employee | null>(null);
 
   useEffect(() => {
     if (isAddAdminOpen) setIsRemoveAdminOpen(false);

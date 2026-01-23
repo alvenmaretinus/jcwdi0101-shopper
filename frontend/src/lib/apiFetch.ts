@@ -9,19 +9,9 @@ type ApiInit = {
   headers?: ReadonlyHeaders;
 };
 
-class InvalidTokenError extends Error {
-  constructor() {
-    super("Invalid Token");
-  }
-}
-
 const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-export async function apiFetch<T>(
-  url: string,
-  input: ApiInit,
-  isRetrying = false
-): Promise<T> {
+export async function apiFetch<T>(url: string, input: ApiInit): Promise<T> {
   const jsonHeader = input.body ? { "Content-Type": "application/json" } : {};
   const nextHeaders = input.headers ? Object.fromEntries(input.headers) : {};
   const headers = { ...jsonHeader, ...nextHeaders } as any;
@@ -43,14 +33,6 @@ export async function apiFetch<T>(
 
   if (res.ok) return data as T;
 
-  //   if (res.status === 401 && data?.error === "Invalid Token" && !isRetrying) {
-  //     const refreshRes = await fetch(`/api/auth/refresh`, {
-  //       method: "POST",
-  //       credentials: "include",
-  //     });
-  //     if (refreshRes.ok) return apiFetchCb<T>(url, input, true);
-  //     throw new InvalidTokenError();
-  //   }
   if (typeof window !== "undefined") {
     toast.error(data?.error || "Internal Server Error");
   }

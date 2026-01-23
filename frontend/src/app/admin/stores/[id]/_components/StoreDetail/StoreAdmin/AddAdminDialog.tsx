@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { addEmployee } from "@/services/store/addEmployee";
 import { getStoreById } from "@/services/store/getStoreById";
 import { Store } from "@/types/Store";
-import { User } from "@/types/User";
+import { Employee } from "@/types/Employee";
 import { useEffect, useState } from "react";
 import z from "zod";
 
@@ -33,7 +33,7 @@ export const AddAdminDialog = ({
   const [emailSearch, setEmailSearch] = useState("");
   const [searchError, setSearchError] = useState("");
   const [foundUser, setFoundUser] = useState<
-    (User & { storeName?: string }) | null
+    (Employee & { storeName?: string }) | null
   >(null);
 
   const handleEmailSearch = async () => {
@@ -43,7 +43,7 @@ export const AddAdminDialog = ({
     try {
       // TODO: use real one
       // const user=await getUserByEmail(emailSearch)
-      const user: User = {
+      const user: Employee = {
         id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
         email: "gmail",
         profileUrl: null,

@@ -15,7 +15,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { authClient } from "@/lib/authClient";
-import { SignupSchema } from "@/schemas/auth/SignupSchema";
+import { z } from "zod";
+
+const SignupSchema = z
+  .object({
+    email: z.email("Invalid email"),
+    password: z.string().min(8, "Password must be at least 8 characters long"),
+    confirmPassword: z
+      .string()
+      .min(8, "Password must be at least 8 characters long"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 export function SignupForm() {
   const [email, setEmail] = useState("");
@@ -27,7 +40,11 @@ export function SignupForm() {
 
   const handleSignup = async () => {
     try {
-      const { error } = SignupSchema.safeParse({ email, password });
+      const { error } = SignupSchema.safeParse({
+        email,
+        password,
+        confirmPassword,
+      });
       if (error) {
         const firstError = error.issues[0].message;
         toast.error(firstError || "Invalid input");
@@ -38,7 +55,7 @@ export function SignupForm() {
           email,
           password,
           name: "user",
-          callbackURL: `${window.location.origin}/`,
+          callbackURL: `${window.location.origin}/login`,
         },
         {
           onRequest: (ctx) => {

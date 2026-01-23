@@ -5,17 +5,17 @@ import { StoreInformationCard } from "./StoreInformationCard";
 import { StoreInformationDialog } from "./StoreInformationDialog";
 import { Store } from "@/types/Store";
 import { updateStore } from "@/services/store/updateStore";
-import { User } from "@/types/User";
+import { Employee } from "@/types/Employee";
 
 type Props = {
   store: Store & {
-    employees: User[];
+    employees: Employee[];
   };
   setStore: Dispatch<
     SetStateAction<
-      | Store & {
-          employees: User[];
-        }
+      Store & {
+        employees: Employee[];
+      }
     >
   >;
 };

@@ -60,11 +60,9 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.category}
           </span>
 
-          <Link href={`/products/${product.id}`}>
-            <h3 className="font-semibold text-foreground mt-1 line-clamp-2 group-hover:text-primary transition-colors">
-              {product.name}
-            </h3>
-          </Link>
+          <h3 className="font-semibold text-foreground mt-1 line-clamp-2 group-hover:text-primary transition-colors">
+            {product.name}
+          </h3>
 
           {/* Price and CTA */}
           <div className="flex items-end justify-between mt-3">

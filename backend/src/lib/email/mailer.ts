@@ -55,7 +55,7 @@ export const sendResetPasswordEmail = async ({
   });
 
   await transporter.sendMail({
-    from: `SHOPPER Team <${googleEmail}>`,
+    from: `SHOPPER Team`,
     to: email,
     subject,
     text,

@@ -3,7 +3,7 @@ import {
   RemoveEmployeeInput,
   RemoveEmployeeSchema,
 } from "@/schemas/store/RemoveEmployeeSchema";
-import { User } from "@/types/User";
+import { Employee } from "@/types/Employee";
 import { toast } from "sonner";
 
 export const removeEmployee = async (inputData: RemoveEmployeeInput) => {
@@ -16,9 +16,12 @@ export const removeEmployee = async (inputData: RemoveEmployeeInput) => {
   }
 
   const { id, employeeId } = inputData;
-  const res = await apiFetch<User>(`/stores/${id}/employees/${employeeId}`, {
-    method: "DELETE",
-  });
+  const res = await apiFetch<Employee>(
+    `/stores/${id}/employees/${employeeId}`,
+    {
+      method: "DELETE",
+    }
+  );
 
   return res;
 };
