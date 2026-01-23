@@ -7,6 +7,7 @@ import { Edit2, KeyRound, Mail } from "lucide-react";
 import { ChangeNameDialog } from "./ChangeNameDialog";
 import { useState } from "react";
 import { ChangeEmailDialog } from "./ChangeEmailDialog";
+import { ChangePasswordDialog } from "./ChangePasswordDialog";
 
 const InfoItem = ({
   label,
@@ -38,13 +39,10 @@ const InfoItem = ({
 export const UserCard = () => {
   const [isChangeNameOpen, setIsChangeNameOpen] = useState(false);
   const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const { data } = authClient.useSession();
   const user = data?.user;
-
-  const handleChangePassword = () => {
-    // Handle password change logic here
-  };
 
   return (
     <div className="bg-card rounded-2xl p-6 shadow-soft">
@@ -85,8 +83,14 @@ export const UserCard = () => {
           value={user ? "••••••••" : "-"}
           buttonText="Change Password"
           icon={<KeyRound className="h-4 w-4" />}
-          onClick={handleChangePassword}
+          onClick={() => setIsChangePasswordOpen(true)}
         />
+        {isChangePasswordOpen && (
+          <ChangePasswordDialog
+            open={isChangePasswordOpen}
+            onOpenChange={setIsChangePasswordOpen}
+          />
+        )}
       </div>
     </div>
   );
