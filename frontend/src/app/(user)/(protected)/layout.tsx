@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSession } from "@/services/auth/getSession";
+import { authClient } from "@/lib/authClient";
+import { apiFetch } from "@/lib/apiFetch";
+import { User } from "@/types/User";
 
 export default function UserProtectedLayout({
   children,
@@ -13,12 +15,13 @@ export default function UserProtectedLayout({
 
   useEffect(() => {
     const checkAuth = async () => {
-      const user = await getSession();
-      if (!user) {
+      const { data } = authClient.useSession();
+      if (!data?.session || !data?.user) {
         router.replace(`/login?redirectTo=${window.location.pathname}`);
         return;
       }
-
+      const userId = data.session.userId;
+      const user = await apiFetch<User>(`/users/${userId}`, { method: "GET" });
       if (user.role === "ADMIN" || user.role === "SUPERADMIN") {
         router.replace("/admin");
         return;
