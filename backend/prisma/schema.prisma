@@ -88,6 +88,11 @@ model User {
 model UserAddress {
   id        String  @id @default(uuid())
   email     String
+
+  addressName String
+  fullAddress  String
+  recipientName String
+  
   isDefault Boolean @default(false)
   longitude Decimal @db.Decimal(8, 5)
   latitude  Decimal @db.Decimal(8, 5)

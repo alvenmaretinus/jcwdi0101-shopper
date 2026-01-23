@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { ProfileSidebar } from "./_components/ProfileSidebar";
+import { NAVBAR_HEIGHT } from "@/constants/navbar";
 
 export default async function ProfileLayoutPage({
   children,
@@ -7,7 +8,9 @@ export default async function ProfileLayoutPage({
   children: ReactNode;
 }) {
   return (
-    <div className="bg-neutral- grid lg:grid-cols-4 mt-14 max-w-6xl mb-10 lg:mb-0 mx-10 min-h-screen lg:mx-auto gap-8">
+    <div
+      className={`grid lg:grid-cols-4 max-w-6xl mb-10 min-[calc(100vh-${NAVBAR_HEIGHT}px)] lg:mb-0 px-10 py-16 lg:mx-auto gap-8`}
+    >
       <div className="lg:col-span-1">
         <ProfileSidebar />
       </div>
