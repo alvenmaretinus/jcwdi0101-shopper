@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axiosInstance";
+import { apiFetch } from "@/lib/apiFetch";
 import {
   UpdateStoreInput,
   UpdateStoreSchema,
@@ -16,6 +16,9 @@ export const updateStore = async (inputData: UpdateStoreInput) => {
   }
 
   const { id, ...data } = inputData;
-  const res = await axiosInstance.patch<Store[]>(`/stores/${id}`, data);
-  return res.data;
+  const res = await apiFetch<Store[]>(`/stores/${id}`, {
+    method: "PATCH",
+    body: data,
+  });
+  return res;
 };

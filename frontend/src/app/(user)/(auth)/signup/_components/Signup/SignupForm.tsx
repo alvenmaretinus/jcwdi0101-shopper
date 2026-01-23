@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +14,8 @@ import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase/client";
-import { signupEmail } from "@/services/auth/signupEmail";
+import { authClient } from "@/lib/authClient";
+import { SignupSchema } from "@/schemas/auth/SignupSchema";
 
 export function SignupForm() {
   const [email, setEmail] = useState("");
@@ -25,13 +27,36 @@ export function SignupForm() {
 
   const handleSignup = async () => {
     try {
-      setIsLoading(true);
-      const inputData = { email, password, confirmPassword };
-      await signupEmail(inputData);
-      router.push("/login");
-      toast.success("Click link in your email and login again.", {
-        duration: 5000,
-      });
+      const { error } = SignupSchema.safeParse({ email, password });
+      if (error) {
+        const firstError = error.issues[0].message;
+        toast.error(firstError || "Invalid input");
+        return;
+      }
+      await authClient.signUp.email(
+        {
+          email,
+          password,
+          name: "user",
+          callbackURL: `${window.location.origin}/`,
+        },
+        {
+          onRequest: (ctx) => {
+            setIsLoading(true);
+          },
+          onSuccess: (ctx) => {
+            toast.success("Click link in your email and login again.", {
+              duration: 5000,
+            });
+            router.push("/login");
+          },
+          onError: (ctx) => {
+            toast.error(ctx.error.message);
+            setIsLoading(false);
+          },
+        }
+      );
+      await authClient.sendVerificationEmail({ email });
     } catch (error) {
       console.log(error);
       setIsLoading(false);
@@ -39,22 +64,17 @@ export function SignupForm() {
   };
 
   const handleGoogleSignup = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
+      await authClient.signIn.social({
         provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/api/auth/callback`,
-        },
+        callbackURL: `${window.location.origin}/`,
       });
-      if (error) {
-        toast.error("Something went wrong.");
-        console.log(error);
-        setIsLoading(false);
-      }
-    } catch (error) {
-      toast.error("Something went wrong.");
-      console.log(error);
+    } catch (err: any) {
+      const message = err?.message || "Something went wrong.";
+      toast.error(message);
+      console.error("Signup error:", err);
+    } finally {
       setIsLoading(false);
     }
   };

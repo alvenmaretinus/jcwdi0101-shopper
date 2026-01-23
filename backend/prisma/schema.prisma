@@ -1,6 +1,6 @@
 generator client {
-  provider   = "prisma-client"
-  output     = "./generated"
+  provider = "prisma-client"
+  output   = "./generated"
 }
 
 datasource db {
@@ -13,59 +13,108 @@ enum UserRole {
   SUPERADMIN
 }
 
-
-model User {
-  id        String @id  
-  email     String  @unique
-
-  role      UserRole @default(USER)
-  profileUrl String? 
-
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  referralCode String @default(uuid()) @unique
-
-  storeId String? @unique
-  store   Store?   @relation(fields: [storeId], references: [id])
-  employeeJoinedAt  DateTime?
-
-  addresses UserAddress[] 
-  cart      Cart?
-  orders    Order[]
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
 }
 
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model User {
+  id               String    @id
+  name             String?
+  email            String
+  emailVerified    Boolean   @default(false)
+  role             UserRole  @default(USER)
+  profileUrl       String?
+  referralCode     String    @unique @default(uuid())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  storeId          String?   @unique
+  store            Store?    @relation(fields: [storeId], references: [id])
+  employeeJoinedAt DateTime?
+
+  addresses UserAddress[]
+  cart      Cart?
+  orders    Order[]
+  sessions  Session[]
+  accounts  Account[]
+
+  @@unique([email])
+  @@map("user")
+}
 
 model UserAddress {
-  id         String   @id @default(uuid())
-  email      String
-  isDefault  Boolean @default(false)
-  longitude  Decimal @db.Decimal(8, 5)
-  latitude   Decimal @db.Decimal(8, 5)
+  id        String  @id @default(uuid())
+  email     String
+  isDefault Boolean @default(false)
+  longitude Decimal @db.Decimal(8, 5)
+  latitude  Decimal @db.Decimal(8, 5)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  userId   String
-  user       User    @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 }
 
 model Store {
-  id        String   @id @default(uuid())
-  name      String
+  id          String  @id @default(uuid())
+  name        String
   description String?
-  phone     String
-  longitude  Float
-  latitude   Float
+  phone       String
+  longitude   Float
+  latitude    Float
   addressName String
 
-  employees     User[]
+  employees User[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  productStores ProductStore[] 
-  orders       Order[]
+  productStores ProductStore[]
+  orders        Order[]
 }
 
 enum OrderStatus {
@@ -84,87 +133,83 @@ enum OrderPaymentType {
 }
 
 model Order {
-  id         String   @id @default(uuid())
-  subtotal  Int 
-  totalDiscount     Int
+  id            String           @id @default(uuid())
+  subtotal      Int
+  totalDiscount Int
   shippingCost  Int
-  grandTotal  Int
-  status     OrderStatus
-  paymentType OrderPaymentType
+  grandTotal    Int
+  status        OrderStatus
+  paymentType   OrderPaymentType
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  paidAt      DateTime?
-  confirmedAt DateTime?
-  cancelledAt DateTime?
-  shippedAt   DateTime?
-  deliveredAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  paidAt       DateTime?
+  confirmedAt  DateTime?
+  cancelledAt  DateTime?
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
   paymentDueAt DateTime?
 
-
-
-  cancelReason String?
+  cancelReason    String?
   paymentProofUrl String?
 
   shippingAddress String
-  storeAddress String
-  storeName    String
+  storeAddress    String
+  storeName       String
 
-  storeId    String
-  store      Store    @relation(fields: [storeId], references: [id])
-  userId     String
-  user       User    @relation(fields: [userId], references: [id])
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id])
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
 
   orderItems OrderItem[]
 }
 
 model OrderItem {
-  id        String   @id @default(uuid())
-  quantity  Int
-  unitPrice Int
-  productName String
+  id              String @id @default(uuid())
+  quantity        Int
+  unitPrice       Int
+  productName     String
   productCategory String
 
   orderId   String
   order     Order   @relation(fields: [orderId], references: [id])
-  productId String  
-  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
 }
 
 enum MovementType {
-  PURCHASED        
-  SOLD             
-  REALLOCATED      
-  CANCELED         
-  ADJUSTMENT       
+  PURCHASED
+  SOLD
+  REALLOCATED
+  CANCELED
+  ADJUSTMENT
 }
 
 model ProductMovement {
-  id              String   @id @default(uuid())
-  orderId         String?
-  quantityChange  Int
+  id             String  @id @default(uuid())
+  orderId        String?
+  quantityChange Int
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   productName     String
   productCategory String
-  movementType     MovementType
+  movementType    MovementType
   description     String?
-  fromStoreName   String?     
-  toStoreName      String?  
+  fromStoreName   String?
+  toStoreName     String?
 
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
   productId String
 }
 
-
-
 model Cart {
-  id        String   @id @default(uuid())
-  
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id String @id @default(uuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   cartItems CartItem[]
 
@@ -173,14 +218,14 @@ model Cart {
 }
 
 model CartItem {
-  id        String   @id @default(uuid())
-  quantity  Int
+  id       String @id @default(uuid())
+  quantity Int
 
-  cartId    String
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
 
   productId String
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -189,37 +234,37 @@ model CartItem {
 }
 
 model Product {
-  id        String   @id @default(uuid())
-  name      String
+  id          String  @id @default(uuid())
+  name        String
   description String?
-  price     Int
+  price       Int
 
   createAt  DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  categoryId String
-  category  ProductCategory @relation(fields: [categoryId], references: [id])
-  cartItems CartItem[]
-  productImages ProductImage[]
-  productStores  ProductStore[]
-  orderItems  OrderItem[]
+  categoryId       String
+  category         ProductCategory   @relation(fields: [categoryId], references: [id])
+  cartItems        CartItem[]
+  productImages    ProductImage[]
+  productStores    ProductStore[]
+  orderItems       OrderItem[]
   productMovements ProductMovement[]
 }
 
 model ProductCategory {
-  id        String   @id @default(uuid())
-  category  String   @unique
-  products  Product[] 
+  id       String    @id @default(uuid())
+  category String    @unique
+  products Product[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-} 
+}
 
 model ProductImage {
-  id        String   @id @default(uuid())
-  url       String
-  
-  product   Product  @relation(fields: [productId], references: [id])
+  id  String @id @default(uuid())
+  url String
+
+  product   Product @relation(fields: [productId], references: [id])
   productId String
 
   createdAt DateTime @default(now())
@@ -227,13 +272,13 @@ model ProductImage {
 }
 
 model ProductStore {
-  id       String   @id @default(uuid())
-  quantity Int 
+  id       String @id @default(uuid())
+  quantity Int
 
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
   productId String
-  store     Store    @relation(fields: [storeId], references: [id])
-  storeId  String 
+  store     Store   @relation(fields: [storeId], references: [id])
+  storeId   String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -242,10 +287,9 @@ model ProductStore {
 }
 
 model ShippingCost {
-  id                    String   @id @default(uuid())
-  costPerKilometer      Int
+  id               String @id @default(uuid())
+  costPerKilometer Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-

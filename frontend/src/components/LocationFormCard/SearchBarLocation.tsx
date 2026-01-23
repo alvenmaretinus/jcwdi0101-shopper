@@ -1,9 +1,9 @@
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
 import { SearchBar } from "../SearchBar";
-import { getForwardGeoIdn } from "@/services/geolocation/getForwardGeoIdn";
 import { Coords } from "@/types/Coords";
 import { MIN_LOCATION_SEARCH_LENGTH } from "@/constants/geo";
+import { getForwardGeoIdn } from "@/services/geolocation/getReverseGeoIdn";
 
 type Props = {
   setCoords: Dispatch<SetStateAction<Coords>>;

@@ -58,7 +58,7 @@ const reportItems = [
 ];
 
 export function AdminSidebar() {
-  const user = { role: "SUPERADMIN", email: "superadmin@shopper.com" }; // TODO: get the claims from jwt via supabase get session
+  const user = { role: "SUPERADMIN", email: "superadmin@shopper.com" }; // TODO: get the claims from jwt via Betterauth get session
   const isSuperAdmin = user.role === "SUPERADMIN" ? true : false;
   const logout = () => {
     // TODO: implement logout functionality
