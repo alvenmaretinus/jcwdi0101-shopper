@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { User, Package, MapPin, Tag, LogOut } from "lucide-react";
+import { User as UserIcon, Package, MapPin, Tag, LogOut } from "lucide-react";
 import Image from "next/image";
 import { authClient } from "@/lib/authClient";
+import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/apiFetch";
+import { User } from "@/types/User";
+import { ChangePictureDialog } from "./ChangePictureDialog";
 
 const Item = ({
   href,
@@ -28,17 +32,36 @@ const Item = ({
 );
 
 export const ProfileSidebar = () => {
+  const [isChangeImageOpen, setIsChangeImageOpen] = useState(false);
   const path = usePathname();
   const router = useRouter();
+  const [profileUrl, setProfileUrl] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  const { data } = authClient.useSession();
+
   const handleLogout = async () => {
     await authClient.signOut();
     router.replace("/login");
   };
 
+  useEffect(() => {
+    const initialFetch = async () => {
+      if (data) {
+        const user = await apiFetch<User>(`/user/${data?.user.id}`, {
+          method: "GET",
+        });
+        if (user.profileUrl) setProfileUrl(user.profileUrl);
+      }
+    };
+    initialFetch();
+  }, [data]);
+
   return (
     <aside className="p-6 rounded-2xl shadow-md">
       <div className="text-center mb-6">
-        <div
+        <button
+          onClick={() => setIsChangeImageOpen(true)}
           className="
             relative mx-auto mb-3
             w-16 h-16
@@ -46,10 +69,22 @@ export const ProfileSidebar = () => {
             md:w-24 md:h-24
             rounded-full overflow-hidden
             ring-2 ring-primary/20
+            cursor-pointer
             "
         >
-          <Image src="/sayur.jpg" fill className="object-cover" alt="profile" />
-        </div>
+          <Image
+            src={profileUrl || "/default_profile.png"}
+            fill
+            className="object-cover"
+            alt="profile"
+          />
+        </button>
+        <ChangePictureDialog
+          isOpen={isChangeImageOpen}
+          setIsOpen={setIsChangeImageOpen}
+          isUploadPicture={isUploading}
+          setIsUploadPicture={setIsUploading}
+        />
 
         <p className="font-bold">mockUser.name</p>
         <p className="text-xs text-muted-foreground">mockUser.email</p>
@@ -62,7 +97,7 @@ export const ProfileSidebar = () => {
         <Item
           href="/profile/profile"
           path={path}
-          icon={User}
+          icon={UserIcon}
           label="My Profile"
         />
         <Item
