@@ -79,6 +79,14 @@ export class UserAddressService {
 
   static async deleteAddress(userId: string, data: UserAddressIdInput) {
     const { id } = data;
+    const existingAddressesCount = await prisma.userAddress.count({
+      where: { userId },
+    });
+
+    if (existingAddressesCount === 1) {
+      throw new ConflictError("Cannot delete the last address");
+    }
+
     const address = await prisma.userAddress.findUnique({
       where: { id },
     });
