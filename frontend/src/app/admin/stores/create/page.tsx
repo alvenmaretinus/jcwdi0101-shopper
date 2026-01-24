@@ -2,20 +2,20 @@
 
 import { useState } from "react";
 import { MONAS_LOCATION } from "@/constants/location";
-import { LocationFormCard } from "@/components/LocationFormCard";
-import StoreDetailFormCard from "./_components/StoreDetailFormCard";
+import { LocationForm } from "@/components/LocationForm";
 import { SectionHeader } from "../../_components/SectionHeader";
-import { useLocationFormCard } from "@/components/LocationFormCard/useLocationFormCard";
+import { useLocationForm } from "@/components/LocationForm/useLocationForm";
 import { createStore } from "@/services/store/createStore";
 import { ActionButtons } from "../../_components/ActionButtons";
 import { useRouter } from "next/navigation";
+import StoreDetailFormCard from "./_components/StoreDetailFormCard";
 
 export default function StoreCreate() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [description, setDescription] = useState("");
   const { addressName, setAddressName, coords, setCoords } =
-    useLocationFormCard(MONAS_LOCATION, "");
+    useLocationForm(MONAS_LOCATION);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
@@ -47,9 +47,7 @@ export default function StoreCreate() {
         phone={phone}
         setPhone={setPhone}
       />
-      <LocationFormCard
-        title="Store Location"
-        subtitle="Set the location on the map"
+      <LocationForm
         coords={coords}
         setCoords={setCoords}
         addressName={addressName}

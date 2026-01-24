@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Navigation, Search } from "lucide-react";
+import { Navigation } from "lucide-react";
 import { toast } from "sonner";
 import { Dispatch, SetStateAction, useState } from "react";
 import { Coords } from "@/types/Coords";
@@ -28,17 +21,13 @@ const ReactMap = dynamic(
 );
 
 type Props = {
-  title: string;
-  subtitle: string;
   coords: Coords;
   setCoords: Dispatch<SetStateAction<Coords>>;
   addressName: string;
   setAddressName: Dispatch<SetStateAction<string>>;
 };
 
-export const LocationFormCard = ({
-  title,
-  subtitle,
+export const LocationForm = ({
   coords,
   setCoords,
   addressName,
@@ -88,64 +77,56 @@ export const LocationFormCard = ({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{subtitle}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="addressName">Address Name</Label>
-          <Input
-            id="addressName"
-            placeholder="e.g., Jl. Sudirman No. 123, Jakarta"
-            value={addressName}
-            onChange={(e) => setAddressName(e.target.value)}
-          />
-          <Button
-            size="sm"
-            variant="link"
-            className="text-xs text-muted-foreground"
-            onClick={handleAutoFill}
-            disabled={isFetchingAddress}
-          >
-            {isFetchingAddress
-              ? "Finding Address Name..."
-              : "Click here to autofill the address"}
-          </Button>
-        </div>
-
-        {/* Current Location Button */}
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="addressName">Address Name</Label>
+        <Input
+          id="addressName"
+          placeholder="e.g., Jl. Sudirman No. 123, Jakarta"
+          value={addressName}
+          onChange={(e) => setAddressName(e.target.value)}
+        />
         <Button
-          type="button"
-          variant="outline"
-          onClick={handleUseCurrentLocation}
-          disabled={isGettingLocation}
-          className="w-full"
+          size="sm"
+          variant="link"
+          className="text-xs text-muted-foreground"
+          onClick={handleAutoFill}
+          disabled={isFetchingAddress}
         >
-          <Navigation className="h-4 w-4 mr-2" />
-          {isGettingLocation
-            ? "Getting location..."
-            : "Use My Current Location"}
+          {isFetchingAddress
+            ? "Finding Address Name..."
+            : "Click here to autofill the address"}
         </Button>
+      </div>
 
-        {/* Search Bar */}
-        <div className="max-h-3.5">
-          <SearchBarLocation
-            setCoords={setCoords}
-            isShouldFly={isShouldFly}
-            setIsShouldFly={setIsShouldFly}
-          />
-        </div>
+      {/* Current Location Button */}
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleUseCurrentLocation}
+        disabled={isGettingLocation}
+        className="w-full"
+      >
+        <Navigation className="h-4 w-4 mr-2" />
+        {isGettingLocation ? "Getting location..." : "Use My Current Location"}
+      </Button>
 
-        <div className="w-full mt-10 h-[400px] sm:h-[500px] lg:h-[600px] xl:h-[700px]">
-          <ReactMap
-            isShouldFly={isShouldFly}
-            coords={coords}
-            setCoords={setCoords}
-          />
-        </div>
-      </CardContent>
-    </Card>
+      {/* Search Bar */}
+      <div className="max-h-3.5">
+        <SearchBarLocation
+          setCoords={setCoords}
+          isShouldFly={isShouldFly}
+          setIsShouldFly={setIsShouldFly}
+        />
+      </div>
+
+      <div className="w-full mt-10 h-[400px] sm:h-[500px] lg:h-[600px] xl:h-[700px]">
+        <ReactMap
+          isShouldFly={isShouldFly}
+          coords={coords}
+          setCoords={setCoords}
+        />
+      </div>
+    </>
   );
 };

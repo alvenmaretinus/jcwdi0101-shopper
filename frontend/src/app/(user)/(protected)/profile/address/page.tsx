@@ -26,11 +26,8 @@ export default async function AddressPage() {
 
       <div className="space-y-4 flex flex-col overflow-y-auto max-h-[45vh] sm:max-h-[55vh] md:max-h-[60vh] lg:max-h-[65vh]">
         {UserAddresses.map((address) => (
-          <Link href={`/address/${address.id}`}>
-            <div
-              key={address.id}
-              className="p-4 rounded-xl border border-border hover:bg-gray-50"
-            >
+          <Link key={address.id} href={`/address/${address.id}`}>
+            <div className="p-4 rounded-xl border border-border hover:bg-gray-50">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{address.addressType}</span>

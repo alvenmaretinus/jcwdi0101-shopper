@@ -1,7 +1,7 @@
 import { Coords } from "@/types/Coords";
 import { useState } from "react";
 
-export const useLocationFormCard = (
+export const useLocationForm = (
   initialLocation: Coords,
   initialAddressName = ""
 ) => {

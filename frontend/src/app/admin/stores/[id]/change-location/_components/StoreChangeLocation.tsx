@@ -2,8 +2,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { LocationFormCard } from "@/components/LocationFormCard";
-import { useLocationFormCard } from "@/components/LocationFormCard/useLocationFormCard";
+import { LocationForm } from "@/components/LocationForm";
+import { useLocationForm } from "@/components/LocationForm/useLocationForm";
 import { Store } from "@/types/Store";
 import { updateStore } from "@/services/store/updateStore";
 import { ActionButtons } from "@/app/admin/_components/ActionButtons";
@@ -15,11 +15,10 @@ export default function StoreChangeLocation({ store }: Props) {
   const router = useRouter();
   const [isSubmittiing, setIsSubmitting] = useState(false);
   const { id } = useParams<{ id: string }>();
-  const { coords, setCoords, addressName, setAddressName } =
-    useLocationFormCard(
-      { lat: store.latitude, lng: store.longitude },
-      store.addressName
-    );
+  const { coords, setCoords, addressName, setAddressName } = useLocationForm(
+    { lat: store.latitude, lng: store.longitude },
+    store.addressName
+  );
 
   const handleSave = async () => {
     if (addressName.trim() === "") {
@@ -42,9 +41,7 @@ export default function StoreChangeLocation({ store }: Props) {
 
   return (
     <div className="space-y-6">
-      <LocationFormCard
-        title="Change Location"
-        subtitle="Set new location on the map"
+      <LocationForm
         coords={coords}
         setCoords={setCoords}
         addressName={addressName}
