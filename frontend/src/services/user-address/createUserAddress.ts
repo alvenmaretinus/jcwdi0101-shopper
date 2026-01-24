@@ -1,13 +1,12 @@
 import { apiFetch } from "@/lib/apiFetch";
 import {
-  CreateStoreInput,
-  CreateStoreSchema,
-} from "@/schemas/store/CreateStoreSchema";
-import { Store } from "@/types/Store";
+  CreateUserAddressInput,
+  CreateUserAddressSchema,
+} from "@/schemas/user-address/CreateUserAddressSchema";
 import { toast } from "sonner";
 
-export const createStore = async (inputData: CreateStoreInput) => {
-  const parseResult = CreateStoreSchema.safeParse(inputData);
+export const createUserAddress = async (inputData: CreateUserAddressInput) => {
+  const parseResult = CreateUserAddressSchema.safeParse(inputData);
 
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0].message;
@@ -17,9 +16,8 @@ export const createStore = async (inputData: CreateStoreInput) => {
     throw new Error(firstError);
   }
 
-  const res = await apiFetch<Store>("/stores", {
+  await apiFetch("/user-address", {
     method: "POST",
     body: inputData,
   });
-  return res;
 };

@@ -85,12 +85,21 @@ model User {
   @@map("user")
 }
 
+enum AddressType {
+  HOME
+  OFFICE
+}
+
 model UserAddress {
   id        String  @id @default(uuid())
-  email     String
+
+  addressType AddressType
+  addressName String
+  recipientName String
+  
   isDefault Boolean @default(false)
-  longitude Decimal @db.Decimal(8, 5)
-  latitude  Decimal @db.Decimal(8, 5)
+  longitude Float
+  latitude  Float
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

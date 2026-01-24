@@ -44,6 +44,7 @@ export function LoginForm() {
           },
           onSuccess: (ctx) => {
             toast.success("Logged in successfully.");
+            router.replace(redirectTo);
           },
           onError: (ctx) => {
             toast.error(ctx.error.message);
@@ -51,7 +52,6 @@ export function LoginForm() {
           },
         }
       );
-      router.replace(redirectTo);
     } catch (err) {
       console.error(err);
       setIsLoading(false);

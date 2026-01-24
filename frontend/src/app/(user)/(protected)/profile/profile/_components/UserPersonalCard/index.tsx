@@ -22,10 +22,10 @@ const InfoItem = ({
   icon?: React.ReactNode;
   onClick: () => void;
 }) => (
-  <div className="flex items-center justify-between p-4 rounded-xl border border-border">
+  <div className="flex items-center justify-between p-4 rounded-xl border border-border flex-col md:flex-row">
     <div>
-      <Label className="text-muted-foreground text-sm">{label}</Label>
-      <p className="font-medium mt-1">{value}</p>
+      <Label className="text-muted-foreground text-sm sm:text-base md:text-sm lg:text-base">{label}</Label>
+      <p className="font-medium mt-1 text-base sm:text-lg md:text-base lg:text-lg">{value}</p>
     </div>
     {buttonText && (
       <Button onClick={onClick} variant="outline" size="sm">
@@ -45,8 +45,8 @@ export const UserCard = () => {
   const user = data?.user;
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-soft">
-      <h2 className="text-xl font-bold mb-6">Personal Information</h2>
+    <div className="bg-card rounded-2xl p-6 border">
+      <h2 className="text-xl sm:text-2xl md:text-xl lg:text-2xl font-bold mb-6">Personal Information</h2>
 
       <div className="space-y-4">
         <InfoItem
