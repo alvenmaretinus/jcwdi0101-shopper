@@ -11,7 +11,9 @@ export const addEmployee = async (inputData: AddEmployeeInput) => {
 
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0].message;
-    toast.error(firstError || "Invalid input");
+    if (typeof window !== "undefined") {
+      toast.error(firstError || "Invalid input");
+    }
     throw new Error(firstError);
   }
 
