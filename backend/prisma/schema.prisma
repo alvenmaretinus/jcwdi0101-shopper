@@ -98,8 +98,8 @@ model UserAddress {
   recipientName String
   
   isDefault Boolean @default(false)
-  longitude Decimal @db.Decimal(8, 5)
-  latitude  Decimal @db.Decimal(8, 5)
+  longitude Float
+  latitude  Float
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
