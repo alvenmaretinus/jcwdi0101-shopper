@@ -85,12 +85,16 @@ model User {
   @@map("user")
 }
 
+enum AddressType {
+  HOME
+  OFFICE
+}
+
 model UserAddress {
   id        String  @id @default(uuid())
-  email     String
 
+  addressType AddressType
   addressName String
-  fullAddress  String
   recipientName String
   
   isDefault Boolean @default(false)
