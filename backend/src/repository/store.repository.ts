@@ -45,7 +45,6 @@ export class StoreRepository {
         _count: {
           select: {
             employees: true,
-            carts: true,
             orders: true,
             productStores: true,
           },
