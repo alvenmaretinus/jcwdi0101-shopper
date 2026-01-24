@@ -10,7 +10,7 @@ export default async function AddressPage() {
   const UserAddresses = await getUserAddresses(nextHeaders);
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-soft">
+    <div className="bg-card rounded-2xl border border-border p-6 shadow-soft">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold">Saved Addresses</h2>
         <Button
@@ -24,7 +24,7 @@ export default async function AddressPage() {
         </Button>
       </div>
 
-      <div className="space-y-4 flex flex-col">
+      <div className="space-y-4 flex flex-col overflow-y-auto max-h-[45vh] sm:max-h-[55vh] md:max-h-[60vh] lg:max-h-[65vh]">
         {UserAddresses.map((address) => (
           <Link href={`/address/${address.id}`}>
             <div

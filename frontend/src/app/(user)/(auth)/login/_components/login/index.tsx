@@ -1,10 +1,9 @@
-import { NAVBAR_HEIGHT } from "@/constants/navbar";
 import Image from "next/image";
 import { LoginForm } from "./LoginForm";
 
 export const Login = () => {
   return (
-    <div className={`grid h-[calc(100vh-${NAVBAR_HEIGHT}px)] lg:grid-cols-2`}>
+    <div className={`grid h-[calc(100vh-84px)] lg:grid-cols-2`}>
       <div className="flex flex-col gap-4 p-6 md:p-10">
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-xs">
