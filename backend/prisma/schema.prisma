@@ -67,7 +67,7 @@ model User {
   email            String
   emailVerified    Boolean   @default(false)
   role             UserRole  @default(USER)
-  profileUrl       String?
+  image            String?
   referralCode     String    @unique @default(uuid())
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
@@ -100,6 +100,7 @@ model UserAddress {
   isDefault Boolean @default(false)
   longitude Float
   latitude  Float
+  postCode String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -116,7 +117,8 @@ model Store {
   longitude   Float
   latitude    Float
   addressName String
-
+  postCode    String
+  
   employees User[]
 
   createdAt DateTime @default(now())
@@ -295,10 +297,4 @@ model ProductStore {
   @@unique([productId, storeId])
 }
 
-model ShippingCost {
-  id               String @id @default(uuid())
-  costPerKilometer Int
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}

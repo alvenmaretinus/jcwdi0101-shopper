@@ -1,8 +1,14 @@
 import { apiFetch } from "@/lib/apiFetch";
-import { UpdateUserAddressInput, UpdateUserAddressSchema } from "@/schemas/user-address/UpdateUserAddressSchema";
+import {
+  UpdateUserAddressInput,
+  UpdateUserAddressSchema,
+} from "@/schemas/user-address/UpdateUserAddressSchema";
 import { toast } from "sonner";
+import { getReverseGeoIdn } from "../geolocation/getReverseGeoIdn";
 
-export const updateUserAddressById = async (inputData: UpdateUserAddressInput) => {
+export const updateUserAddressById = async (
+  inputData: UpdateUserAddressInput
+) => {
   const parseResult = UpdateUserAddressSchema.safeParse(inputData);
 
   if (!parseResult.success) {
@@ -12,9 +18,12 @@ export const updateUserAddressById = async (inputData: UpdateUserAddressInput) =
     }
     throw new Error(firstError);
   }
-
+  const { zip_code } = await getReverseGeoIdn({
+    lat: inputData.latitude,
+    lng: inputData.longitude,
+  });
   await apiFetch(`/user-address/${inputData.id}`, {
     method: "PATCH",
-    body: inputData,
+    body: { ...inputData, postCode: zip_code },
   });
 };

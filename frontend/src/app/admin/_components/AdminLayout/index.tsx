@@ -1,3 +1,5 @@
+"use client"
+
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState } from "react";

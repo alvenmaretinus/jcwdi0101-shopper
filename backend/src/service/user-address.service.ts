@@ -71,7 +71,7 @@ export class UserAddressService {
 
         await tx.userAddress.update({
           where: { id },
-          data: { isDefault: true },
+          data: { ...updateData, isDefault: true },
         });
       });
     }

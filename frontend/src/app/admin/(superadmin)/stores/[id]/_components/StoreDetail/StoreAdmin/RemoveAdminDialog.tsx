@@ -1,15 +1,15 @@
 import { DeleteDialog } from "@/components/Dialog/DeleteDialog";
 import { removeEmployee } from "@/services/store/removeEmployee";
 import { Store } from "@/types/Store";
-import { Employee } from "@/types/Employee";
+import { User } from "@/types/User";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
 type Props = {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   store: Store;
-  selectedAdmin: Employee | null;
-  setSelectedAdmin: Dispatch<SetStateAction<Employee | null>>;
+  selectedAdmin: User | null;
+  setSelectedAdmin: Dispatch<SetStateAction<User | null>>;
 };
 
 export const RemoveAdminDialog = ({

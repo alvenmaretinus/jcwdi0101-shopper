@@ -1,29 +1,23 @@
-import { MIN_LOCATION_SEARCH_LENGTH } from "@/constants/geo";
-import { toast } from "sonner";
-
-type GeoResult = {
+export async function getReverseGeoIdn({
+  lat,
+  lng,
+}: {
   lat: number;
   lng: number;
-  name: string;
-};
+}) {
+  if (!lat || !lng)
+    return {
+      zip_code: "",
+      label: "",
+    };
 
-export async function getForwardGeoIdn(
-  location: string
-): Promise<GeoResult[] | null> {
-  if (!location || location.length < MIN_LOCATION_SEARCH_LENGTH) return null;
+  const res = await fetch(`/api/reverse-geo-idn?lat=${lat}&lng=${lng}`);
+  if (!res.ok) throw new Error();
 
-  try {
-    const res = await fetch(
-      `/api/forward-geo-idn?q=${encodeURIComponent(location)}`
-    );
+  const results = await res.json();
 
-    if (!res.ok) throw new Error();
-
-    const results = await res.json();
-    return results as GeoResult[];
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to get location");
-    return null;
-  }
+  return results as {
+    zip_code: string;
+    label: string;
+  };
 }

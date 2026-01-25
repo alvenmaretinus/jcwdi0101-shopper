@@ -4,6 +4,7 @@ import {
   CreateUserAddressSchema,
 } from "@/schemas/user-address/CreateUserAddressSchema";
 import { toast } from "sonner";
+import { getReverseGeoIdn } from "../geolocation/getReverseGeoIdn";
 
 export const createUserAddress = async (inputData: CreateUserAddressInput) => {
   const parseResult = CreateUserAddressSchema.safeParse(inputData);
@@ -15,9 +16,12 @@ export const createUserAddress = async (inputData: CreateUserAddressInput) => {
     }
     throw new Error(firstError);
   }
-
+  const { zip_code } = await getReverseGeoIdn({
+    lat: inputData.latitude,
+    lng: inputData.longitude,
+  });
   await apiFetch("/user-address", {
     method: "POST",
-    body: inputData,
+    body: { ...inputData, postCode: zip_code },
   });
 };

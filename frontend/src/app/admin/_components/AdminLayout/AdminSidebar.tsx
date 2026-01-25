@@ -31,6 +31,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { authClient } from "@/lib/authClient";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getUserByEmail } from "@/services/user/getUserByEmail";
 
 const mainMenuItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
@@ -58,11 +62,27 @@ const reportItems = [
 ];
 
 export function AdminSidebar() {
-  const user = { role: "SUPERADMIN", email: "superadmin@shopper.com" }; // TODO: get the claims from jwt via Betterauth get session
-  const isSuperAdmin = user.role === "SUPERADMIN" ? true : false;
-  const logout = () => {
-    // TODO: implement logout functionality
-    console.log("logout the user");
+  const { data } = authClient.useSession();
+  const user = data?.user;
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    const initialFetch = async () => {
+      if (user) {
+        const { role } = await getUserByEmail(user.email);
+        if (role === "SUPERADMIN") {
+          setIsSuperAdmin(true);
+        }
+      }
+    };
+
+    initialFetch();
+  }, [user]);
+
+  const router = useRouter();
+  const logout = async () => {
+    await authClient.signOut();
+    router.push("/login");
   };
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -129,7 +149,7 @@ export function AdminSidebar() {
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-sidebar-foreground truncate">
-              {user.email}
+              {user?.email || "mail@shopper.com"}
             </p>
           </div>
           <Tooltip delayDuration={500}>

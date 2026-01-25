@@ -75,7 +75,6 @@ export const ChangePictureDialog = ({
     }
   };
 
-  const { data } = authClient.useSession();
   const { startUpload, isUploading } = useUploadThing("profilePicture", {
     onClientUploadComplete: async (res) => {
       const key = res[0]?.key;
@@ -83,10 +82,7 @@ export const ChangePictureDialog = ({
       if (!key || !url) return;
       try {
         // TODO: also put file key so later we can delete it if user changes picture
-        await apiFetch(`/user/${data?.user.id}`, {
-          method: "PATCH",
-          body: { profileUrl: url },
-        });
+        await authClient.updateUser({ image: url });
         toast.success("Profile picture updated successfully!");
       } catch (error) {
         console.warn(error);
@@ -102,9 +98,7 @@ export const ChangePictureDialog = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!data?.user) {
-      return toast.error("Failed to change profile picture. Please try again.");
-    }
+
     if (!selectedFile) return toast.error("Please select an image");
     if (isUploading || isUploadPicture) {
       return toast.error("Upload in progress, please wait.");

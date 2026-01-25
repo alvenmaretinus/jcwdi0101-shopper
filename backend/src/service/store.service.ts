@@ -10,7 +10,7 @@ import { UpdateStoreInput } from "../schema/store/UpdateStoreSchema";
 
 export class StoreService {
   static async createStore(data: CreateStoreInput) {
-    const { name, phone, coords, addressName, description } = data;
+    const { name, phone, coords, addressName, description, postCode } = data;
     return await StoreRepository.createStore({
       name,
       phone,
@@ -18,6 +18,7 @@ export class StoreService {
       latitude: coords.lat,
       addressName,
       description,
+      postCode,
     });
   }
 
@@ -36,7 +37,8 @@ export class StoreService {
   }
 
   static async updateStore(data: UpdateStoreInput) {
-    const { id, name, lng, lat, description, addressName, phone } = data;
+    const { id, name, lng, lat, description, addressName, phone, postCode } =
+      data;
     const store = await StoreRepository.getStoreByIdWithCounts({ id });
     if (!store) throw new NotFoundError("Store Not Found");
 
@@ -48,6 +50,7 @@ export class StoreService {
       addressName,
       description,
       phone,
+      postCode,
     });
   }
 

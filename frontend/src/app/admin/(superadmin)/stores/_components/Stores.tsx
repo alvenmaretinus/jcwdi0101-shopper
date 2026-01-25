@@ -15,8 +15,8 @@ import { Plus, Search, MapPin, Users } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { SectionHeader } from "../../_components/SectionHeader";
 import { Store } from "@/types/Store";
+import { SectionHeader } from "@/app/admin/_components/SectionHeader";
 
 type Props = { stores: (Store & { employeeCount: number })[] };
 

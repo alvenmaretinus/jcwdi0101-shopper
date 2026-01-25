@@ -8,6 +8,7 @@ export const UpdateStoreSchema = z.strictObject({
   description: z.string().optional(),
   addressName: z.string().min(1, "Address is required").optional(),
   phone: z.string().min(1, "Phone number is required").optional(),
+  postCode: z.string().min(1, "Post code is required").optional(),
 });
 
 export type UpdateStoreInput = z.infer<typeof UpdateStoreSchema>;
