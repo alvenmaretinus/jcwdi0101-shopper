@@ -3,19 +3,20 @@ import { CartRepository } from "../repository/cart.repository";
 import { BadRequestError } from "../error/BadRequestError";
 
 export class CartService {
-  static async addToCart(userId: string, storeId: string, productId: string, quantity: number) {
-    const cart = (await CartRepository.findCartByUserAndStore(userId, storeId)) || (await CartRepository.createCart(userId, storeId));
+  static async addToCart(userId: string, productId: string, quantity: number) {
+    const cart = (await CartRepository.findCartByUser(userId)) || (await CartRepository.createCart(userId));
     const existing = await CartRepository.findCartItem(cart.id, productId);
     const requestedQuantity = existing ? existing.quantity + quantity : quantity;
-    const productStock = await prisma.productStore.findUnique({
-      where: { productId_storeId: { productId, storeId } },
+    const productStores = await prisma.productStore.findMany({
+      where: { productId },
       select: { quantity: true },
     });
-    if (!productStock) {
-      throw new BadRequestError("Product not found in the specified store.");
+    const productTotal = productStores.reduce((s, p) => s + (p.quantity ?? 0), 0);
+    if (productTotal <= 0) {
+      throw new BadRequestError("Product not found in any store.");
     }
-    if (productStock.quantity < requestedQuantity) {
-      throw new BadRequestError("Insufficient stock for this product.");
+    if (productTotal < requestedQuantity) {
+      throw new BadRequestError("Insufficient total stock for this product.");
     }
     if (existing) {
       return CartRepository.incrementCartItemQuantity(existing.id, quantity);
@@ -35,32 +36,41 @@ export class CartService {
     });
   }
 
-  static async getCart(userId: string, storeId: string) {
-    const cartWithItems = await CartRepository.findCartWithItemsAndProduct(userId, storeId);
+  static async getCart(userId: string, recommendedStoreId?: string) {
+    const cartWithItems = await CartRepository.findCartWithItemsAndProduct(userId);
     if (!cartWithItems) {
-      return { cartItems: [] };
+      return { cartId: null, cartItems: [] };
     }
     const enrichedItems = await Promise.all(
       cartWithItems.cartItems.map(async (item) => {
-        const productStock = await prisma.productStore.findUnique({
-          where: { productId_storeId: { productId: item.productId, storeId } },
-          select: { quantity: true },
+        // get stock for the selected store and productTotal across all stores
+        const productStores = await prisma.productStore.findMany({
+          where: { productId: item.productId },
+          select: { quantity: true, storeId: true },
         });
 
-        const stockQty = productStock?.quantity ?? 0;
+        const productTotal = productStores.reduce((s, p) => s + (p.quantity ?? 0), 0);
+        const storeEntry = recommendedStoreId ? productStores.find((p) => p.storeId === recommendedStoreId) : undefined;
+        const stockQty = storeEntry?.quantity ?? 0;
+
         return {
           ...item,
           stockQuantity: stockQty,
+          productTotal,
           outOfStock: stockQty <= 0,
           canAddToCart: stockQty > 0,
         };
       }),
     );
-    return enrichedItems;
+
+    return {
+      cartId: cartWithItems.id,
+      cartItems: enrichedItems,
+    };
   }
 
-  static async updateCartItemQuantity(userId: string, storeId: string, productId: string, quantity: number) {
-    const cart = await CartRepository.findCartByUserAndStore(userId, storeId);
+  static async updateCartItemQuantity(userId: string, productId: string, quantity: number) {
+    const cart = await CartRepository.findCartByUser(userId);
     if (!cart) {
       throw new BadRequestError("Cart not found.");
     }
@@ -74,20 +84,18 @@ export class CartService {
       return CartRepository.deleteCartItem(cartItem.id);
     }
 
-    const productStock = await prisma.productStore.findUnique({
-      where: { productId_storeId: { productId, storeId } },
-      select: { quantity: true },
-    });
-
-    if (!productStock || productStock.quantity < quantity) {
-      throw new BadRequestError("Insufficient stock for this product.");
+    // validate against ProductTotal (sum across all stores) as cart-level limit
+    const productStores = await prisma.productStore.findMany({ where: { productId }, select: { quantity: true } });
+    const productTotal = productStores.reduce((s, p) => s + (p.quantity ?? 0), 0);
+    if (productTotal < quantity) {
+      throw new BadRequestError("Insufficient total stock for this product.");
     }
 
     return CartRepository.updateCartItemQuantity(cartItem.id, quantity);
   }
 
-  static async deleteCartItem(userId: string, storeId: string, productId: string) {
-    const cart = await CartRepository.findCartByUserAndStore(userId, storeId);
+  static async deleteCartItem(userId: string, productId: string) {
+    const cart = await CartRepository.findCartByUser(userId);
     if (!cart) {
       throw new BadRequestError("Cart not found.");
     }
