@@ -4,14 +4,14 @@ import { SectionHeader } from "@/app/admin/_components/SectionHeader";
 import DeleteStoreDialog from "./DeleteStoreDialog";
 import { StoreInformation } from "./StoreInformation";
 import { Store } from "@/types/Store";
-import { Employee } from "@/types/Employee";
+import { User } from "@/types/User";
 import { useState } from "react";
 import { StoreAdmin } from "./StoreAdmin";
 import { useRouter } from "next/navigation";
 
 type Props = {
   initialStore: Store & {
-    employees: Employee[];
+    employees: User[];
   };
 };
 export const StoreDetail = ({ initialStore }: Props) => {

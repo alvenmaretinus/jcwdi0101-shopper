@@ -3,7 +3,7 @@ import {
   AddEmployeeInput,
   AddEmployeeSchema,
 } from "@/schemas/store/AddEmployeeSchema";
-import { Employee } from "@/types/Employee";
+import { User } from "@/types/User";
 import { toast } from "sonner";
 
 export const addEmployee = async (inputData: AddEmployeeInput) => {
@@ -18,7 +18,7 @@ export const addEmployee = async (inputData: AddEmployeeInput) => {
   }
 
   const { id, ...data } = inputData;
-  const res = await apiFetch<Employee>(`/stores/${id}/employees/`, {
+  const res = await apiFetch<User>(`/stores/${id}/employees/`, {
     method: "PATCH",
     body: data,
   });

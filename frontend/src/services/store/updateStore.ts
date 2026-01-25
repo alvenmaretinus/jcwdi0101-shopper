@@ -5,6 +5,7 @@ import {
 } from "@/schemas/store/UpdateStoreSchema";
 import { Store } from "@/types/Store";
 import { toast } from "sonner";
+import { getReverseGeoIdn } from "../geolocation/getReverseGeoIdn";
 
 export const updateStore = async (inputData: UpdateStoreInput) => {
   const parseResult = UpdateStoreSchema.safeParse(inputData);
@@ -18,9 +19,18 @@ export const updateStore = async (inputData: UpdateStoreInput) => {
   }
 
   const { id, ...data } = inputData;
+
+  let postCode: string | undefined = undefined;
+  if (data.lat && data.lng) {
+    const { zip_code } = await getReverseGeoIdn({
+      lat: data.lat,
+      lng: data.lng,
+    });
+    postCode = zip_code;
+  }
   const res = await apiFetch<Store[]>(`/stores/${id}`, {
     method: "PATCH",
-    body: data,
+    body: { ...data, postCode },
   });
   return res;
 };

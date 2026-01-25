@@ -3,10 +3,10 @@ import { useState } from "react";
 
 export const useLocationForm = (
   initialLocation: Coords,
-  initialAddressName = ""
+  initialAddressName?: string
 ) => {
   const [coords, setCoords] = useState<Coords>(initialLocation);
-  const [addressName, setAddressName] = useState(initialAddressName);
+  const [addressName, setAddressName] = useState(initialAddressName ?? "");
 
   return {
     coords,

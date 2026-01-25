@@ -5,6 +5,7 @@ import {
 } from "@/schemas/store/CreateStoreSchema";
 import { Store } from "@/types/Store";
 import { toast } from "sonner";
+import { getReverseGeoIdn } from "../geolocation/getReverseGeoIdn";
 
 export const createStore = async (inputData: CreateStoreInput) => {
   const parseResult = CreateStoreSchema.safeParse(inputData);
@@ -16,10 +17,14 @@ export const createStore = async (inputData: CreateStoreInput) => {
     }
     throw new Error(firstError);
   }
+  const { zip_code } = await getReverseGeoIdn({
+    lat: inputData.coords.lat,
+    lng: inputData.coords.lng,
+  });
 
   const res = await apiFetch<Store>("/stores", {
     method: "POST",
-    body: inputData,
+    body: { ...inputData, postCode: zip_code },
   });
   return res;
 };

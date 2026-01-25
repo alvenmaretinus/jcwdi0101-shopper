@@ -7,6 +7,7 @@ export const CreateUserAddressSchema = z.object({
   recipientName: z.string().min(1,"Recipient name is required"),
   longitude: z.number(),
   latitude: z.number(),
+  postCode: z.string().min(1,"Post code is required"),
 
 });
 

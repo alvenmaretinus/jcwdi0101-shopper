@@ -5,10 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { User as UserIcon, Package, MapPin, Tag, LogOut } from "lucide-react";
 import Image from "next/image";
 import { authClient } from "@/lib/authClient";
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/apiFetch";
-import { User } from "@/types/User";
+import { useState } from "react";
 import { ChangePictureDialog } from "./ChangePictureDialog";
+import { format } from "date-fns";
 
 const Item = ({
   href,
@@ -35,27 +34,15 @@ export const ProfileSidebar = () => {
   const [isChangeImageOpen, setIsChangeImageOpen] = useState(false);
   const path = usePathname();
   const router = useRouter();
-  const [profileUrl, setProfileUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
   const { data } = authClient.useSession();
+  const user = data?.user
 
   const handleLogout = async () => {
     await authClient.signOut();
     router.replace("/login");
   };
-
-  useEffect(() => {
-    const initialFetch = async () => {
-      if (data) {
-        const user = await apiFetch<User>(`/user/${data?.user.id}`, {
-          method: "GET",
-        });
-        if (user.profileUrl) setProfileUrl(user.profileUrl);
-      }
-    };
-    initialFetch();
-  }, [data]);
 
   return (
     <aside className="p-6 rounded-2xl shadow-md">
@@ -73,7 +60,7 @@ export const ProfileSidebar = () => {
             "
         >
           <Image
-            src={profileUrl || "/default_profile.png"}
+            src={user?.image || "/default_profile.png"}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             fill
             className="object-cover"
@@ -87,10 +74,10 @@ export const ProfileSidebar = () => {
           setIsUploadPicture={setIsUploading}
         />
 
-        <p className="font-bold">mockUser.name</p>
-        <p className="text-xs text-muted-foreground">mockUser.email</p>
+        <p className="font-bold">{user?.name||"user"}</p>
+        <p className="text-xs text-muted-foreground">{user?.email||"mail@shopper.com"}</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Member since mockUser.memberSince
+         {user?.createdAt? "Member since " + format(user.createdAt, "dd MMMM yyyy") : "Member since ?"}
         </p>
       </div>
 

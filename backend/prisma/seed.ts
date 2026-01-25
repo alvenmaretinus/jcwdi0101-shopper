@@ -1,9 +1,6 @@
 import { prisma } from "../src/lib/db/prisma";
-import { deleteUsers } from "./seeds/deleteUsers";
 
-async function main() {
-  await deleteUsers();
-}
+async function main() {}
 main()
   .then(async () => {
     await prisma.$disconnect();

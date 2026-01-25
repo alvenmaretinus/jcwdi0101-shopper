@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { MONAS_LOCATION } from "@/constants/location";
 import { LocationForm } from "@/components/LocationForm";
-import { SectionHeader } from "../../_components/SectionHeader";
 import { useLocationForm } from "@/components/LocationForm/useLocationForm";
 import { createStore } from "@/services/store/createStore";
-import { ActionButtons } from "../../_components/ActionButtons";
 import { useRouter } from "next/navigation";
 import StoreDetailFormCard from "./_components/StoreDetailFormCard";
+import { SectionHeader } from "@/app/admin/_components/SectionHeader";
+import { ActionButtons } from "@/app/admin/_components/ActionButtons";
 
 export default function StoreCreate() {
   const [name, setName] = useState("");

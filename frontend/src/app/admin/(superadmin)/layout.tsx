@@ -1,10 +1,13 @@
 import { headers } from "next/headers";
-import { AdminLayout } from "./_components/AdminLayout";
 import { authClient } from "@/lib/authClient";
 import { notFound, redirect } from "next/navigation";
 import { getUserByEmail } from "@/services/user/getUserByEmail";
 
-const AdminLayoutPage = async ({ children }: { children: React.ReactNode }) => {
+const SuperAdminLayoutPage = async ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const nextHeaders = await headers();
   const { data } = await authClient.getSession({
     fetchOptions: {
@@ -20,12 +23,12 @@ const AdminLayoutPage = async ({ children }: { children: React.ReactNode }) => {
   if (!user) {
     return redirect("/login");
   }
-  const isAdmin = user.role === "ADMIN" || user.role === "SUPERADMIN";
-  if (!isAdmin) {
+  const isSuperAdmin = user.role === "SUPERADMIN";
+  if (!isSuperAdmin) {
     return notFound();
   }
 
-  return <AdminLayout>{children}</AdminLayout>;
+  return children;
 };
 
-export default AdminLayoutPage;
+export default SuperAdminLayoutPage;

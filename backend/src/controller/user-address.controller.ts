@@ -10,21 +10,20 @@ const router = Router();
 router.use(isAuth);
 
 router.get("/", async (req, res) => {
-  const user = req.user!
+  const user = req.user!;
   const result = await UserAddressService.getAddressesByUserId(user.id);
   return res.json(result);
 });
 
 router.get("/:id", async (req, res) => {
-    const id=req.params.id;
-    const inputData = UserAddressIdSchema.parse({id});
-    const result = await UserAddressService.getAddressById(inputData);
-    return res.json(result);
+  const id = req.params.id;
+  const inputData = UserAddressIdSchema.parse({ id });
+  const result = await UserAddressService.getAddressById(inputData);
+  return res.json(result);
 });
 
 router.post("/", async (req, res) => {
-  const user= req.user!
-  console.log(user)
+  const user = req.user!;
   const inputData = CreateUserAddressSchema.parse({
     ...req.body,
     userId: user.id,
@@ -34,11 +33,11 @@ router.post("/", async (req, res) => {
 });
 
 router.patch("/:id", async (req, res) => {
-  const user= req.user!
-  const id=req.params.id;
+  const user = req.user!;
+  const id = req.params.id;
   const inputData = UpdateUserAddressSchema.parse({
     ...req.body,
-    userId:user.id,
+    userId: user.id,
     id,
   });
   const result = await UserAddressService.updateAddress(user.id, inputData);
@@ -46,9 +45,9 @@ router.patch("/:id", async (req, res) => {
 });
 
 router.delete("/:id", async (req, res) => {
-  const user= req.user!
-  const id=req.params.id;
-  const inputData = UserAddressIdSchema.parse({id});
+  const user = req.user!;
+  const id = req.params.id;
+  const inputData = UserAddressIdSchema.parse({ id });
   const result = await UserAddressService.deleteAddress(user.id, inputData);
   return res.json(result);
 });

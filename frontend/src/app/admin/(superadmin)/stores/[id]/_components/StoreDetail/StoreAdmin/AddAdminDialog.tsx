@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { addEmployee } from "@/services/store/addEmployee";
 import { getStoreById } from "@/services/store/getStoreById";
 import { Store } from "@/types/Store";
-import { Employee } from "@/types/Employee";
+import { User } from "@/types/User";
 import { useEffect, useState } from "react";
 import z from "zod";
+import { getUserByEmail } from "@/services/user/getUserByEmail";
 
 type Props = {
   isAdminOpen: boolean;
@@ -33,7 +34,7 @@ export const AddAdminDialog = ({
   const [emailSearch, setEmailSearch] = useState("");
   const [searchError, setSearchError] = useState("");
   const [foundUser, setFoundUser] = useState<
-    (Employee & { storeName?: string }) | null
+    (User & { storeName?: string }) | null
   >(null);
 
   const handleEmailSearch = async () => {
@@ -41,16 +42,7 @@ export const AddAdminDialog = ({
     if (!parseResult.success) return setSearchError("Invalid email");
 
     try {
-      // TODO: use real one
-      // const user=await getUserByEmail(emailSearch)
-      const user: Employee = {
-        id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-        email: "gmail",
-        profileUrl: null,
-        referralCode: "REF456",
-        storeId: null,
-        employeeJoinedAt: null,
-      };
+      const user = await getUserByEmail(emailSearch);
       if (!user) return setSearchError("Email Not found");
 
       if (user.storeId) {

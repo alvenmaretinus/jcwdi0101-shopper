@@ -3,7 +3,7 @@ import { MapPin } from "lucide-react";
 import { SearchBar } from "../SearchBar";
 import { Coords } from "@/types/Coords";
 import { MIN_LOCATION_SEARCH_LENGTH } from "@/constants/geo";
-import { getForwardGeoIdn } from "@/services/geolocation/getReverseGeoIdn";
+import { getForwardGeoIdn } from "@/services/geolocation/getForwardGeoIdn";
 
 type Props = {
   setCoords: Dispatch<SetStateAction<Coords>>;
