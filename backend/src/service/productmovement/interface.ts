@@ -1,5 +1,7 @@
+import { CreateProductMovementInput } from "../../schema/productmovement";
+
 interface ProductMovementService {
-    createProductMovement(data: any): Promise<any>;
+    createProductMovement(data: CreateProductMovementInput): Promise<any>;
     getProductMovementsByFilter(filter: Partial<any>): Promise<any[]>;
 }
 

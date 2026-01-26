@@ -1,7 +1,9 @@
+import { ProductStore, ProductStoreReq } from "./entities";
+
 export interface ProductStoreRepo {
-    createProductStore(data: any): Promise<any>;
-    getProductStoreByID(id: string): Promise<any | null>;
-    getProductStoresByFilter(filter: Partial<any>): Promise<any[]>;
-    updateProductStore(id: string, data: Partial<any>): Promise<any>;
-    deleteProductStore(id: string): Promise<void>;
+    createProductStore(data: ProductStoreReq): Promise<ProductStore>;
+    getProductStoreByID(id: string): Promise<ProductStore | null>;
+    getProductStoresByFilter(filter: Partial<ProductStore>): Promise<ProductStore[]>;
+    updateProductStore(id: string, data: Partial<ProductStore>): Promise<ProductStore>;
+    deleteProductStore(id: string): Promise<ProductStore>;
 }

@@ -4,6 +4,7 @@ import userRouter from "./user";
 import authRouter from "./auth";
 import productRouter from "./product";
 import productStoreRouter from "./productstore";
+import productMovementRouter from "./productmovement";
 
 export const appRouter = Router();
 
@@ -13,3 +14,4 @@ appRouter.use(userRouter);
 appRouter.use(authRouter);
 appRouter.use(productRouter);
 appRouter.use(productStoreRouter);
+appRouter.use(productMovementRouter);

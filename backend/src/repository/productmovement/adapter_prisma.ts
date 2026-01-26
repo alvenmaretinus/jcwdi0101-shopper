@@ -1,5 +1,7 @@
-import { PrismaClient } from "../../../prisma/generated/client";
+import { PrismaClient, ProductMovement } from "../../../prisma/generated/client";
+import { ProductMovementReq } from "./entities";
 import { ProductMovementRepo } from "./interface";
+import { v4 }from "uuid";
 
 class PrismaRepository implements ProductMovementRepo {
     private prisma: PrismaClient;
@@ -7,13 +9,18 @@ class PrismaRepository implements ProductMovementRepo {
     constructor(prisma: PrismaClient) {
         this.prisma = prisma;
     }
-    // TODO: Define proper data types instead of any and add linkings to products
-    async createProductMovement(data: any): Promise<any> {
+    // TODO: Define Mapper from prisma type to our type
+    async createProductMovement(data: ProductMovementReq): Promise<ProductMovement> {
         return this.prisma.productMovement.create({
-            data,
+            data: {
+                id: v4(),
+                ...data,
+                productName: '',
+                productCategory: '',
+            },
         });
     }
-    async getProductMovementsByFilter(filter: Partial<any>): Promise<any[]> {
+    async getProductMovementsByFilter(filter: Partial<ProductMovementReq>): Promise<ProductMovement[]> {
         return this.prisma.productMovement.findMany({
             where: filter,
         });

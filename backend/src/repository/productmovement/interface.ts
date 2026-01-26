@@ -1,4 +1,7 @@
+
+import { ProductMovementReq,  ProductMovement } from "./entities";
+
 export interface ProductMovementRepo {
-    createProductMovement(data: any): Promise<any>;
-    getProductMovementsByFilter(filter: Partial<any>): Promise<any[]>;
+    createProductMovement(data: ProductMovementReq): Promise<ProductMovement>;
+    getProductMovementsByFilter(filter: Partial<ProductMovementReq>): Promise<ProductMovement[]>;
 }

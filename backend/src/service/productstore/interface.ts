@@ -1,8 +1,11 @@
+import { ProductStore } from "../../repository/productstore/entities";
+import { GetProductStoresByFilterInput, CreateProductStoreInput, UpdateProductStoreInput } from "../../schema/productstore";
+
 interface ProductStoreService {
-    createProductStore(data: any): Promise<any>;
-    getProductStoreByID(id: string): Promise<any | null>;
-    getProductStoresByFilter(filter: Partial<any>): Promise<any[]>;
-    updateProductStore(id: string, data: Partial<any>): Promise<any>;
+    createProductStore(data: CreateProductStoreInput): Promise<ProductStore>;
+    getProductStoreByID(id: string): Promise<ProductStore | null>;
+    getProductStoresByFilter(filter: Partial<GetProductStoresByFilterInput>): Promise<ProductStore[]>;
+    updateProductStore(id: string, data: Partial<UpdateProductStoreInput>): Promise<ProductStore>;
     deleteProductStore(id: string): Promise<void>;
 }
 

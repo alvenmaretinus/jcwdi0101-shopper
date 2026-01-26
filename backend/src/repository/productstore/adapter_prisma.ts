@@ -1,15 +1,17 @@
 import { PrismaClient } from "../../../prisma/generated/client";
 import { ProductStoreCreateInput, ProductStoreUpdateInput } from "../../../prisma/generated/models";
+import { ProductStoreReq, ProductStore } from "./entities";
 import { ProductStoreRepo } from "./interface";
 
-export class ProductStoreRepository implements ProductStoreRepo {
+
+export class PrismaRepository implements ProductStoreRepo {
     private prisma: PrismaClient;
 
     constructor(prisma: PrismaClient) {
         this.prisma = prisma;
     }
 
-    async createProductStore(data: any): Promise<any> {
+    async createProductStore(data: ProductStoreReq): Promise<ProductStore> {
         const now: Date = new Date();
         const productStoreData: ProductStoreCreateInput = {
             quantity: data.quantity,
@@ -23,19 +25,19 @@ export class ProductStoreRepository implements ProductStoreRepo {
         });
         return createdProductStore;
     }
-    async getProductStoreByID(id: string): Promise<any | null> {
+    async getProductStoreByID(id: string): Promise<ProductStore | null> {
         const productStore = await this.prisma.productStore.findUnique({
             where: { id: id },
         });
         return productStore;
     }  
-    async getProductStoresByFilter(filter: Partial<any>): Promise<any[]> {
+    async getProductStoresByFilter(filter: Partial<ProductStore>): Promise<ProductStore[]> {
         const productStores = await this.prisma.productStore.findMany({
             where: filter,
         });
         return productStores;
     }
-    async updateProductStore(id: string, data: Partial<any>): Promise<any> {
+    async updateProductStore(id: string, data: Partial<ProductStore>): Promise<ProductStore> {
         const productStoreData: Partial<ProductStoreUpdateInput> = {
             ...data,
             updatedAt: new Date(),
@@ -48,9 +50,14 @@ export class ProductStoreRepository implements ProductStoreRepo {
         });
         return updatedProductStore;
     }
-    async deleteProductStore(id: string): Promise<void> {
+    async deleteProductStore(id: string): Promise<ProductStore> {
+        const data = await this.getProductStoreByID(id);
+        if (!data) {
+            throw new Error(`ProductStore with id ${id} not found`);
+        }
         await this.prisma.productStore.delete({
             where: { id: id },
         });
+        return data;
     }
 }
