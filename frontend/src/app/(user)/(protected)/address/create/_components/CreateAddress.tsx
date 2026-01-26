@@ -1,11 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Coords } from "@/types/Coords";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -16,7 +12,6 @@ import { AddressFormHeader } from "../../_components/AddressFormHeader";
 import { RecipientSection } from "../../_components/RecipientSection";
 import { LocationSection } from "../../_components/LocationSection";
 import { AddressType } from "../../_components/AddressTypeSelector";
-
 
 export default function CreateAddress() {
   const [coords, setCoords] = useState<Coords>(MONAS_LOCATION);
@@ -37,7 +32,7 @@ export default function CreateAddress() {
         longitude: coords.lng,
       });
       toast.success("Address confirmed!");
-      router.push("/profile/address");
+      router.back();
     } catch (error) {
       console.error(error);
     } finally {
@@ -75,7 +70,7 @@ export default function CreateAddress() {
           <CardFooter className="flex gap-3">
             <Button
               variant="outline"
-              onClick={() => router.push("/profile/address")}
+              onClick={() => router.back()}
               className="h-14 px-6 border-white/20 bg-white hover:bg-gray-100 text-gray-600 font-bold rounded-2xl transition-all text-lg"
             >
               Back
@@ -93,5 +88,3 @@ export default function CreateAddress() {
     </div>
   );
 }
-
-

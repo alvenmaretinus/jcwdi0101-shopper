@@ -5,6 +5,7 @@ export type UserAddress = {
   recipientName: string;
   isDefault: boolean;
   longitude: number;
+  postCode: string;
   latitude: number;
   createdAt: string;
   updatedAt: string;

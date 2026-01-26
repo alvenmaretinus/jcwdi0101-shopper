@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { DefaultAddressBadge } from "@/components/Badge/DefaultAddressBadge";
 import { Button } from "@/components/ui/button";
 import { getUserAddresses } from "@/services/user-address/getUserAddresses";
 import { Plus } from "lucide-react";
@@ -25,31 +25,30 @@ export default async function AddressPage() {
       </div>
 
       <div className="space-y-4 flex flex-col overflow-y-auto max-h-[45vh] sm:max-h-[55vh] md:max-h-[60vh] lg:max-h-[65vh]">
-        {
-        userAddresses.length>0?
-        userAddresses.map((address) => (
-          <Link key={address.id} href={`/address/${address.id}`}>
-            <div className="p-4 rounded-xl border border-border hover:bg-gray-50">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{address.addressType}</span>
-                  {address.isDefault && (
-                    <Badge className="bg-primary/10 text-primary">
-                      Default
-                    </Badge>
-                  )}
+        {userAddresses.length > 0 ? (
+          userAddresses.map((address) => (
+            <Link key={address.id} href={`/address/${address.id}`}>
+              <div className="p-4 rounded-xl border border-border hover:bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{address.addressType}</span>
+                    {address.isDefault && <DefaultAddressBadge />}
+                  </div>
                 </div>
+                <p className="text-muted-foreground">{address.addressName}</p>
               </div>
-              <p className="text-muted-foreground">{address.addressName}</p>
-            </div>
-          </Link>
-        ))
-        :
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-muted-foreground text-lg">No addresses saved yet</p>
-          <p className="text-muted-foreground text-sm mt-2">Click "Add New" to create your first address</p>
-        </div>
-                  }
+            </Link>
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-muted-foreground text-lg">
+              No addresses saved yet
+            </p>
+            <p className="text-muted-foreground text-sm mt-2">
+              Click "Add New" to create your first address
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
