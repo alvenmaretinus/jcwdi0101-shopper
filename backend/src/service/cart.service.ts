@@ -31,7 +31,6 @@ export class CartService {
     return CartRepository.createCartItem({
       cartId: cart.id,
       productId,
-      productName: product?.name ?? "",
       quantity,
     });
   }

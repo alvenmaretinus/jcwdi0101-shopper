@@ -35,7 +35,7 @@ export class CartRepository {
     });
   };
 
-  static createCartItem = async (data: { cartId: string; productId: string; productName: string; quantity: number }) => {
+  static createCartItem = async (data: { cartId: string; productId: string; quantity: number }) => {
     return prisma.cartItem.create({ data });
   };
 
