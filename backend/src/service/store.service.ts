@@ -7,6 +7,8 @@ import { RemoveEmployeeInput } from "../schema/store/RemoveEmployeeSchema";
 import { DeleteStoreByIdInput } from "../schema/store/DeleteStoreByIdSchema";
 import { GetStoreByIdInput } from "../schema/store/GetStoreByIdSchema";
 import { UpdateStoreInput } from "../schema/store/UpdateStoreSchema";
+import { GetNearestStoreInput } from "../schema/store/GetNearestStoreSchema";
+import { getDistance } from "geolib";
 
 export class StoreService {
   static async createStore(data: CreateStoreInput) {
@@ -94,5 +96,34 @@ export class StoreService {
       employeeId,
       id,
     });
+  }
+
+  static async getNearestStores(data: GetNearestStoreInput) {
+    const {
+      latitude: userAddressLatitude,
+      longitude: userAddressLongitude,
+      radiusMeters,
+    } = data;
+
+    const stores = await StoreRepository.getAllStores();
+    let storesWithDistance = stores.map((store) => ({
+      ...store,
+      distance: getDistance(
+        { latitude: store.latitude, longitude: store.longitude },
+        { latitude: userAddressLatitude, longitude: userAddressLongitude }
+      ),
+    }));
+
+    if (radiusMeters) {
+      storesWithDistance = storesWithDistance.filter(
+        (store) => store.distance <= radiusMeters
+      );
+    }
+
+    const sortedStoreFromNearest = storesWithDistance.sort((a, b) => {
+      return a.distance - b.distance;
+    });
+
+    return sortedStoreFromNearest;
   }
 }

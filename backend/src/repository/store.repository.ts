@@ -24,6 +24,10 @@ export class StoreRepository {
     return await prisma.store.create({ data, select: storeSelect });
   }
 
+  static async getAllStores() {
+    return await prisma.store.findMany({ select: storeSelect });
+  }
+
   static async getStoreById({ id }: { id: string }) {
     return await prisma.store.findUnique({
       where: { id },
