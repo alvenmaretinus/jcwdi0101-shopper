@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { apiFetch } from "@/lib/apiFetch";
 import { authClient } from "@/lib/authClient";
 import { User } from "@/types/User";
@@ -43,7 +44,7 @@ export default function AuthLayoutPage({ children }: { children: ReactNode }) {
     checkAuth();
   }, [router]);
 
-  if (loading) return <p>Please wait...</p>;
+  if (loading) return <LoadingScreen />;
 
   return <>{children};</>;
 }
