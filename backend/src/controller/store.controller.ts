@@ -12,7 +12,12 @@ const router = Router();
 // TODO: Use isSuperAdmin for some routes
 
 router.get("/", async (req, res) => {
-  const result = await StoreService.getStores();
+  const result = await StoreService.getStoresWithEmployeeCount();
+  return res.json(result);
+});
+
+router.get("/products", async (req, res) => {
+  const result = await StoreService.getStoresWithProducts();
   return res.json(result);
 });
 

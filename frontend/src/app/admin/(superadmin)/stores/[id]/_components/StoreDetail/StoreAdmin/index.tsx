@@ -29,8 +29,12 @@ type Props = {
   };
 };
 
-export const StoreAdmin = ({ storeWithEmployees }: Props) => {
-  const { employees, ...store } = storeWithEmployees;
+export const StoreAdmin = ({
+  storeWithEmployees: initialStoresWithEmployees,
+}: Props) => {
+  const [storeWithEmployees, setStoreWithEmployees] = useState(
+    initialStoresWithEmployees
+  );
 
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [isRemoveAdminOpen, setIsRemoveAdminOpen] = useState(false);
@@ -56,7 +60,7 @@ export const StoreAdmin = ({ storeWithEmployees }: Props) => {
           </div>
         </CardHeader>
         <CardContent>
-          {employees.length === 0 ? (
+          {storeWithEmployees.employees.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>No employee assigned to this store</p>
               <Button variant="link" onClick={() => setIsAddAdminOpen(true)}>
@@ -72,7 +76,7 @@ export const StoreAdmin = ({ storeWithEmployees }: Props) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {employees.map((employee) => (
+                {storeWithEmployees.employees.map((employee) => (
                   <TableRow key={employee.id}>
                     <TableCell className="font-medium">
                       {employee.email}
@@ -98,16 +102,18 @@ export const StoreAdmin = ({ storeWithEmployees }: Props) => {
       </Card>
 
       <AddAdminDialog
-        store={store}
+        store={storeWithEmployees}
         isAdminOpen={isAddAdminOpen}
         setIsAdminOpen={setIsAddAdminOpen}
+        setStoreWithEmployees={setStoreWithEmployees}
       />
       <RemoveAdminDialog
-        store={store}
+        store={storeWithEmployees}
         isOpen={isRemoveAdminOpen}
         setIsOpen={setIsRemoveAdminOpen}
         selectedAdmin={selectedAdmin}
         setSelectedAdmin={setSelectedAdmin}
+        setStoreWithEmployees={setStoreWithEmployees}
       />
     </>
   );

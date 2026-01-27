@@ -21,6 +21,7 @@ export const createStore = async (inputData: CreateStoreInput) => {
     lat: inputData.coords.lat,
     lng: inputData.coords.lng,
   });
+  if (!zip_code) return toast.error("Only Indonesia is supported");
 
   const res = await apiFetch<Store>("/stores", {
     method: "POST",

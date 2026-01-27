@@ -13,8 +13,9 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { DefaultAddressBadge } from "@/components/Badge/DefaultAddressBadge";
+import { DefaultBadge } from "@/components/Badge/DefaultBadge";
 import { UserAddress } from "@/types/UserAddress";
+import { usePathname } from "next/navigation";
 
 export interface AddressSelectionProps {
   addresses: UserAddress[] | null;
@@ -28,6 +29,8 @@ export const AddressSelection = ({
   setSelectedAddress,
 }: AddressSelectionProps) => {
   const [open, setOpen] = useState(false);
+
+  const pathname = usePathname();
 
   const handleSelect = (address: UserAddress) => {
     setSelectedAddress(address);
@@ -72,7 +75,7 @@ export const AddressSelection = ({
                         <span className="font-semibold text-sm">
                           {address.addressType}
                         </span>
-                        {address.isDefault && <DefaultAddressBadge />}
+                        {address.isDefault && <DefaultBadge />}
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed italic">
                         {address.addressName}
@@ -100,7 +103,7 @@ export const AddressSelection = ({
                 asChild
                 className="w-full rounded-full py-5 text-sm md:text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white border-0 transition-all shadow-md shadow-emerald-500/20"
               >
-                <Link href="/address/create">
+                <Link href={`/address/create?redirectTo=${pathname}`}>
                   <Plus className="h-4 w-4 md:h-5 md:w-5 mr-1" />
                   Add New Address
                 </Link>

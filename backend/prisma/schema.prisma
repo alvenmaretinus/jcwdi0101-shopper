@@ -118,7 +118,8 @@ model Store {
   latitude    Float
   addressName String
   postCode    String
-  
+  isDefault   Boolean
+
   employees User[]
 
   createdAt DateTime @default(now())

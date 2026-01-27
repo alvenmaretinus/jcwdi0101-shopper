@@ -15,6 +15,12 @@ router.get("/", async (req, res) => {
   return res.json(result);
 });
 
+router.get("/default", async (req, res) => {
+  const user = req.user!;
+  const result = await UserAddressService.getDefaultAddressByUserId(user.id);
+  return res.json(result);
+});
+
 router.get("/:id", async (req, res) => {
   const id = req.params.id;
   const inputData = UserAddressIdSchema.parse({ id });

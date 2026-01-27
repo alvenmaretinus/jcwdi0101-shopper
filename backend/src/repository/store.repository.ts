@@ -28,6 +28,13 @@ export class StoreRepository {
     return await prisma.store.findMany({ select: storeSelect });
   }
 
+  static async getDefaultStore() {
+    return await prisma.store.findFirst({
+      where: { isDefault: true },
+      select: storeSelect,
+    });
+  }
+
   static async getStoreById({ id }: { id: string }) {
     return await prisma.store.findUnique({
       where: { id },
@@ -40,6 +47,40 @@ export class StoreRepository {
       where: { id },
       select: { ...storeSelect, employees: { select: userSelect } },
     });
+  }
+
+  static async getStoresWithProducts() {
+    const storesWithProducts = await prisma.store.findMany({
+      select: {
+        ...storeSelect,
+        productStores: {
+          select: {
+            quantity: true,
+            product: {
+              include: {
+                productImages: true,
+                category:true
+              },
+            },
+          },
+        },
+      },
+      orderBy: { isDefault: "desc" },
+    });
+
+    const formattedStores = storesWithProducts.map(
+      ({ productStores, ...store }) => ({
+        ...store,
+        products: productStores.map((ps) => ({
+          ...ps.product,
+          quantity: ps.quantity,
+          images: ps.product.productImages.map((pi) => pi.url),
+          category:ps.product.category.category
+        })),
+      })
+    );
+
+    return formattedStores;
   }
 
   static async getStoreByIdWithCounts({ id }: { id: string }) {

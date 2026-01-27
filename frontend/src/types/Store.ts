@@ -1,3 +1,5 @@
+import { StoreProduct } from "./StoreProduct";
+
 export type Store = {
   id: string;
   name: string;
@@ -7,6 +9,11 @@ export type Store = {
   latitude: number;
   postCode: string;
   addressName: string;
+  isDefault: boolean;
   createdAt: string;
   updatedAt: string;
 };
+
+export type StoreWithProducts = Store & {
+    products: StoreProduct[];
+}

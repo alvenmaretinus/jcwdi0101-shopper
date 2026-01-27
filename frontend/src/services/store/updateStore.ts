@@ -27,6 +27,7 @@ export const updateStore = async (inputData: UpdateStoreInput) => {
       lng: data.lng,
     });
     postCode = zip_code;
+    if (!zip_code) return toast.error("Only Indonesia is supported");
   }
   const res = await apiFetch<Store[]>(`/stores/${id}`, {
     method: "PATCH",

@@ -6,6 +6,7 @@ export const UpdateStoreSchema = z.strictObject({
   lat: z.coerce.number().optional(),
   lng: z.coerce.number().optional(),
   description: z.string().optional(),
+  isDefault: z.boolean().optional(),
   addressName: z.string().min(1, "Address is required").optional(),
   phone: z.string().min(1, "Phone number is required").optional(),
   postCode: z.string().min(1, "Post code is required").optional(),

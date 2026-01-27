@@ -34,7 +34,8 @@ export default function Checkout({
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(
     addresses.find((a) => a.isDefault === true) || addresses[0] || null
   );
-  const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>("regular");
+  const [selectedShippingMethod, setSelectedShippingMethod] =
+    useState<string>("regular");
   const [shippingData, setShippingData] = useState<ShippingCost | null>(
     initialShippingData
   );
@@ -68,9 +69,12 @@ export default function Checkout({
     if (!shippingData) return 0;
 
     let items: any[] = [];
-    if (selectedShippingMethod === "regular") items = shippingData.calculate_reguler;
-    if (selectedShippingMethod === "cargo") items = shippingData.calculate_cargo;
-    if (selectedShippingMethod === "instant") items = shippingData.calculate_instant;
+    if (selectedShippingMethod === "regular")
+      items = shippingData.calculate_reguler;
+    if (selectedShippingMethod === "cargo")
+      items = shippingData.calculate_cargo;
+    if (selectedShippingMethod === "instant")
+      items = shippingData.calculate_instant;
 
     if (items.length === 0) return 0;
 
@@ -96,7 +100,7 @@ export default function Checkout({
       if (selectedAddress) {
         setIsLoading(true);
         try {
-          const nearestStore = stores[1];
+          const nearestStore = stores[0];
           const newShippingData = await getShippingCost({
             originPostCode: selectedAddress.postCode,
             destinationPostCode: nearestStore.postCode,
