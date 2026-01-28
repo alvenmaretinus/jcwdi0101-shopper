@@ -260,6 +260,8 @@ model Product {
   productStores    ProductStore[]
   orderItems       OrderItem[]
   productMovements ProductMovement[]
+
+  discounts Discount[]
 }
 
 model ProductCategory {
@@ -296,5 +298,59 @@ model ProductStore {
 
   @@unique([productId, storeId])
 }
+
+model Voucher {
+  id        String  @id @default(uuid())
+  discountId String
+  voucherType VoucherType
+  discount   Discount @relation(fields: [discountId], references: [id])
+
+  isRedeemed Boolean @default(false)
+  redeemedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum VoucherType {
+  REFERRAL
+  TRANSACTIONAL
+  FREEDELIVERY
+}
+
+model Discount {
+  id          String  @id @default(uuid())
+  percentage  Decimal? @db.Decimal(5, 2)
+  amount      Int?
+  type        DiscountType
+
+  isWithMinimum Boolean @default(false)
+  minimumPrice Int?
+
+  isLimited   Boolean @default(false)
+  limit       Int?
+
+  isTiedToProduct Boolean @default(false)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+
+  buyQuantity Int?
+  freeQuantity Int?
+
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vouchers Voucher[]
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  QUANTITY
+}
+
 
 
