@@ -12,6 +12,7 @@ declare global {
         id: string;
         email: string;
         role: UserRole;
+        storeId: string | null;
       };
     }
   }
@@ -37,6 +38,6 @@ export const isAuth = async (
     throw new InvalidTokenError();
   }
 
-  req.user = { id: user.id, email: user.email, role: user.role };
+  req.user = { id: user.id, email: user.email, role: user.role, storeId: user.storeId };
   next();
 };
