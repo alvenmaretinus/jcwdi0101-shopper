@@ -18,26 +18,34 @@ export type SalesReportByFilterEntity = {
     productName?: string
 }
 
+type category = {
+    id: string;
+    updatedAt: Date;
+    category: string;
+    createdAt: Date;
+};
+
 type product = {
-            id: string;
-            updatedAt: Date;
-            name: string;
-            description: string | null;
-            price: number;
-            createAt: Date;
-            categoryId: string;
-        };
+    category: category,
+    id: string;
+    updatedAt: Date;
+    name: string;
+    description: string | null;
+    price: number;
+    createAt: Date;
+    categoryId: string;
+};
 
 type orderItems = ({
-        product: product;
-        id: string;
-        quantity: number;
-        unitPrice: number;
-        productName: string;
-        productCategory: string;
-        orderId: string;
-        productId: string;
-    })[];
+    product: product;
+    id: string;
+    quantity: number;
+    unitPrice: number;
+    productName: string;
+    productCategory: string;
+    orderId: string;
+    productId: string;
+})[];
 
 export type OrderItemSalesReportEntity = ({
     orderItems?: orderItems;

@@ -1,5 +1,5 @@
 import { PrismaClient } from "../../../prisma/generated/client";
-import { DateTimeFilter, Order$orderItemsArgs, OrderFindManyArgs, OrderInclude, OrderItemInclude, OrderItemListRelationFilter, OrderItemWhereInput, OrderWhereInput, ProductWhereInput } from "../../../prisma/generated/models";
+import { DateTimeFilter, Order$orderItemsArgs, OrderFindManyArgs, OrderInclude, OrderItemInclude, OrderItemListRelationFilter, OrderItemWhereInput, OrderWhereInput, ProductDefaultArgs, ProductInclude, ProductWhereInput } from "../../../prisma/generated/models";
 import { OrderItemSalesReportEntity, SalesReportByFilterEntity, SalesReportEntity } from "./entities";
 import { SalesReportRepository } from "./interface";
 import { toDomainModels } from "./mapper";
@@ -28,7 +28,9 @@ export class PrismaRepository implements SalesReportRepository {
     }
 
     async getOrderItemSalesReportEntityList(params: OrderWhereInput): Promise<OrderItemSalesReportEntity[]> {
-        const orderItemProduct: OrderItemInclude = { product: true };
+        const productInclude: ProductInclude = { category: true };
+        const productArgs: ProductDefaultArgs = { include: productInclude };
+        const orderItemProduct: OrderItemInclude = { product: productArgs };
         const orderItems: Order$orderItemsArgs = { include: orderItemProduct };
         const orderInclude: OrderInclude = { orderItems: orderItems };
         const orderFindManyArgs: OrderFindManyArgs = {

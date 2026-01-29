@@ -10,7 +10,7 @@ export function toDomainModel(param: OrderItemSalesReportEntity): SalesReportEnt
             completion_date: param.deliveredAt ? param.deliveredAt.toISOString() : '',
             order_id: param.id,
             product_name: item.product.name,
-            category_name: item.product.categoryId,
+            category_name: item.product.category.category,
             product_price: item.unitPrice,
             quantity: item.quantity,
             total_price: item.unitPrice * item.quantity,
