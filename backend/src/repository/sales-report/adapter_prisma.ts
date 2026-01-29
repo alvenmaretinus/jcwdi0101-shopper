@@ -1,4 +1,5 @@
 import { PrismaClient } from "../../../prisma/generated/client";
+import { QueryMode } from "../../../prisma/generated/internal/prismaNamespaceBrowser";
 import { DateTimeFilter, Order$orderItemsArgs, OrderFindManyArgs, OrderInclude, OrderItemInclude, OrderItemListRelationFilter, OrderItemWhereInput, OrderWhereInput, ProductDefaultArgs, ProductInclude, ProductWhereInput } from "../../../prisma/generated/models";
 import { OrderItemSalesReportEntity, SalesReportByFilterEntity, SalesReportEntity } from "./entities";
 import { SalesReportRepository } from "./interface";
@@ -17,13 +18,13 @@ export class PrismaRepository implements SalesReportRepository {
         }
         const productWhereInput: ProductWhereInput = {
             categoryId: categoryId ? categoryId : undefined,
-            name: productName ? { contains: productName } : undefined,
+            name: productName ? { contains: productName, mode: QueryMode.insensitive} : undefined,
         }
         const orderItemWhereInput: OrderItemWhereInput = {
             product: productWhereInput,
         }
         return {
-            every: orderItemWhereInput
+            some: orderItemWhereInput
         };
     }
 
@@ -47,13 +48,13 @@ export class PrismaRepository implements SalesReportRepository {
         const startOfMonth = new Date(`${params.monthAndYear}-01`);
         const endOfMonth = new Date(startOfMonth);
         endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-        const createdAtFilter: DateTimeFilter = {
+        const completionDateFilter: DateTimeFilter = {
             gte: startOfMonth,
             lt: endOfMonth,
         };
         const where: OrderWhereInput = {
             storeId: params.storeId,
-            createdAt: createdAtFilter,
+            deliveredAt: completionDateFilter,
             orderItems: this.generateOrderItemsFilter(params.categoryId, params.productName),
         };
         
