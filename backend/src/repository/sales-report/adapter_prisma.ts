@@ -44,9 +44,12 @@ export class PrismaRepository implements SalesReportRepository {
     }
     
     async getSalesReportByFilter(params: SalesReportByFilterEntity): Promise<SalesReportEntity[]> {
+        const startOfMonth = new Date(`${params.monthAndYear}-01`);
+        const endOfMonth = new Date(startOfMonth);
+        endOfMonth.setMonth(endOfMonth.getMonth() + 1);
         const createdAtFilter: DateTimeFilter = {
-                gte: new Date(`${params.monthAndYear}-01`),
-                lt: new Date(new Date(`${params.monthAndYear}-01`).setMonth(new Date(`${params.monthAndYear}-01`).getMonth() + 1)),
+            gte: startOfMonth,
+            lt: endOfMonth,
         };
         const where: OrderWhereInput = {
             storeId: params.storeId,
