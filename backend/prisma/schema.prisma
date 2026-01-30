@@ -119,7 +119,8 @@ model Store {
   addressName String
   postCode    String
   isDefault   Boolean
-
+  isSoftDeleted Boolean @default(false)
+  
   employees User[]
 
   createdAt DateTime @default(now())

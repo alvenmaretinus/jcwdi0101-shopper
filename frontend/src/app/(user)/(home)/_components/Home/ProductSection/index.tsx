@@ -124,7 +124,11 @@ export const mockStores: StoreWithProducts[] = [
 export async function ProductSection() {
   const nextHeaders = await headers();
   // const storesWithProducts= await getStoresWithProducts(nextHeaders);
-  const defaultAddress = await getDefaultAddressByUserId(nextHeaders);
+  let defaultAddress=null
+  try {
+     defaultAddress = await getDefaultAddressByUserId(nextHeaders);
+  } catch (error) {
+  }
   let sortedStores = mockStores;
   if (defaultAddress) {
     sortedStores = mockStores.sort((storeA, storeB) => {

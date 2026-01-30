@@ -80,8 +80,8 @@ export class StoreService {
           statusCode: 500,
         });
       }
-      await prisma.$transaction(async(tx) => {
-       await tx.store.update({
+      await prisma.$transaction(async (tx) => {
+        await tx.store.update({
           where: { id: defaultStore.id },
           data: { isDefault: false },
         });
@@ -118,12 +118,13 @@ export class StoreService {
       throw new ConflictError("Products still exist");
     }
 
-    const defaultStore=await prisma.store.findFirst({
-      where:{
-        isDefault:true
-      }
-    })
-    if(defaultStore?.id===id){
+    const defaultStore = await prisma.store.findFirst({
+      where: {
+        isDefault: true,
+        isSoftDeleted: false,
+      },
+    });
+    if (defaultStore?.id === id) {
       throw new ConflictError("Default store cannot be deleted");
     }
 
