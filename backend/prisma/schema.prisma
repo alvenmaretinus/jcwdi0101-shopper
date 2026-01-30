@@ -118,6 +118,8 @@ model Store {
   latitude    Float
   addressName String
   postCode    String
+  isDefault   Boolean
+  isSoftDeleted Boolean @default(false)
   
   employees User[]
 
