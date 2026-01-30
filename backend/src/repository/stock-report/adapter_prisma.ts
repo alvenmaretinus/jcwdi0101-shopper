@@ -13,8 +13,10 @@ export class PrismaRepository implements StockReportRepository {
         // Implement the logic to query the database using Prisma Client based on the filter
         return this.prismaClient.productMovement.findMany({
             where: {
-                fromStoreName: filter.storeId, // assuming storeId == storeName
-                toStoreName: filter.storeId, // assuming storeId == storeName
+                OR: [
+                    { fromStoreId: filter.storeId },
+                    { toStoreId: filter.storeId },
+                ],
                 createdAt: {
                     gte: new Date(filter.createdAtYear, filter.createdAtMonth - 1, 1),
                     lt: new Date(filter.createdAtYear, filter.createdAtMonth, 1),

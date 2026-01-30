@@ -8,6 +8,7 @@ export type FindStockReportsByFilterReq = {
 
 
 export type StockReport = {
+
     id: string;
     description: string | null;
     createdAt: Date;
@@ -18,6 +19,6 @@ export type StockReport = {
     orderId: string | null;
     quantityChange: number;
     movementType: MovementType;
-    fromStoreName: string | null;
-    toStoreName: string | null;
+    fromStoreId: string | null;
+    toStoreId: string | null;
 }

@@ -127,6 +127,8 @@ model Store {
   updatedAt DateTime @updatedAt
 
   productStores ProductStore[]
+  productMovementsFrom ProductMovement[] @relation(name: "fromStore")
+  productMovementsTo   ProductMovement[] @relation(name: "toStore")
   orders        Order[]
 }
 
@@ -211,9 +213,11 @@ model ProductMovement {
   productCategory String
   movementType    MovementType
   description     String?
-  fromStoreName   String?
-  toStoreName     String?
+  fromStoreId     String
+  toStoreId       String
 
+  fromStore Store @relation(name: "fromStore", fields: [fromStoreId], references: [id])
+  toStore Store @relation(name: "toStore", fields: [toStoreId], references: [id])
   product   Product @relation(fields: [productId], references: [id])
   productId String
 }
