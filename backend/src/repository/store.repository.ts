@@ -25,26 +25,72 @@ export class StoreRepository {
   }
 
   static async getAllStores() {
-    return await prisma.store.findMany({ select: storeSelect });
+    return await prisma.store.findMany({
+      select: storeSelect,
+      where: { isSoftDeleted: false },
+    });
+  }
+
+  static async getDefaultStore() {
+    return await prisma.store.findFirst({
+      where: { isDefault: true, isSoftDeleted: false },
+      select: storeSelect,
+    });
   }
 
   static async getStoreById({ id }: { id: string }) {
     return await prisma.store.findUnique({
-      where: { id },
+      where: { id, isSoftDeleted: false },
       select: storeSelect,
     });
   }
 
   static async getStoreByIdWithEmployee({ id }: { id: string }) {
     return await prisma.store.findUnique({
-      where: { id },
+      where: { id, isSoftDeleted: false },
       select: { ...storeSelect, employees: { select: userSelect } },
     });
   }
 
+  static async getStoresWithProducts() {
+    const storesWithProducts = await prisma.store.findMany({
+      select: {
+        ...storeSelect,
+        isSoftDeleted: false,
+        productStores: {
+          select: {
+            quantity: true,
+            product: {
+              include: {
+                productImages: true,
+                category: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { isDefault: "desc" },
+      where: { isSoftDeleted: false },
+    });
+
+    const formattedStores = storesWithProducts.map(
+      ({ productStores, ...store }) => ({
+        ...store,
+        products: productStores.map((ps) => ({
+          ...ps.product,
+          quantity: ps.quantity,
+          images: ps.product.productImages.map((pi) => pi.url),
+          category: ps.product.category.category,
+        })),
+      })
+    );
+
+    return formattedStores;
+  }
+
   static async getStoreByIdWithCounts({ id }: { id: string }) {
     const store = await prisma.store.findUnique({
-      where: { id },
+      where: { id, isSoftDeleted: false },
       select: {
         _count: {
           select: {
@@ -64,7 +110,7 @@ export class StoreRepository {
 
   static async updateStore({ id, ...data }: UpdateStoreRepo) {
     return await prisma.store.update({
-      where: { id },
+      where: { id, isSoftDeleted: false },
       data,
       select: storeSelect,
     });
@@ -96,15 +142,17 @@ export class StoreRepository {
   }
 
   static async deleteStoreById({ id }: { id: string }) {
-    return await prisma.store.delete({
-      where: { id },
+    return await prisma.store.update({
+      where: { id, isSoftDeleted: false },
       select: storeSelect,
+      data: { isSoftDeleted: true },
     });
   }
 
   static async getStoresWithEmployeeCount() {
     const stores = await prisma.store.findMany({
       select: { ...storeSelect, _count: { select: { employees: true } } },
+      where: { isSoftDeleted: false },
     });
 
     return stores.map(({ _count, ...store }) => ({

@@ -116,6 +116,12 @@ export class UserAddressService {
     return result;
   }
 
+  static async getDefaultAddressByUserId(userId: string) {
+    return await prisma.userAddress.findFirst({
+      where: { userId, isDefault: true },
+    });
+  }
+
   static async getAddressesByUserId(userId: string) {
     return await prisma.userAddress.findMany({
       where: { userId },

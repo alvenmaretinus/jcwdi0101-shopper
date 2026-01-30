@@ -22,6 +22,7 @@ export const updateUserAddressById = async (
     lat: inputData.latitude,
     lng: inputData.longitude,
   });
+  if (!zip_code) return toast.error("Only Indonesia is supported");
   await apiFetch(`/user-address/${inputData.id}`, {
     method: "PATCH",
     body: { ...inputData, postCode: zip_code },

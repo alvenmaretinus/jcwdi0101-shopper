@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Store } from "@/types/Store";
 import { SectionHeader } from "@/app/admin/_components/SectionHeader";
+import { DefaultBadge } from "@/components/Badge/DefaultBadge";
 
 type Props = { stores: (Store & { employeeCount: number })[] };
 
@@ -92,7 +93,12 @@ export const Stores = ({ stores }: Props) => {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleRowClick(store.id)}
                   >
-                    <TableCell className="font-medium">{store.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {store.name}
+                        {store.isDefault && <DefaultBadge />}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-muted-foreground">
                         <MapPin className="h-3.5 w-3.5 shrink-0" />

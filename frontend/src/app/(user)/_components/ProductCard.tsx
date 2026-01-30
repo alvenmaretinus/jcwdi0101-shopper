@@ -1,21 +1,8 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  category: string;
-  stock: number;
-  unit: string;
-  discount?: number;
-  isBuyOneGetOne?: boolean;
-}
+import { StoreProduct } from "@/types/StoreProduct";
 
 interface ProductCardProps {
-  product: Product;
+  product: StoreProduct;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
@@ -27,37 +14,23 @@ export function ProductCard({ product }: ProductCardProps) {
     }).format(price);
   };
 
-  const isOutOfStock = product.stock === 0;
+  const isOutOfStock = product.quantity === 0;
 
   return (
     <div className="card-product group relative">
       {/* Badges */}
       <Link href={`/products/${product.id}`}>
-        <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
-          {product?.isBuyOneGetOne ? (
-            <Badge className="bg-secondary text-secondary-foreground border-0">
-              Buy 1 Get 1
-            </Badge>
-          ) : (
-            product.discount && (
-              <Badge className="bg-berry text-white border-0">
-                -{product.discount}%
-              </Badge>
-            )
-          )}
-        </div>
-
         {/* Image */}
         <div className="aspect-square bg-muted/30 flex items-center justify-center p-6 overflow-hidden">
           <span className="text-7xl group-hover:scale-110 transition-transform duration-300">
-            {product.image}
+            {product.images[0]}
           </span>
         </div>
 
         {/* Content */}
         <div className="p-4">
           <span className="text-xs text-muted-foreground uppercase tracking-wide">
-            {product.category}
+          {product.category}
           </span>
 
           <h3 className="font-semibold text-foreground mt-1 line-clamp-2 group-hover:text-primary transition-colors">
@@ -70,9 +43,9 @@ export function ProductCard({ product }: ProductCardProps) {
               <span className="text-lg font-bold text-foreground">
                 {formatPrice(product.price)}
               </span>
-              {product.originalPrice && (
+              {product.price && (
                 <span className="text-sm text-muted-foreground line-through ml-2">
-                  {formatPrice(product.originalPrice)}
+                  {formatPrice(product.price)}
                 </span>
               )}
             </div>
@@ -82,9 +55,9 @@ export function ProductCard({ product }: ProductCardProps) {
           {isOutOfStock && (
             <p className="text-sm text-berry font-medium mt-2">Out of Stock</p>
           )}
-          {product.stock > 0 && product.stock <= 5 && (
+          {product.quantity > 0 && product.quantity <= 5 && (
             <p className="text-sm text-secondary font-medium mt-2">
-              Only {product.stock} left
+              Only {product.quantity} left
             </p>
           )}
         </div>
