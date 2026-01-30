@@ -16,3 +16,16 @@ prisma/migrations/*
 
 # node_modules
 node_modules/
+
+# Uploaded files
+uploads/payment-proof/*
+!uploads/payment-proof/.gitkeep
+
+# Testing and Test Coverage
+tests/
+jest.config.js
+coverage/
+.jest/
+*.test.ts
+*.spec.ts
+test-results/
