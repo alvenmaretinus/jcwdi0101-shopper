@@ -56,7 +56,7 @@ cron.schedule("0 * * * *", async () => {
   }
 });
 
-// Auto-confirm orders 2x24 hours after shipping (every 6 hours check)
+// Auto-confirm orders 2 days after shipping (check every 6 hours)
 cron.schedule("0 */6 * * *", async () => {
   try {
     await OrderService.autoConfirmOrders();

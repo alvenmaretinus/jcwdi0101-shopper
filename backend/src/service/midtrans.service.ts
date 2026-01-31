@@ -103,6 +103,11 @@ export class MidtransService {
           orderStatus = "CANCELLED";
           break;
 
+        case "refund":
+          // Payment refunded
+          orderStatus = "REFUND";
+          break;
+
         default:
           orderStatus = "";
       }

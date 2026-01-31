@@ -298,10 +298,10 @@ export class OrderService {
   }
 
   /**
-   * Auto-confirm shipped orders after 7 days
+   * Auto-confirm shipped orders after 2 days
    * @returns Array of auto-confirmed orders
    * @desc Delegates to OrderLifecycleService.autoConfirmOrders()
-   * @note Admin scheduled task, triggered daily
+   * @note Admin scheduled task, triggered every 6 hours
    */
   static async autoConfirmOrders() {
     const { OrderLifecycleService } = await import("./order-lifecycle.service");

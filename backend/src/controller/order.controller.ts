@@ -98,7 +98,7 @@ router.post("/webhook/midtrans", async (req: Request, res: Response, next: NextF
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
     if (!serverKey) {
       console.error("[Webhook] MIDTRANS_SERVER_KEY not configured");
-      return res.status(200).json({ success: false, message: "Server configuration error - MIDTRANS_SERVER_KEY missing" });
+      return res.status(500).json({ success: false, message: "Server configuration error - MIDTRANS_SERVER_KEY missing" });
     }
 
     const orderId = webhookData.order_id || "";
@@ -115,14 +115,14 @@ router.post("/webhook/midtrans", async (req: Request, res: Response, next: NextF
     const isValidSignature = MidtransService.verifyWebhookSignature(orderId, statusCode, grossAmount, signature);
     if (!isValidSignature) {
       console.error("[Webhook] Invalid signature - potential security threat", { orderId: webhookData.order_id, clientIP: req.ip });
-      return res.status(200).json({ success: false, message: "Invalid webhook signature" });
+      return res.status(403).json({ success: false, message: "Invalid webhook signature" });
     }
     await OrderService.handleMidtransWebhook(webhookData);
 
     return res.status(200).json({ success: true, message: "Webhook processed" });
   } catch (err: any) {
     console.error("[Webhook] Error processing Midtrans webhook:", err);
-    return res.status(200).json({
+    return res.status(500).json({
       success: false,
       message: "Webhook received but processing failed - check server logs for details",
     });

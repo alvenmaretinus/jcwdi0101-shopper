@@ -34,6 +34,11 @@ export class BankPaymentService {
       throw new BadRequestError(`Cannot upload proof for order with status ${order.status}`);
     }
 
+    // Order must be bank transfer payment type
+    if (order.paymentType !== "BANK_TRANSFER") {
+      throw new BadRequestError("This order does not support bank transfer payment. Payment type: " + order.paymentType);
+    }
+
     // Check if payment deadline has passed (auto-expire if needed)
     if (order.paymentDueAt && new Date() > order.paymentDueAt) {
       await db.order.update({ where: { id: orderId }, data: { status: "CANCELLED" } });

@@ -34,8 +34,9 @@ export class OrderAdminService {
       throw new BadRequestError(`Cannot cancel order with status ${order.status}. Admin can only cancel orders before they are shipped.`);
     }
 
-    // If order was PAYMENT_WAITING_CONFIRMATION or PROCESSING, need to refund stock
-    if (["PAYMENT_WAITING_CONFIRMATION", "PROCESSING"].includes(order.status)) {
+    // If order was PROCESSING, need to refund stock
+    // (PAYMENT_WAITING_CONFIRMATION: stock was never decremented, so no refund needed)
+    if (["PROCESSING"].includes(order.status)) {
       await db.$transaction(async (tx) => {
         const orderItems = await tx.orderItem.findMany({
           where: { orderId },
@@ -76,12 +77,17 @@ export class OrderAdminService {
 
       console.info(`[OrderAdminService] Admin cancelled order ${orderId} (status was ${order.status}), stock refunded. Reason: ${reason || "No reason provided"}`);
     } else {
-      // For PAYMENT_PENDING, just mark as cancelled (no stock to refund)
+      // For PAYMENT_PENDING or PAYMENT_WAITING_CONFIRMATION, just mark as cancelled (no stock to refund)
+      // But if PAYMENT_WAITING_CONFIRMATION + BANK_TRANSFER, mark for manual refund
+      const needsRefund = order.status === "PAYMENT_WAITING_CONFIRMATION" && order.paymentType === "BANK_TRANSFER";
+
       await db.order.update({
         where: { id: orderId },
         data: {
           status: "CANCELLED",
           cancelledAt: new Date(),
+          refundRequired: needsRefund,
+          refundReason: needsRefund ? `Manual refund needed - ${reason || "Admin cancelled order"}` : undefined,
         },
       });
 

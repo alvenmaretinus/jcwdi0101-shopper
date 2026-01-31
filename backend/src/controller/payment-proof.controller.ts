@@ -7,6 +7,20 @@ import { OrderService } from "../service/order.service";
 
 const router = express.Router();
 
+// Error handler wrapper for multer file upload
+const handleMulterUpload = (req: Request, res: Response, next: NextFunction) => {
+  uploadPaymentProof.single("proof")(req, res, (err) => {
+    if (err) {
+      console.error("[PaymentProof] Multer upload error:", err);
+      return res.status(400).json({
+        success: false,
+        message: err.message || "File upload failed - invalid file or size exceeded",
+      });
+    }
+    next();
+  });
+};
+
 /**
  * @route GET /bank-info
  * @desc Get bank account details for bank transfer payment
@@ -27,7 +41,7 @@ router.get("/bank-info", isAuth, async (req: Request, res: Response, next: NextF
  * @access Private (User)
  * @security Sharp validation to ensure file is actual image (not renamed malware)
  */
-router.post("/:id/upload-proof", isAuth, uploadPaymentProof.single("proof"), async (req: Request, res: Response, next: NextFunction) => {
+router.post("/:id/upload-proof", isAuth, handleMulterUpload, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orderId = req.params.id as string;
     const userId = req.user?.id as string;
