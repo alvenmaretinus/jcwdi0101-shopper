@@ -1,4 +1,5 @@
 import midtransClient from "midtrans-client";
+import crypto from "crypto";
 import { BadRequestError } from "../error/BadRequestError";
 
 export class MidtransService {
@@ -151,7 +152,6 @@ export class MidtransService {
       const data = orderId + statusCode + grossAmount + serverKey;
 
       // Create hash using SHA512
-      const crypto = require("crypto");
       const calculatedHash = crypto.createHash("sha512").update(data).digest("hex");
 
       return calculatedHash === signature;

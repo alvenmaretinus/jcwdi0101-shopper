@@ -232,10 +232,11 @@ router.post("/:id/create-charge", isAuth, async (req: Request, res: Response, ne
   }
 });
 
-// Midtrans webhook endpoint (no auth needed, but should verify signature)
+// Midtrans webhook endpoint (verify signature before processing)
 router.post("/webhook/midtrans", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const webhookData = req.body;
+    const { MidtransService } = await import("../service/midtrans.service");
 
     console.info("[Webhook] Midtrans webhook received:", {
       orderId: webhookData.order_id,
@@ -243,14 +244,50 @@ router.post("/webhook/midtrans", async (req: Request, res: Response, next: NextF
       status: webhookData.transaction_status,
     });
 
-    // Handle webhook (process payment status)
+    // CRITICAL: Verify webhook signature before processing (security check)
+    // This prevents attackers from sending fake webhooks to manipulate order status
+    const serverKey = process.env.MIDTRANS_SERVER_KEY;
+    if (!serverKey) {
+      console.error("[Webhook] MIDTRANS_SERVER_KEY not configured - cannot verify webhook");
+      return res.status(500).json({ error: "Server configuration error" });
+    }
+
+    // Extract signature components from webhook payload
+    const orderId = webhookData.order_id || "";
+    const statusCode = webhookData.status_code || "";
+    const grossAmount = webhookData.gross_amount || "";
+    const signature = webhookData.signature_key || "";
+
+    if (!signature) {
+      console.error("[Webhook] Missing signature_key in webhook payload");
+      return res.status(400).json({ error: "Missing signature" });
+    }
+
+    const isValidSignature = MidtransService.verifyWebhookSignature(orderId, statusCode, grossAmount, signature);
+    if (!isValidSignature) {
+      console.error("[Webhook] Invalid webhook signature - potential security threat", {
+        orderId: webhookData.order_id,
+        clientIP: req.ip,
+      });
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    // ✅ Signature valid - process webhook
     await OrderService.handleMidtransWebhook(webhookData);
 
-    // Return 200 to acknowledge receipt (Midtrans requirement)
+    // ✅ Always return 200 to acknowledge receipt (Midtrans requirement)
+    // Even if internal processing had errors, we acknowledge receipt to stop retries
     return res.status(200).json({ success: true, message: "Webhook processed" });
   } catch (err: any) {
     console.error("[Webhook] Error processing Midtrans webhook:", err);
-    next(err);
+    
+    // ⚠️ CRITICAL: Return 200 even on error to prevent Midtrans retry loops
+    // The error is logged above for manual investigation
+    // If we return 5xx, Midtrans will retry this webhook 10+ times, causing order status inconsistency
+    return res.status(200).json({ 
+      success: false, 
+      message: "Webhook received but processing failed - check server logs for details" 
+    });
   }
 });
 

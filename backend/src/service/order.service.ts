@@ -255,19 +255,20 @@ export class OrderService {
   }
 
   // Confirm payment (called by payment gateway webhook). This will attempt to decrement stock and finalize the order.
+  // ⚠️ IMPORTANT: This method must be idempotent to handle concurrent webhook calls safely
   static async confirmPayment(orderId: string) {
     const db: PrismaClient = prisma;
     const order = await db.order.findUnique({ where: { id: orderId }, include: { orderItems: true, user: true } });
     if (!order) throw new BadRequestError("Order not found");
+    
+    // Early return for non-pending orders (idempotency)
     if (order.status !== "PAYMENT_PENDING") {
-      return order; // idempotent: already processed
+      return order; // already processed
     }
 
-    const addressText = order.shippingAddress;
+    // Build items from orderItems
     // extract coords from shippingAddress if available (best-effort)
     // For simplicity, re-query user address by closest match - fallback to store in order
-
-    // Build items from orderItems
     const items = order.orderItems.map((oi) => ({ productId: oi.productId, quantity: oi.quantity }));
 
     const userAddress = await db.userAddress.findFirst({ where: { userId: order.userId } });
@@ -292,8 +293,6 @@ export class OrderService {
     const productMap: Record<string, ProductWithCategory | undefined> = {};
     for (const p of products as ProductWithCategory[]) productMap[p.id] = p;
 
-    const costPerKm = 1000;
-
     // Try candidate stores (nearest first)
     for (const candidate of storesWithDistance) {
       const store = candidate.store;
@@ -311,6 +310,13 @@ export class OrderService {
 
       try {
         const result = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+          // CRITICAL: Double-check order status inside transaction (prevent race condition with concurrent webhooks)
+          // This ensures true idempotency even if multiple webhooks arrive simultaneously
+          const txOrder = await tx.order.findUnique({ where: { id: orderId } });
+          if (txOrder?.status !== "PAYMENT_PENDING") {
+            throw new BadRequestError("Order already processed or cancelled");
+          }
+
           // decrement stock
           for (const it of items) {
             const upd = await tx.productStore.updateMany({ where: { productId: it.productId, storeId: store.id, quantity: { gte: it.quantity } }, data: { quantity: { decrement: it.quantity } } });

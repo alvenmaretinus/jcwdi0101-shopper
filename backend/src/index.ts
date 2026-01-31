@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import path from "path";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middleware/errorHandler";
 import { appRouter } from "./route";
@@ -8,6 +9,24 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth";
 import cron from "node-cron";
 import { OrderService } from "./service/order.service";
+
+// ✅ CRITICAL: Validate all required environment variables at startup
+const requiredEnvVars = [
+  "MIDTRANS_SERVER_KEY",
+  "MIDTRANS_CLIENT_KEY",
+  "BANK_ACCOUNT_NUMBER",
+  "BANK_ACCOUNT_HOLDER",
+];
+
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    console.error(`❌ FATAL: Missing required environment variable: ${envVar}`);
+    console.error("Please configure all required env vars in .env file");
+    process.exit(1);
+  }
+}
+
+console.log("✅ All required environment variables loaded");
 
 const app = express();
 const port = process.env.PORT! || 3001;
@@ -20,6 +39,9 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   }),
 );
+
+// ✅ Configure static file serving for uploads (so admin can view payment proofs)
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
