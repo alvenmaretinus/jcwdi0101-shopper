@@ -107,6 +107,7 @@ model UserAddress {
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
+  orders Order[]
 }
 
 model Store {
@@ -176,6 +177,8 @@ model Order {
   store   Store  @relation(fields: [storeId], references: [id])
   userId  String
   user    User   @relation(fields: [userId], references: [id])
+  userAddressId String
+  userAddress   UserAddress @relation(fields: [userAddressId], references: [id])
 
   orderItems OrderItem[]
 }

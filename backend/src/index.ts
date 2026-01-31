@@ -34,6 +34,9 @@ app.use(
   }),
 );
 
+// Serve uploaded files (payment proofs, etc.)
+app.use(express.static("uploads"));
+
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
 // Parse JSON bodies

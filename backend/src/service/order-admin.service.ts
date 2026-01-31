@@ -91,7 +91,7 @@ export class OrderAdminService {
         },
       });
 
-      console.info(`[OrderAdminService] Admin cancelled order ${orderId} (status was PAYMENT_PENDING). Reason: ${reason || "No reason provided"}`);
+      console.info(`[OrderAdminService] Admin cancelled order ${orderId} (status was ${order.status}). Reason: ${reason || "No reason provided"}`);
     }
 
     // Return updated order

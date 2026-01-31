@@ -77,7 +77,9 @@ export class OrderService {
     for (const p of products as ProductWithCategory[]) productMap[p.id] = p;
 
     const subtotal = items.reduce((s, it) => s + (productMap[it.productId]?.price ?? 0) * it.quantity, 0);
-    const distanceKm = storesWithDistance[0].distanceKm;
+
+    // Calculate distance from the selected candidateStore (not nearest) for accurate shipping cost
+    const distanceKm = storesWithDistance.find((s) => s.store.id === candidateStore.id)?.distanceKm ?? 0;
     const costPerKm = 1000;
 
     // Calculate shipping cost using same logic as checkout
@@ -118,6 +120,7 @@ export class OrderService {
         storeAddress: candidateStore.addressName,
         storeName: candidateStore.name,
         storeId: candidateStore.id,
+        userAddressId: addressId,
         paymentDueAt,
         userId,
         orderItems: {

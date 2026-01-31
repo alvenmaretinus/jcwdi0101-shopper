@@ -48,7 +48,10 @@ export class OrderQueryService {
     if (userRole === "USER") {
       where.userId = userId;
     } else if (userRole === "ADMIN") {
-      if (storeId) where.storeId = storeId;
+      if (!storeId) {
+        throw new UnauthorizedError("ADMIN user must have a storeId assigned to view orders");
+      }
+      where.storeId = storeId;
     } else if (userRole === "SUPERADMIN") {
       if (storeId) where.storeId = storeId;
     }

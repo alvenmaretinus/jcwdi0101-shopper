@@ -32,8 +32,14 @@ export class OrderLifecycleService {
 
     if (!order) throw new BadRequestError("Order not found");
 
-    // Early return for idempotency: already processed
-    if (order.status !== "PAYMENT_PENDING") {
+    // Support both PAYMENT_PENDING (gateway) and PAYMENT_WAITING_CONFIRMATION (bank transfer proof uploaded)
+    const validStatuses = ["PAYMENT_PENDING", "PAYMENT_WAITING_CONFIRMATION"];
+    if (!validStatuses.includes(order.status)) {
+      throw new BadRequestError(`Cannot confirm payment for order with status ${order.status}. Only PAYMENT_PENDING or PAYMENT_WAITING_CONFIRMATION orders can be confirmed.`);
+    }
+
+    // Early return for idempotency: already processed to PROCESSING
+    if (order.status === "PROCESSING") {
       return order;
     }
 
@@ -41,8 +47,8 @@ export class OrderLifecycleService {
       productId: oi.productId,
       quantity: oi.quantity,
     }));
-    const userAddress = await db.userAddress.findFirst({
-      where: { userId: order.userId },
+    const userAddress = await db.userAddress.findUnique({
+      where: { id: order.userAddressId },
     });
 
     const stores = await db.store.findMany();
@@ -101,7 +107,7 @@ export class OrderLifecycleService {
           const txOrder = await tx.order.findUnique({
             where: { id: orderId },
           });
-          if (txOrder?.status !== "PAYMENT_PENDING") {
+          if (!["PAYMENT_PENDING", "PAYMENT_WAITING_CONFIRMATION"].includes(txOrder?.status ?? "")) {
             throw new BadRequestError("Order already processed or cancelled");
           }
 

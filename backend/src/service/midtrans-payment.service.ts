@@ -109,7 +109,8 @@ export class MidtransPaymentService {
       }
 
       // Handle payment failure/cancellation/expiry - mark order as cancelled
-      if (orderStatus === "CANCELLED" || orderStatus === "EXPIRE" || orderStatus === "PENDING") {
+      // Note: MidtransService.handleWebhook() can return: CANCELLED (for deny/cancel/expire), PAYMENT_PENDING, PROCESSING (for settlement/capture), or REFUND
+      if (orderStatus === "CANCELLED" || orderStatus === "PAYMENT_PENDING") {
         // Only update if still pending (idempotency)
         if (order.status === "PAYMENT_PENDING") {
           await db.order.update({
