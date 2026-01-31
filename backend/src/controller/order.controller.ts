@@ -4,7 +4,6 @@ import { isAuth } from "../middleware/isAuth";
 import { OrderService } from "../service/order.service";
 import { isAdmin } from "../middleware/isAdmin";
 import { uploadPaymentProof } from "../middleware/uploadPaymentProof";
-import { isSuperAdmin } from "../middleware/isSuperAdmin";
 
 const router = express.Router();
 

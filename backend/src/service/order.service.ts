@@ -344,14 +344,14 @@ export class OrderService {
 
     // could not fulfill from any store - mark for refund (user already paid)
     const refundReason = "No store within 5 km can fulfill the entire order after payment approval";
-    await db.order.update({ 
-      where: { id: orderId }, 
-      data: { 
+    await db.order.update({
+      where: { id: orderId },
+      data: {
         status: "CANCELLED",
         refundRequired: true,
         refundReason,
-        cancelledAt: new Date()
-      } 
+        cancelledAt: new Date(),
+      },
     });
     console.error(`[OrderService] Order ${orderId} marked for refund - ${refundReason}`);
     throw new BadRequestError(refundReason);

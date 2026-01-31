@@ -26,7 +26,6 @@ tests/
 jest.config.js
 coverage/
 .jest/
-# Test files are committed to repository (remove if tests should not be in git)
-# *.test.ts
-# *.spec.ts
+*.test.ts
+*.spec.ts
 test-results/
