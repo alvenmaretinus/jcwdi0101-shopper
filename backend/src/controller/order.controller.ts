@@ -280,13 +280,13 @@ router.post("/webhook/midtrans", async (req: Request, res: Response, next: NextF
     return res.status(200).json({ success: true, message: "Webhook processed" });
   } catch (err: any) {
     console.error("[Webhook] Error processing Midtrans webhook:", err);
-    
+
     // ⚠️ CRITICAL: Return 200 even on error to prevent Midtrans retry loops
     // The error is logged above for manual investigation
     // If we return 5xx, Midtrans will retry this webhook 10+ times, causing order status inconsistency
-    return res.status(200).json({ 
-      success: false, 
-      message: "Webhook received but processing failed - check server logs for details" 
+    return res.status(200).json({
+      success: false,
+      message: "Webhook received but processing failed - check server logs for details",
     });
   }
 });

@@ -260,7 +260,7 @@ export class OrderService {
     const db: PrismaClient = prisma;
     const order = await db.order.findUnique({ where: { id: orderId }, include: { orderItems: true, user: true } });
     if (!order) throw new BadRequestError("Order not found");
-    
+
     // Early return for non-pending orders (idempotency)
     if (order.status !== "PAYMENT_PENDING") {
       return order; // already processed

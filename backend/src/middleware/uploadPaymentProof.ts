@@ -40,13 +40,13 @@ const fileFilter = async (req: Express.Request, file: Express.Multer.File, cb: m
   // 2. Validate actual image content using sharp (prevent fake images/malware)
   try {
     const metadata = await sharp(file.stream).metadata();
-    
+
     // Verify it's actually a valid image
     if (!metadata.format || !["jpeg", "png"].includes(metadata.format)) {
       cb(new Error("Uploaded file is not a valid image. File may be corrupted or tampered."));
       return;
     }
-    
+
     // ✅ File is valid
     cb(null, true);
   } catch (err) {
