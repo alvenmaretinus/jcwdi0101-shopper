@@ -110,9 +110,10 @@ export class MidtransPaymentService {
 
       // Handle payment failure/cancellation/expiry - mark order as cancelled
       // Note: MidtransService.handleWebhook() can return: CANCELLED (for deny/cancel/expire), PAYMENT_PENDING, PROCESSING (for settlement/capture), or REFUND
-      if (orderStatus === "CANCELLED" || orderStatus === "PAYMENT_PENDING") {
+      // Only cancel on terminal failure statuses; PAYMENT_PENDING is interim and should be no-op
+      if (orderStatus === "CANCELLED") {
         // Only update if still pending (idempotency)
-        if (order.status === "PAYMENT_PENDING") {
+        if (order.status === "PAYMENT_PENDING" || order.status === "PAYMENT_WAITING_CONFIRMATION") {
           await db.order.update({
             where: { id: orderId },
             data: {
@@ -123,6 +124,12 @@ export class MidtransPaymentService {
 
           console.info(`[MidtransPaymentService] Order ${orderId} cancelled from Midtrans webhook (status: ${orderStatus})`);
         }
+        return;
+      }
+
+      // Handle interim PAYMENT_PENDING status - no-op, keep order pending
+      if (orderStatus === "PAYMENT_PENDING") {
+        console.info(`[MidtransPaymentService] Order ${orderId} payment still pending (interim Midtrans status)`);
         return;
       }
 

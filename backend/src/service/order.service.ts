@@ -277,7 +277,7 @@ export class OrderService {
    * Ship order from store
    * @param orderId Order ID
    * @returns Updated order with SHIPPED status
-   * @throws BadRequestError if order not in PAID status
+   * @throws BadRequestError if order not in PROCESSING status
    * @desc Delegates to OrderLifecycleService.shipOrder()
    * @access Private (Store Admin)
    */

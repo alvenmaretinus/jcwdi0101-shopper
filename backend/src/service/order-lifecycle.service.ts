@@ -32,15 +32,15 @@ export class OrderLifecycleService {
 
     if (!order) throw new BadRequestError("Order not found");
 
+    // Early return for idempotency: already processed to PROCESSING (safe for concurrent webhook calls)
+    if (order.status === "PROCESSING") {
+      return order;
+    }
+
     // Support both PAYMENT_PENDING (gateway) and PAYMENT_WAITING_CONFIRMATION (bank transfer proof uploaded)
     const validStatuses = ["PAYMENT_PENDING", "PAYMENT_WAITING_CONFIRMATION"];
     if (!validStatuses.includes(order.status)) {
       throw new BadRequestError(`Cannot confirm payment for order with status ${order.status}. Only PAYMENT_PENDING or PAYMENT_WAITING_CONFIRMATION orders can be confirmed.`);
-    }
-
-    // Early return for idempotency: already processed to PROCESSING
-    if (order.status === "PROCESSING") {
-      return order;
     }
 
     const items = order.orderItems.map((oi) => ({
@@ -124,10 +124,18 @@ export class OrderLifecycleService {
             if (upd.count === 0) throw new BadRequestError("Stock changed during confirmation");
           }
 
-          // Update order status to PROCESSING
+          // Update order status to PROCESSING and store info if store changed
+          const updateData: any = { status: "PROCESSING" };
+          if (store.id !== order.storeId) {
+            console.info(`[OrderLifecycleService] Order ${orderId} store changed from ${order.storeId} to ${store.id} at confirmation`);
+            updateData.storeId = store.id;
+            updateData.storeAddress = store.addressName;
+            updateData.storeName = store.name;
+          }
+
           const updated = await tx.order.update({
             where: { id: orderId },
-            data: { status: "PROCESSING" },
+            data: updateData,
           });
 
           // Record product movement for audit trail

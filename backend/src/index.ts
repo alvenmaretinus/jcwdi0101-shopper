@@ -34,8 +34,8 @@ app.use(
   }),
 );
 
-// Serve uploaded files (payment proofs, etc.)
-app.use(express.static("uploads"));
+// Serve uploaded files (payment proofs, etc.) at /uploads path
+app.use("/uploads", express.static("uploads"));
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
