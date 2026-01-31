@@ -35,9 +35,6 @@ app.use(
   }),
 );
 
-// ✅ Configure static file serving for uploads (so admin can view payment proofs)
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-
 app.all("/api/auth/*splat", toNodeHandler(auth));
 
 // Parse JSON bodies

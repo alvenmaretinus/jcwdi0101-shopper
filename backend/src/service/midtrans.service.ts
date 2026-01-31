@@ -16,13 +16,16 @@ export class MidtransService {
   });
 
   /**
-   * Create a transaction/charge in Midtrans
-   * @param orderId - Order ID (unique transaction ID)
-   * @param amount - Total amount to charge (grandTotal)
-   * @param customerEmail - Customer email
-   * @param customerName - Customer name
-   * @param itemDetails - Array of items in order
-   * @returns Transaction details with redirect_url
+   * Create Midtrans transaction/charge
+   * @param orderId Order ID (unique transaction ID)
+   * @param amount Total amount to charge (grandTotal)
+   * @param customerEmail Customer email address
+   * @param customerName Customer full name
+   * @param itemDetails Array of items (id, price, quantity, name)
+   * @returns Transaction details (transactionId, token, redirectUrl, status)
+   * @throws BadRequestError if Midtrans API fails
+   * @desc Creates transaction in Midtrans Snap and returns token for frontend
+   * @security Uses serverKey from environment variables
    */
   static async createCharge(orderId: string, amount: number, customerEmail: string, customerName: string, itemDetails: Array<{ id: string; price: number; quantity: number; name: string }>) {
     try {
@@ -62,8 +65,11 @@ export class MidtransService {
 
   /**
    * Handle Midtrans webhook notification
-   * @param notificationData - Webhook payload from Midtrans
-   * @returns Processed transaction details
+   * @param notificationData Webhook payload from Midtrans
+   * @returns Processed transaction details (orderId, orderStatus, shouldConfirmPayment)
+   * @throws BadRequestError if webhook processing fails
+   * @note Maps Midtrans status (settlement/capture/pending/deny/cancel/expire) to app status
+   * @security Signature should be verified by caller before processing
    */
   static async handleWebhook(notificationData: any) {
     try {
@@ -118,8 +124,10 @@ export class MidtransService {
 
   /**
    * Get transaction status from Midtrans
-   * @param transactionId - Midtrans transaction ID
-   * @returns Transaction status details
+   * @param transactionId Midtrans transaction ID
+   * @returns Transaction status details (transactionId, orderId, status, amount, acquiredAt)
+   * @throws BadRequestError if API call fails
+   * @desc Used for polling transaction status if webhook unreliable
    */
   static async getTransactionStatus(transactionId: string) {
     try {
@@ -139,12 +147,14 @@ export class MidtransService {
   }
 
   /**
-   * Verify Midtrans signature (for webhook security)
-   * @param orderId - Order ID
-   * @param statusCode - Status code from webhook
-   * @param grossAmount - Gross amount from webhook
-   * @param signature - Signature from webhook
-   * @returns true if signature is valid
+   * Verify Midtrans webhook signature (security)
+   * @param orderId Order ID from webhook
+   * @param statusCode Status code from webhook
+   * @param grossAmount Gross amount from webhook
+   * @param signature Signature from webhook header
+   * @returns true if signature valid, false otherwise
+   * @desc SHA512 hash verification using serverKey
+   * @security CRITICAL: Verify before trusting webhook data
    */
   static verifyWebhookSignature(orderId: string, statusCode: string, grossAmount: string, signature: string): boolean {
     try {

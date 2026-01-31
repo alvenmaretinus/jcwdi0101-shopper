@@ -23,42 +23,32 @@ const storage = multer.diskStorage({
   },
 });
 
-// File filter - validate both extension/mimetype AND actual image content
-const fileFilter = async (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+// File filter - only check extension and mimetype upfront (synchronous)
+// Full validation with sharp will be done in POST handler after file is written
+const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedMimes = ["image/jpeg", "image/png", "image/jpg"];
   const allowedExts = [".jpg", ".jpeg", ".png"];
 
   const ext = path.extname(file.originalname).toLowerCase();
   const mime = file.mimetype;
 
-  // 1. Check extension and mimetype
+  // Check extension and mimetype (fast, synchronous check)
   if (!allowedMimes.includes(mime) || !allowedExts.includes(ext)) {
     cb(new Error("Invalid file type. Only .jpg, .jpeg, .png files are allowed."));
     return;
   }
 
-  // 2. Validate actual image content using sharp (prevent fake images/malware)
-  try {
-    const metadata = await sharp(file.stream).metadata();
-
-    // Verify it's actually a valid image
-    if (!metadata.format || !["jpeg", "png"].includes(metadata.format)) {
-      cb(new Error("Uploaded file is not a valid image. File may be corrupted or tampered."));
-      return;
-    }
-
-    // ✅ File is valid
-    cb(null, true);
-  } catch (err) {
-    cb(new Error(`File validation failed: ${err instanceof Error ? err.message : "Unknown error"}. Please upload a valid image file.`));
-  }
+  // Allow to proceed - full image validation happens after upload
+  cb(null, true);
 };
 
-// Create multer instance
-export const uploadPaymentProof = multer({
+// Create and export multer middleware
+const uploadPaymentProof = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 1024 * 1024, // 1MB max
+    fileSize: 5 * 1024 * 1024, // 5MB max
   },
 });
+
+export { uploadPaymentProof };
