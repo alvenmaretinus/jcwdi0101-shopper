@@ -1,6 +1,7 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { v4 as uuidv4 } from "uuid";
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads", "payment-proof");
@@ -14,11 +15,10 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    // Use timestamp + random to ensure unique filenames
-    const timestamp = Date.now();
-    const random = Math.round(Math.random() * 1e9);
+    // Use UUID v4 for guaranteed unique filenames across concurrent uploads
     const ext = path.extname(file.originalname);
-    cb(null, `proof-${timestamp}-${random}${ext}`);
+    const uniqueId = uuidv4();
+    cb(null, `proof-${uniqueId}${ext}`);
   },
 });
 

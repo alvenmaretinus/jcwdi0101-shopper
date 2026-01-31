@@ -1,5 +1,7 @@
 import { prisma } from "../lib/db/prisma";
 import type { PrismaClient } from "../../prisma/generated/client";
+import { NotFoundError } from "../error/NotFoundError";
+import { UnauthorizedError } from "../error/UnauthorizedError";
 
 /**
  * OrderQueryService: Handles order retrieval and search operations
@@ -109,7 +111,8 @@ export class OrderQueryService {
    * @param userId User ID (validates ownership for regular users)
    * @param storeId Store ID (validates ownership for admins)
    * @returns Complete order with items and user details
-   * @throws Error if order not found or authorization fails
+   * @throws NotFoundError if order not found
+   * @throws UnauthorizedError if user/store not authorized to view order
    * @note Enforces role-based access control
    */
   static async getOrderById(orderId: string, userId?: string, storeId?: string) {
@@ -124,19 +127,19 @@ export class OrderQueryService {
     });
 
     if (!order) {
-      throw new Error("Order not found");
+      throw new NotFoundError("Order not found");
     }
 
     // Authorization check
     if (userId) {
       // Regular user: can only see own orders
       if (order.userId !== userId) {
-        throw new Error("Unauthorized - order does not belong to user");
+        throw new UnauthorizedError("Order does not belong to user");
       }
     } else if (storeId) {
       // Admin: can only see orders from their store
       if (order.storeId !== storeId) {
-        throw new Error("Unauthorized - order does not belong to your store");
+        throw new UnauthorizedError("Order does not belong to your store");
       }
     }
 

@@ -36,8 +36,8 @@ export class MidtransService {
         },
         customer_details: {
           email: customerEmail,
-          first_name: customerName.split(" ")[0],
-          last_name: customerName.split(" ").slice(1).join(" ") || "",
+          first_name: customerName.trim().split(" ")[0] || customerName,
+          last_name: customerName.trim().split(" ").slice(1).join(" ") || customerName.trim().split(" ")[0],
         },
         item_details: itemDetails.map((item) => ({
           id: item.id,

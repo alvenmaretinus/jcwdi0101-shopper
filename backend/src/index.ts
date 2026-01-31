@@ -10,7 +10,7 @@ import cron from "node-cron";
 import { OrderService } from "./service/order.service";
 
 // ✅ CRITICAL: Validate all required environment variables at startup
-const requiredEnvVars = ["MIDTRANS_SERVER_KEY", "MIDTRANS_CLIENT_KEY", "BANK_ACCOUNT_NUMBER", "BANK_ACCOUNT_HOLDER"];
+const requiredEnvVars = ["MIDTRANS_SERVER_KEY", "MIDTRANS_CLIENT_KEY", "BANK_ACCOUNT_NUMBER", "BANK_ACCOUNT_HOLDER", "KOMERCE_API_KEY"];
 
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
