@@ -8,7 +8,6 @@ export type FindStockReportsByFilterReq = {
 
 
 export type StockReport = {
-
     id: string;
     description: string | null;
     createdAt: Date;

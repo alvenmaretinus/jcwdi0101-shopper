@@ -14,7 +14,7 @@ const router = Router();
 
 router.get("/", isAuth, isAdmin, async (req, res) => {
     const inputData = GetStockReportByFilterSchema.parse(req.query);
-    if (req.user!.role !== UserRole.ADMIN && req.user!.storeId !== inputData.storeId) {
+    if (req.user!.role == UserRole.ADMIN && req.user!.storeId !== inputData.storeId) {
         return res.status(403).json({ error: "Forbidden" });
     }
     const result = await stockReportService.getStockReportsByFilter(inputData);

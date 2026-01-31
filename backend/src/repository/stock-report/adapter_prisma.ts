@@ -3,15 +3,14 @@ import { FindStockReportsByFilterReq, StockReport } from "./entities";
 import { StockReportRepository } from "./interface";
 
 export class PrismaRepository implements StockReportRepository {
-    private prismaClient: PrismaClient;
+    private prisma: PrismaClient;
 
-    constructor(prismaClient: PrismaClient) {
-        this.prismaClient = prismaClient;
+    constructor(prisma: PrismaClient) {
+        this.prisma = prisma;
     }
 
     async findStockReportsByFilter(filter: FindStockReportsByFilterReq): Promise<StockReport[]> {
-        // Implement the logic to query the database using Prisma Client based on the filter
-        return this.prismaClient.productMovement.findMany({
+        return this.prisma.productMovement.findMany({
             where: {
                 OR: [
                     { fromStoreId: filter.storeId },
@@ -21,6 +20,20 @@ export class PrismaRepository implements StockReportRepository {
                     gte: new Date(filter.createdAtYear, filter.createdAtMonth - 1, 1),
                     lt: new Date(filter.createdAtYear, filter.createdAtMonth, 1),
                 },
+            },
+            select: {
+                id: true,
+                description: true,
+                updatedAt: true,
+                productCategory: true,
+                productId: true,
+                orderId: true,
+                productName: true,
+                movementType: true,
+                fromStoreId: true,
+                toStoreId: true,
+                quantityChange: true,
+                createdAt: true,
             },
         });
     }
