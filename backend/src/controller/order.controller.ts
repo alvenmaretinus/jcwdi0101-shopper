@@ -4,8 +4,98 @@ import { isAuth } from "../middleware/isAuth";
 import { OrderService } from "../service/order.service";
 import { isAdmin } from "../middleware/isAdmin";
 import { uploadPaymentProof } from "../middleware/uploadPaymentProof";
+import { isSuperAdmin } from "../middleware/isSuperAdmin";
 
 const router = express.Router();
+
+// Get list of orders with pagination, filter, sort
+router.get("/", isAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.id as string;
+    const userRole = req.user?.role as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const status = req.query.status as string | undefined;
+    const sortBy = (req.query.sortBy as "createdAt" | "status") || "createdAt";
+    const sortOrder = (req.query.sortOrder as "asc" | "desc") || "desc";
+
+    // For store admin, they can only see their store's orders
+    let storeId: string | undefined;
+    if (userRole === "STORE_ADMIN") {
+      // Store admin's store is stored in user.storeId
+      const { prisma } = await import("../lib/db/prisma");
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+      if (user?.storeId) {
+        storeId = user.storeId;
+      }
+    }
+
+    const result = await OrderService.getOrders(userId, userRole, storeId, page, limit, status, sortBy, sortOrder);
+    return res.status(200).json({ success: true, data: result.data, pagination: result.pagination });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+// Get order detail by ID
+router.get("/:id", isAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orderId = req.params.id as string;
+    const userId = req.user?.id as string;
+    const userRole = req.user?.role as string;
+
+    // For regular users, enforce ownership check
+    let targetUserId: string | undefined;
+    if (userRole === "USER") {
+      targetUserId = userId;
+    }
+
+    const order = await OrderService.getOrderById(orderId, targetUserId);
+    return res.status(200).json({ success: true, data: order });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+// Cancel order (user only, before payment)
+router.post("/:id/cancel", isAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orderId = req.params.id as string;
+    const userId = req.user?.id as string;
+
+    const order = await OrderService.cancelOrder(orderId, userId);
+    return res.status(200).json({ success: true, data: order, message: "Order cancelled successfully" });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+// Ship order (admin only)
+router.post("/:id/ship", isAuth, isAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orderId = req.params.id as string;
+
+    const order = await OrderService.shipOrder(orderId);
+    return res.status(200).json({ success: true, data: order, message: "Order marked as shipped" });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+// Confirm order receipt (user only)
+router.post("/:id/confirm", isAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orderId = req.params.id as string;
+    const userId = req.user?.id as string;
+
+    const order = await OrderService.confirmOrder(orderId, userId);
+    return res.status(200).json({ success: true, data: order, message: "Order confirmed as delivered" });
+  } catch (err: any) {
+    next(err);
+  }
+});
 
 router.post("/checkout", isAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -103,6 +193,64 @@ router.post("/admin/expire-pending", isAuth, isAdmin, async (req: Request, res: 
     const result = await OrderService.expirePendingOrders();
     return res.status(200).json({ success: true, data: result, message: `Expired ${result.count} orders` });
   } catch (err: any) {
+    next(err);
+  }
+});
+
+// Create Midtrans charge for PAYMENT_GATEWAY orders
+router.post("/:id/create-charge", isAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orderId = req.params.id as string;
+    const userId = req.user?.id as string;
+
+    // Verify order belongs to user
+    const order = await (
+      await import("../lib/db/prisma")
+    ).prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order || order.userId !== userId) {
+      return res.status(400).json({ success: false, message: "Order not found or unauthorized" });
+    }
+
+    // Create Midtrans charge
+    const transaction = await OrderService.createMidtransCharge(orderId);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        orderId,
+        transactionId: transaction.transactionId,
+        redirectUrl: transaction.redirectUrl,
+        token: transaction.token,
+        amount: transaction.amount,
+      },
+      message: "Payment gateway charge created",
+    });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+// Midtrans webhook endpoint (no auth needed, but should verify signature)
+router.post("/webhook/midtrans", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const webhookData = req.body;
+
+    console.info("[Webhook] Midtrans webhook received:", {
+      orderId: webhookData.order_id,
+      transactionId: webhookData.transaction_id,
+      status: webhookData.transaction_status,
+    });
+
+    // Handle webhook (process payment status)
+    await OrderService.handleMidtransWebhook(webhookData);
+
+    // Return 200 to acknowledge receipt (Midtrans requirement)
+    return res.status(200).json({ success: true, message: "Webhook processed" });
+  } catch (err: any) {
+    console.error("[Webhook] Error processing Midtrans webhook:", err);
     next(err);
   }
 });

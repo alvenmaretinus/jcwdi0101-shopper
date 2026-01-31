@@ -442,4 +442,287 @@ export class OrderService {
       bankCode: process.env.BANK_CODE || "bca",
     };
   }
+
+  // Get list of orders (for user: own orders, for admin: store/all orders)
+  static async getOrders(userId: string, userRole: string, storeId?: string, page: number = 1, limit: number = 10, status?: string, sortBy: "createdAt" | "status" = "createdAt", sortOrder: "asc" | "desc" = "desc") {
+    const db: PrismaClient = prisma;
+    const skip = (page - 1) * limit;
+
+    let where: any = {};
+
+    // Users see only their own orders
+    if (userRole === "USER") {
+      where.userId = userId;
+    } else if (userRole === "STORE_ADMIN") {
+      // Store admin sees only their store's orders
+      if (storeId) where.storeId = storeId;
+    } else if (userRole === "SUPERADMIN") {
+      // Super admin sees all orders (storeId optional filter)
+      if (storeId) where.storeId = storeId;
+    }
+
+    // Filter by status if provided
+    if (status) {
+      where.status = status;
+    }
+
+    const total = await db.order.count({ where });
+    const orders = await db.order.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+      include: {
+        orderItems: true,
+        user: { select: { id: true, email: true, name: true } },
+      },
+    });
+
+    return {
+      data: orders,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // Get order detail by ID
+  static async getOrderById(orderId: string, userId?: string) {
+    const db: PrismaClient = prisma;
+    const order = await db.order.findUnique({
+      where: { id: orderId },
+      include: {
+        orderItems: true,
+        user: { select: { id: true, email: true, name: true } },
+      },
+    });
+
+    if (!order) {
+      throw new BadRequestError("Order not found");
+    }
+
+    // Authorization: user can only see own order, admin can see any
+    if (userId && order.userId !== userId) {
+      throw new BadRequestError("Unauthorized - order does not belong to user");
+    }
+
+    return order;
+  }
+
+  // Cancel order (only before payment)
+  static async cancelOrder(orderId: string, userId: string) {
+    const db: PrismaClient = prisma;
+    const order = await db.order.findUnique({
+      where: { id: orderId },
+      include: { orderItems: true },
+    });
+
+    if (!order) {
+      throw new BadRequestError("Order not found");
+    }
+
+    if (order.userId !== userId) {
+      throw new BadRequestError("Unauthorized - order does not belong to user");
+    }
+
+    // Can only cancel PAYMENT_PENDING orders
+    if (order.status !== "PAYMENT_PENDING") {
+      throw new BadRequestError(`Cannot cancel order with status ${order.status}. Only PAYMENT_PENDING orders can be cancelled.`);
+    }
+
+    // Note: For PAYMENT_PENDING, stock was never decremented, so no need to refund
+    const updated = await db.order.update({
+      where: { id: orderId },
+      data: { status: "CANCELLED" },
+    });
+
+    return updated;
+  }
+
+  // Admin marks order as shipped
+  static async shipOrder(orderId: string) {
+    const db: PrismaClient = prisma;
+    const order = await db.order.findUnique({ where: { id: orderId } });
+
+    if (!order) {
+      throw new BadRequestError("Order not found");
+    }
+
+    if (order.status !== "PROCESSING") {
+      throw new BadRequestError(`Cannot ship order with status ${order.status}. Only PROCESSING orders can be shipped.`);
+    }
+
+    const updated = await db.order.update({
+      where: { id: orderId },
+      data: {
+        status: "SHIPPED",
+        shippedAt: new Date(),
+      },
+    });
+
+    return updated;
+  }
+
+  // User confirms receipt (order delivered)
+  static async confirmOrder(orderId: string, userId: string) {
+    const db: PrismaClient = prisma;
+    const order = await db.order.findUnique({ where: { id: orderId } });
+
+    if (!order) {
+      throw new BadRequestError("Order not found");
+    }
+
+    if (order.userId !== userId) {
+      throw new BadRequestError("Unauthorized - order does not belong to user");
+    }
+
+    if (order.status !== "SHIPPED") {
+      throw new BadRequestError(`Cannot confirm order with status ${order.status}. Only SHIPPED orders can be confirmed.`);
+    }
+
+    const updated = await db.order.update({
+      where: { id: orderId },
+      data: {
+        status: "DELIVERED",
+        deliveredAt: new Date(),
+      },
+    });
+
+    return updated;
+  }
+
+  // Auto-confirm orders 2 x 24 hours (2 days) after shipping
+  static async autoConfirmOrders() {
+    const db: PrismaClient = prisma;
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+    const confirmedOrders = await db.order.updateMany({
+      where: {
+        status: "SHIPPED",
+        shippedAt: { lt: twoDaysAgo },
+      },
+      data: {
+        status: "DELIVERED",
+        deliveredAt: new Date(),
+      },
+    });
+
+    if (confirmedOrders.count > 0) {
+      console.info(`[OrderService] auto-confirmed ${confirmedOrders.count} orders past 2-day shipping window`);
+    }
+
+    return confirmedOrders;
+  }
+
+  // Create Midtrans charge for PAYMENT_GATEWAY orders
+  static async createMidtransCharge(orderId: string) {
+    const db: PrismaClient = prisma;
+    const { MidtransService } = await import("./midtrans.service");
+
+    // Get order details
+    const order = await db.order.findUnique({
+      where: { id: orderId },
+      include: { orderItems: true, user: true },
+    });
+
+    if (!order) {
+      throw new BadRequestError("Order not found");
+    }
+
+    if (order.status !== "PAYMENT_PENDING") {
+      throw new BadRequestError(`Order status must be PAYMENT_PENDING, current: ${order.status}`);
+    }
+
+    if (order.paymentType !== "PAYMENT_GATEWAY") {
+      throw new BadRequestError("This order is not using payment gateway");
+    }
+
+    if (!order.user?.email || !order.user?.name) {
+      throw new BadRequestError("User email and name are required");
+    }
+
+    // Prepare item details for Midtrans
+    const itemDetails = order.orderItems.map((item) => ({
+      id: item.productId,
+      name: item.productName,
+      price: item.unitPrice,
+      quantity: item.quantity,
+    }));
+
+    // Add shipping cost as item
+    itemDetails.push({
+      id: "shipping",
+      name: "Shipping Cost",
+      price: order.shippingCost,
+      quantity: 1,
+    });
+
+    try {
+      // Create Midtrans transaction
+      const transaction = await MidtransService.createCharge(orderId, order.grandTotal, order.user.email, order.user.name, itemDetails);
+
+      // Transaction created successfully (don't store in DB yet as field doesn't exist)
+      // Store can track via order.id relationship or webhook reference
+      console.info(`[OrderService] Midtrans charge created for order ${orderId}, transaction: ${transaction.transactionId}`);
+
+      return transaction;
+    } catch (error) {
+      console.error(`[OrderService] Failed to create Midtrans charge for order ${orderId}:`, error);
+      throw error;
+    }
+  }
+
+  // Handle Midtrans webhook callback
+  static async handleMidtransWebhook(webhookData: any) {
+    const db: PrismaClient = prisma;
+    const { MidtransService } = await import("./midtrans.service");
+
+    try {
+      // Process webhook data
+      const processedData = await MidtransService.handleWebhook(webhookData);
+      const { orderId, shouldConfirmPayment, orderStatus } = processedData;
+
+      console.info(`[OrderService] Processing Midtrans webhook for order ${orderId}, status: ${orderStatus}`);
+
+      // Get current order
+      const order = await db.order.findUnique({
+        where: { id: orderId },
+        include: { orderItems: true, user: true },
+      });
+
+      if (!order) {
+        console.warn(`[OrderService] Order ${orderId} not found for webhook`);
+        return;
+      }
+
+      // Handle payment success (settlement/capture)
+      if (shouldConfirmPayment) {
+        // Call confirmPayment to decrement stock and move order to PROCESSING
+        return await this.confirmPayment(orderId);
+      }
+
+      // Handle payment failure/cancellation
+      if (orderStatus === "CANCELLED") {
+        // Update order status to CANCELLED (no stock was decremented yet for PAYMENT_GATEWAY)
+        await db.order.update({
+          where: { id: orderId },
+          data: { status: "CANCELLED" },
+        });
+
+        console.info(`[OrderService] Order ${orderId} marked as CANCELLED from Midtrans webhook`);
+        return;
+      }
+
+      // For other statuses, just log
+      console.info(`[OrderService] Order ${orderId} webhook processed, status: ${orderStatus}`);
+    } catch (error) {
+      console.error("[OrderService] Error handling Midtrans webhook:", error);
+      throw error;
+    }
+  }
 }

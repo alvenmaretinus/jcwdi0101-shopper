@@ -42,6 +42,15 @@ cron.schedule("0 * * * *", async () => {
   }
 });
 
+// Auto-confirm orders 2x24 hours after shipping (every 6 hours check)
+cron.schedule("0 */6 * * *", async () => {
+  try {
+    await OrderService.autoConfirmOrders();
+  } catch (err) {
+    console.error("[Cron] Error auto-confirming orders:", err);
+  }
+});
+
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
