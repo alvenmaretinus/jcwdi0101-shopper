@@ -1,7 +1,6 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import sharp from "sharp";
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads", "payment-proof");

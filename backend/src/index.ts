@@ -1,6 +1,5 @@
 import "dotenv/config";
 import express from "express";
-import path from "path";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middleware/errorHandler";
 import { appRouter } from "./route";
