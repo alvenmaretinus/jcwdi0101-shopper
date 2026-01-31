@@ -115,7 +115,7 @@ router.post("/checkout", isAuth, async (req: Request, res: Response, next: NextF
 });
 
 // Get bank information for bank transfer payment
-router.get("/bank-info", async (req: Request, res: Response, next: NextFunction) => {
+router.get("/bank-info", isAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const bankInfo = await OrderService.getBankInfo();
     return res.status(200).json({ success: true, data: bankInfo });

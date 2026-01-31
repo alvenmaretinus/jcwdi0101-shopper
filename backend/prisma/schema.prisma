@@ -163,8 +163,10 @@ model Order {
   deliveredAt  DateTime?
   paymentDueAt DateTime?
 
-  cancelReason    String?
-  paymentProofUrl String?
+  cancelReason      String?
+  paymentProofUrl   String?
+  refundRequired    Boolean @default(false)
+  refundReason      String?
 
   shippingAddress String
   storeAddress    String
