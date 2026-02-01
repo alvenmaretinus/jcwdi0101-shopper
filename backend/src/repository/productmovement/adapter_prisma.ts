@@ -1,7 +1,7 @@
 import { PrismaClient, ProductMovement } from "../../../prisma/generated/client";
 import { ProductMovementReq } from "./entities";
 import { ProductMovementRepo } from "./interface";
-import { v4 }from "uuid";
+import { v4 } from "uuid";
 
 class PrismaRepository implements ProductMovementRepo {
     private prisma: PrismaClient;
