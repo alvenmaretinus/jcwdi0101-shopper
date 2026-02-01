@@ -7,10 +7,16 @@ import { RemoveEmployeeInput } from "../schema/store/RemoveEmployeeSchema";
 import { DeleteStoreByIdInput } from "../schema/store/DeleteStoreByIdSchema";
 import { GetStoreByIdInput } from "../schema/store/GetStoreByIdSchema";
 import { UpdateStoreInput } from "../schema/store/UpdateStoreSchema";
+import { GetNearestStoreInput } from "../schema/store/GetNearestStoreSchema";
+import { getDistance } from "geolib";
+import { prisma } from "../lib/db/prisma";
+import { AppError } from "../error/AppError";
 
 export class StoreService {
   static async createStore(data: CreateStoreInput) {
-    const { name, phone, coords, addressName, description } = data;
+    const { name, phone, coords, addressName, description, postCode } = data;
+
+    const isExist = await prisma.store.findFirst();
     return await StoreRepository.createStore({
       name,
       phone,
@@ -18,6 +24,8 @@ export class StoreService {
       latitude: coords.lat,
       addressName,
       description,
+      postCode,
+      isDefault: isExist ? false : true,
     });
   }
 
@@ -31,24 +39,69 @@ export class StoreService {
     return await StoreRepository.getStoreByIdWithEmployee({ id });
   }
 
-  static async getStores() {
+  static async getStoresWithEmployeeCount() {
     return await StoreRepository.getStoresWithEmployeeCount();
   }
 
-  static async updateStore(data: UpdateStoreInput) {
-    const { id, name, lng, lat, description, addressName, phone } = data;
-    const store = await StoreRepository.getStoreByIdWithCounts({ id });
-    if (!store) throw new NotFoundError("Store Not Found");
+  static async getStoresWithProducts() {
+    return await StoreRepository.getStoresWithProducts();
+  }
 
-    return await StoreRepository.updateStore({
+  static async updateStore(data: UpdateStoreInput) {
+    const {
       id,
       name,
-      latitude: lat,
-      longitude: lng,
-      addressName,
+      lng,
+      lat,
       description,
+      addressName,
       phone,
-    });
+      postCode,
+      isDefault,
+    } = data;
+    const store = await StoreRepository.getStoreById({ id });
+    if (!store) throw new NotFoundError("Store Not Found");
+
+    if (isDefault) {
+      if (!isDefault) {
+        console.warn(
+          `User with id ${id} is trying to set default store to false`
+        );
+        throw new AppError({
+          message: "Internal Server Error",
+          statusCode: 500,
+        });
+      }
+      const defaultStore = await StoreRepository.getDefaultStore();
+      if (!defaultStore) {
+        console.error("Default store not found when updating store");
+        throw new AppError({
+          message: "Internal Server Error",
+          statusCode: 500,
+        });
+      }
+      await prisma.$transaction(async (tx) => {
+        await tx.store.update({
+          where: { id: defaultStore.id },
+          data: { isDefault: false },
+        });
+        return await tx.store.update({
+          where: { id },
+          data: { isDefault: true },
+        });
+      });
+    } else {
+      await StoreRepository.updateStore({
+        id,
+        name,
+        latitude: lat,
+        longitude: lng,
+        addressName,
+        description,
+        phone,
+        postCode,
+      });
+    }
   }
 
   static async deleteStoreById(data: DeleteStoreByIdInput) {
@@ -63,6 +116,16 @@ export class StoreService {
     }
     if (store.productStores > 0) {
       throw new ConflictError("Products still exist");
+    }
+
+    const defaultStore = await prisma.store.findFirst({
+      where: {
+        isDefault: true,
+        isSoftDeleted: false,
+      },
+    });
+    if (defaultStore?.id === id) {
+      throw new ConflictError("Default store cannot be deleted");
     }
 
     return await StoreRepository.deleteStoreById({ id });
@@ -91,5 +154,34 @@ export class StoreService {
       employeeId,
       id,
     });
+  }
+
+  static async getNearestStores(data: GetNearestStoreInput) {
+    const {
+      latitude: userAddressLatitude,
+      longitude: userAddressLongitude,
+      radiusMeters,
+    } = data;
+
+    const stores = await StoreRepository.getAllStores();
+    let storesWithDistance = stores.map((store) => ({
+      ...store,
+      distance: getDistance(
+        { latitude: store.latitude, longitude: store.longitude },
+        { latitude: userAddressLatitude, longitude: userAddressLongitude }
+      ),
+    }));
+
+    if (radiusMeters) {
+      storesWithDistance = storesWithDistance.filter(
+        (store) => store.distance <= radiusMeters
+      );
+    }
+
+    const sortedStoreFromNearest = storesWithDistance.sort((a, b) => {
+      return a.distance - b.distance;
+    });
+
+    return sortedStoreFromNearest;
   }
 }

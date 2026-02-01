@@ -10,4 +10,6 @@ export const storeSelect = {
   addressName: true,
   createdAt: true,
   updatedAt: true,
+  postCode: true,
+  isDefault: true,
 } as const satisfies Prisma.StoreSelect;

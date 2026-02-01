@@ -33,7 +33,7 @@ export const errorHandler = (
   next: NextFunction
 ) => {
   if (err instanceof AppError) {
-    console.log("AppError: " + err.message);
+    console.log(err);
     return res.status(err.statusCode).json({ error: err.message });
   }
 

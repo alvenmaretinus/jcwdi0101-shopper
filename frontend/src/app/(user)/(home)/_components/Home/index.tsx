@@ -4,7 +4,7 @@ import { ProductSection } from "./ProductSection";
 
 export const Home = () => {
   return (
-    <div >
+    <div>
       <HeroSection />
       <CategorySection />
       <ProductSection />

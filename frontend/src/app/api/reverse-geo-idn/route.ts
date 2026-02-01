@@ -1,4 +1,4 @@
-import axios from "axios";
+import { openCageFormatter } from "@/lib/openCageFormatter";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -7,50 +7,55 @@ export async function GET(request: Request) {
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
 
-    if (!lat || !lng) {
-      return NextResponse.json("");
-    }
+    if (!lat || !lng) return NextResponse.json("");
 
     const result = await getReverseGeoIdn({
       lat: Number(lat),
       lng: Number(lng),
     });
-
-    if (!result) return NextResponse.json("");
-
-    return NextResponse.json(result);
+    return NextResponse.json(result || "");
   } catch (err) {
     console.error(err);
     return NextResponse.json("", { status: 500 });
   }
 }
 
-export type ReverseGeoResponse = {
-  results: {
-    formatted: { name: string };
-  }[];
+type Address = {
+  city_block?: string;
+  neighbourhood?: string;
+  suburb?: string;
+  city?: string;
+  postcode?: string;
+  region?: string;
+  country?: string;
 };
+
 async function getReverseGeoIdn({ lat, lng }: { lat: number; lng: number }) {
   const API_KEY = process.env.OPEN_CAGE_API_KEY;
   if (lat == null || lng == null) return "";
 
   try {
-    const res = await axios.get<ReverseGeoResponse>(
-      "https://api.opencagedata.com/geocode/v1/json",
-      {
-        params: {
-          key: API_KEY,
-          q: `${lat},${lng}`,
-          countrycode: "id",
-          limit: 1,
-          no_annotations: 1,
-        },
-      }
+    const params = new URLSearchParams({
+      key: API_KEY!,
+      q: `${lat},${lng}`,
+      countrycode: "id",
+      limit: "1",
+    });
+
+    const res = await fetch(
+      `https://api.opencagedata.com/geocode/v1/json?${params}`
     );
 
-    if (!res.data.results || res.data.results.length === 0) return "";
+    if (!res.ok) throw new Error();
+    const data = await res.json();
 
-    return res.data.results[0].formatted;
+    if (!data.results?.length) return "";
+
+    const components = data.results[0].components as Address;
+
+    const formatted = await openCageFormatter(components.postcode!);
+
+    return formatted;
   } catch (err) {
     console.error(err);
     return "";

@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axiosInstance";
+import { apiFetch } from "@/lib/apiFetch";
 import {
   AddEmployeeInput,
   AddEmployeeSchema,
@@ -11,12 +11,17 @@ export const addEmployee = async (inputData: AddEmployeeInput) => {
 
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0].message;
-    toast.error(firstError || "Invalid input");
+    if (typeof window !== "undefined") {
+      toast.error(firstError || "Invalid input");
+    }
     throw new Error(firstError);
   }
 
   const { id, ...data } = inputData;
-  const res = await axiosInstance.patch<User>(`/stores/${id}/employees/`, data);
+  const res = await apiFetch<User>(`/stores/${id}/employees/`, {
+    method: "PATCH",
+    body: data,
+  });
 
-  return res.data;
+  return res;
 };

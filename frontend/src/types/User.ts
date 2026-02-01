@@ -1,8 +1,14 @@
 export type User = {
-  id: string;
   email: string;
-  profileUrl: string | null;
+  id: string;
+  name: string;
+  role: UserRole;
+  image: string | null;
+  createdAt: Date;
+  updatedAt: Date;
   referralCode: string;
   storeId: string | null;
   employeeJoinedAt: string | null;
 };
+
+type UserRole = "USER" | "ADMIN" | "SUPERADMIN";

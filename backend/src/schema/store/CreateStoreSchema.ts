@@ -6,6 +6,7 @@ export const CreateStoreSchema = z.strictObject({
   description: z.string().optional(),
   addressName: z.string().min(1, "Address is required"),
   phone: z.string().min(1, "Phone number is required"),
+  postCode: z.string().min(1, "Post code is required"),
 });
 
 export type CreateStoreInput = z.infer<typeof CreateStoreSchema>;
