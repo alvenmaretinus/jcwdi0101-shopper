@@ -6,7 +6,7 @@ export function toDomainModels(res: any[], filter: FindStockReportsByFilterReq):
 
 export function toDomainModel(item: any, filter: FindStockReportsByFilterReq): StockReport {
     return {...item,
-        quantityChange: item.fromStoreId != null && item.fromStoreId === filter.storeId ? 
+        quantityChange: item.fromStoreId !== null && item.fromStoreId !== undefined && item.fromStoreId === filter.storeId ? 
         -Math.abs(item.quantityChange) : Math.abs(item.quantityChange)
     }
 }
