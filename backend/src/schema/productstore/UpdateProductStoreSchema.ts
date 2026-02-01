@@ -1,8 +1,10 @@
 import {z} from "zod";
 
 export const UpdateProductStoreSchema = z.strictObject({
-    id: z.string().uuid("Invalid product store ID"),
-    productId: z.string().uuid("Invalid product ID").optional(),
-    storeId: z.string().uuid("Invalid store ID").optional(),
+    id: z.uuid("Invalid product store ID"),
+    productId: z.uuid("Invalid product ID").optional(),
+    storeId: z.uuid("Invalid store ID").optional(),
+    quantity: z.number().int("Quantity must be an integer").min(0, "Quantity cannot be negative").optional()
+
 });
 export type UpdateProductStoreInput = z.infer<typeof UpdateProductStoreSchema>;

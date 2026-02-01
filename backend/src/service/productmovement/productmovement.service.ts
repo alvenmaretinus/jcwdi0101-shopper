@@ -5,18 +5,14 @@ import { Service } from "../productmovement/interface";
 import { ProductMovement, ProductMovementReq } from "../../repository/productmovement/entities";
 
 class ProductMovementService implements Service {
-    private static Instance: ProductMovementService | undefined;
     private productMovementRepo!: ProductMovementRepo;
 
     constructor(productMovementRepo: ProductMovementRepo) {
-        if (ProductMovementService.Instance) {
-            return ProductMovementService.Instance;
-        }
         this.productMovementRepo = productMovementRepo;
-        ProductMovementService.Instance = this;
-        return this;
     }
+
     async createProductMovement(data: CreateProductMovementInput): Promise<ProductMovement> {
+        // TODO: modify this function when Stock Report is merged with the changes to the DB schema
         const inputData: ProductMovementReq = {
             ...data,
             movementType: data.movementType as MovementType,

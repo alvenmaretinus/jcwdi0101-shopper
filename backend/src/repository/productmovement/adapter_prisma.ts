@@ -15,7 +15,7 @@ class PrismaRepository implements ProductMovementRepo {
             data: {
                 id: v4(),
                 ...data,
-                productName: '',
+                productName: '', // TODO: When the productstore is merged update this
                 productCategory: '',
             },
         });

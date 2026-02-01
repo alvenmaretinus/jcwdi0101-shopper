@@ -13,6 +13,7 @@ const productService = new ProductService(productsRepo);
 
 const router = Router();
 
+// Non-logged in users can view products
 router.get("/products",  async (req, res) => {
     const inputData: GetProductsByFilterInput = GetProductsByFilterSchema.parse(req.query);
     const filter: FilterInput = inputData.filter;
@@ -20,6 +21,7 @@ router.get("/products",  async (req, res) => {
     return res.json(result);    
 });
 
+// Non-logged in users can view products by id
 router.get("/product/:id", async (req, res) => {
     const inputData: GetProductByIdInput = GetProductByIdSchema.parse(req.params);
     const result = await productService.getProductsByFilterWithOptionalStock({ id: inputData.id }, false);

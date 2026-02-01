@@ -11,7 +11,6 @@ export const appRouter = Router();
 appRouter.use(authRouter);
 appRouter.use(storeRouter);
 appRouter.use(userRouter);
-appRouter.use(authRouter);
 appRouter.use(productRouter);
 appRouter.use(productStoreRouter);
 appRouter.use(productMovementRouter);

@@ -40,6 +40,9 @@ class ProductStoreService implements Service {
 
     async updateProductStore(id: string, data: Partial<UpdateProductStoreInput>): Promise<ProductStore> {
         const oldData = await this.productStoreRepo.getProductStoreByID(id);
+        if (oldData == null) {
+            throw new Error(`ProductStore with id ${id} not found`);
+        }
         const ret = await this.productStoreRepo.updateProductStore(id, data);
         
         const deltaQuantity = ret.quantity - (oldData ? oldData.quantity : 0)

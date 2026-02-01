@@ -19,31 +19,33 @@ const productStoreService: ProductStoreServiceInterface = new ProductStoreServic
 const router = Router()
 
 
-router.post("/product-store", isAuth, isSuperAdmin, async (req, res) => {
+router.post("/", isAuth, isSuperAdmin, async (req, res) => {
   const inputData = CreateProductStoreSchema.parse(req.body);
   const result = await productStoreService.createProductStore(inputData);
   return res.status(201).json(result);
 });
 
-router.get("/product-store/:id", async (req, res) => {
+// Even non-authenticated users can get product store info
+router.get("/:id", async (req, res) => {
   const inputData = GetProductStoreByIdSchema.parse(req.params);
   const result = await productStoreService.getProductStoreByID(inputData.id);
   return res.json(result);
 });
 
-router.get("/product-stores", async (req, res) => {
+// Even non-authenticated users can get product store info
+router.get("/", async (req, res) => {
   const inputData = GetProductStoresByFilterSchema.parse(req.query);
   const result = await productStoreService.getProductStoresByFilter(inputData);
   return res.json(result);
 });
 
-router.patch("/product-store/:id",  isAuth, isSuperAdmin, async (req, res) => {
+router.patch("/:id",  isAuth, isSuperAdmin, async (req, res) => {
   const inputData = UpdateProductStoreSchema.parse({id: req.params.id,  ...req.body });
-  const result = await productStoreService.updateProductStore(inputData.id!, inputData);
+  const result = await productStoreService.updateProductStore(inputData.id, inputData);
   return res.json(result);
 });
 
-router.delete("/product-store/:id",  isAuth, isSuperAdmin, async (req, res) => {
+router.delete("/:id",  isAuth, isSuperAdmin, async (req, res) => {
   const { id } = DeleteProductStoreByIdSchema.parse(req.params);
   await productStoreService.deleteProductStore(id);
   return res.status(204).send();
