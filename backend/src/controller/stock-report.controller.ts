@@ -15,8 +15,7 @@ const router = Router();
 router.get("/", isAuth, isAdmin, async (req, res) => {
     const inputData = GetStockReportByFilterSchema.parse(req.query);
     // Additional check: if the user is ADMIN, ensure they can only access their own store's data
-    if (req.user != undefined 
-        && req.user.role === UserRole.ADMIN 
+    if (req.user.role === UserRole.ADMIN 
         && req.user.storeId != null 
         && req.user.storeId !== inputData.storeId) {
         return res.status(403).json({ error: "Forbidden" });
