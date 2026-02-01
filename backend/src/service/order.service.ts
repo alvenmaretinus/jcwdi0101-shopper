@@ -106,7 +106,7 @@ export class OrderService {
 
     // create pending order snapshot; do NOT decrement stock here
     // Payment deadline: 1 hour for manual bank transfer (per brief: "sekitar 1 jam" to upload proof)
-    const paymentDueHours = Number(process.env.PAYMENT_DUE_HOURS ?? 1);
+    const paymentDueHours = Number.isFinite(Number(process.env.PAYMENT_DUE_HOURS)) ? Number(process.env.PAYMENT_DUE_HOURS) : 1;
     const paymentDueAt = new Date(Date.now() + paymentDueHours * 60 * 60 * 1000);
     const order = await db.order.create({
       data: {

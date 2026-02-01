@@ -3,6 +3,8 @@ import { Request, Response, NextFunction } from "express";
 import { isAuth } from "../middleware/isAuth";
 import { OrderService } from "../service/order.service";
 import { isAdmin } from "../middleware/isAdmin";
+import { NotFoundError } from "../error/NotFoundError";
+import { UnauthorizedError } from "../error/UnauthorizedError";
 
 const router = express.Router();
 
@@ -20,8 +22,12 @@ router.get("/", isAuth, async (req: Request, res: Response, next: NextFunction) 
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const status = req.query.status as string | undefined;
-    const sortBy = (req.query.sortBy as "createdAt" | "status") || "createdAt";
-    const sortOrder = (req.query.sortOrder as "asc" | "desc") || "desc";
+
+    // Validate sortBy and sortOrder against allowlist
+    const validSortBy = ["createdAt", "status"];
+    const validSortOrder = ["asc", "desc"];
+    const sortBy = (validSortBy.includes(req.query.sortBy as string) ? req.query.sortBy : "createdAt") as "createdAt" | "status";
+    const sortOrder = (validSortOrder.includes(req.query.sortOrder as string) ? req.query.sortOrder : "desc") as "asc" | "desc";
     const dateFrom = req.query.dateFrom as string | undefined;
     const dateTo = req.query.dateTo as string | undefined;
     const search = req.query.search as string | undefined;
@@ -72,6 +78,13 @@ router.post("/checkout", isAuth, async (req: Request, res: Response, next: NextF
  */
 router.post("/admin/expire-pending", isAuth, isAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const userRole = req.user?.role as string;
+
+    // Only SUPERADMIN can expire orders globally
+    if (userRole !== "SUPERADMIN") {
+      throw new UnauthorizedError("Only SUPERADMIN can expire pending orders");
+    }
+
     const result = await OrderService.expirePendingOrders();
     return res.status(200).json({ success: true, data: result, message: `Expired ${result.count} orders` });
   } catch (err: any) {
@@ -204,6 +217,20 @@ router.post("/:id/admin-cancel", isAuth, isAdmin, async (req: Request, res: Resp
 router.post("/:id/ship", isAuth, isAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orderId = req.params.id as string;
+    const userRole = req.user?.role as string;
+    const userId = req.user?.id as string;
+
+    // If ADMIN, verify they own the store for this order
+    if (userRole === "ADMIN") {
+      const { prisma } = await import("../lib/db/prisma");
+      const order = await prisma.order.findUnique({ where: { id: orderId } });
+      if (!order) throw new NotFoundError("Order not found");
+
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (user?.storeId !== order.storeId) {
+        throw new UnauthorizedError("You can only ship orders from your own store");
+      }
+    }
 
     const order = await OrderService.shipOrder(orderId);
     return res.status(200).json({ success: true, data: order, message: "Order marked as shipped" });

@@ -152,12 +152,17 @@ export class OrderLifecycleService {
             });
           }
 
-          // Clear user's cart after successful confirmation
+          // Clear user's cart after successful confirmation - only items from this order
           const userCart = await tx.cart.findUnique({
             where: { userId: order.userId },
           });
-          if (userCart) {
-            await tx.cartItem.deleteMany({ where: { cartId: userCart.id } });
+          if (userCart && items.length > 0) {
+            await tx.cartItem.deleteMany({
+              where: {
+                cartId: userCart.id,
+                productId: { in: items.map((it) => it.productId) },
+              },
+            });
           }
 
           return updated;
