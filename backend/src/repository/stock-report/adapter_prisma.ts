@@ -10,40 +10,49 @@ export class PrismaRepository implements StockReportRepository {
         this.prisma = prisma;
     }
 
-    async findStockReportsByFilter(filter: FindStockReportsByFilterReq): Promise<StockReport[]> {
-        const res: StockReport[] = await this.prisma.productMovement.findMany({
-            where: {
-                OR: [
-                    { fromStoreId: filter.storeId },
-                    { toStoreId: filter.storeId },
-                ],
-                createdAt: {
-                    // Date in JS is 0 to 11. Adjust accordingly.
-                    gte: new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth-1, 1)),
-                    lt: filter.createdAtMonth == 11 ? new Date(Date.UTC(filter.createdAtYear, 0, 1)) : new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth, 1)),
-                },
-            },
-            select: {
-                id: true,
-                description: true,
-                updatedAt: true,
-                productCategory: true,
-                productId: true,
-                orderId: true,
-                productName: true,
-                movementType: true,
-                fromStoreId: true,
-                toStoreId: true,
-                quantityChange: true,
-                createdAt: true,
-            },
-            orderBy: [
-                { createdAt: "desc" },
-                { id: "desc" },
+    async findStockReportsByFilter(filter: FindStockReportsByFilterReq): Promise<{ items: StockReport[]; total: number }> {
+        const where = {
+            OR: [
+                { fromStoreId: filter.storeId },
+                { toStoreId: filter.storeId },
             ],
-            skip: filter.skip,
-            take: filter.take,
-        });
-        return toDomainModels(res, filter);
+            createdAt: {
+                gte: new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth - 1, 1)),
+                lt: filter.createdAtMonth == 11
+                    ? new Date(Date.UTC(filter.createdAtYear, 0, 1))
+                    : new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth, 1)),
+            },
+        };
+
+        const select = {
+            id: true,
+            description: true,
+            updatedAt: true,
+            productCategory: true,
+            productId: true,
+            orderId: true,
+            productName: true,
+            movementType: true,
+            fromStoreId: true,
+            toStoreId: true,
+            quantityChange: true,
+            createdAt: true,
+        };
+
+        const [rows, count] = await this.prisma.$transaction([
+            this.prisma.productMovement.findMany({
+                where,
+                select,
+                orderBy: [
+                    { createdAt: "desc" },
+                    { id: "desc" },
+                ],
+                skip: filter.skip,
+                take: filter.take,
+            }),
+            this.prisma.productMovement.count({ where }),
+        ]);
+
+        return { items: toDomainModels(rows, filter), total: count };
     }
 }

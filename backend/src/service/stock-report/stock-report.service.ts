@@ -9,7 +9,7 @@ export class StockReportService implements Service {
         this.stockReportRepo = stockReportRepo;
     }
 
-    async getStockReportsByFilter(input: GetStockReportByFilterInput): Promise<StockReport[]> {
+    async getStockReportsByFilter(input: GetStockReportByFilterInput): Promise<{ items: StockReport[]; total: number }> {
         return this.stockReportRepo.findStockReportsByFilter(input);
     }
 }
