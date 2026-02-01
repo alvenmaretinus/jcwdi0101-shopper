@@ -4,6 +4,8 @@ export type FindStockReportsByFilterReq = {
     storeId: string;
     createdAtMonth: number;
     createdAtYear: number;
+    skip: number;
+    take: number;
 }
 
 

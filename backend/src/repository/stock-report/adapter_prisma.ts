@@ -35,6 +35,8 @@ export class PrismaRepository implements StockReportRepository {
                 quantityChange: true,
                 createdAt: true,
             },
+            skip: filter.skip,
+            take: filter.take,
         });
     }
 }
