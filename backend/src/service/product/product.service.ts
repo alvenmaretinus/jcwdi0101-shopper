@@ -2,6 +2,7 @@ import {Service} from './interface';
 import {ProductsRepo} from '../../repository/product/interface';
 import { FilterInput } from '../../schema/product/GetProductsByFilterSchema';
 import { CreateProductInput, UpdateProductInput } from '../../schema/product';
+import { Product, ProductWithStock } from '../../repository/product/entities';
 
 export class ProductService implements Service {
     private productRepo: ProductsRepo;
@@ -14,9 +15,9 @@ export class ProductService implements Service {
         filter: Partial<FilterInput>,
         withStock: boolean
     ): Promise<
-        | Awaited<ReturnType<ProductsRepo['getProductsByFilterWithStock']>>
-        | Awaited<ReturnType<ProductsRepo['getProductsByFilter']>>
-    > {
+        ProductWithStock[]
+        |Product[]>
+    {
         if (withStock) {
             return this.productRepo.getProductsByFilterWithStock(filter);
         } else {
@@ -24,11 +25,11 @@ export class ProductService implements Service {
         }
     }
 
-    async createProduct(data: CreateProductInput): Promise<any> {
+    async createProduct(data: CreateProductInput): Promise<Product> {
         return this.productRepo.createProduct(data);
     }
 
-    async updateProduct(id: string, data: UpdateProductInput): Promise<any> {
+    async updateProduct(id: string, data: UpdateProductInput): Promise<Product> {
         return this.productRepo.updateProduct(id, data);
     }
 
