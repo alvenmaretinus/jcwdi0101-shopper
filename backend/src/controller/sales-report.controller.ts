@@ -25,7 +25,7 @@ router.get("/", isAuth, isAdmin, async (req, res) => {
         data: data,
         count: count,
         page: Math.floor(inputData.skip / inputData.take) + 1,
-        pageSize: Math.min(inputData.take, data.length),
+        pageSize: data.length,
     })
 })
 
