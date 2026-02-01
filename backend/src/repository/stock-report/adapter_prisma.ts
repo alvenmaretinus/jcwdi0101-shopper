@@ -39,7 +39,7 @@ export class PrismaRepository implements StockReportRepository {
             take: filter.take,
         });
         for (let r of res) {
-            r.quantityChange = r.fromStoreId == filter.storeId ? Math.abs(r.quantityChange) : -Math.abs(r.quantityChange);
+            r.quantityChange = r.fromStoreId != null && r.fromStoreId === filter.storeId ? Math.abs(r.quantityChange) : -Math.abs(r.quantityChange);
         }
         return res;
     }
