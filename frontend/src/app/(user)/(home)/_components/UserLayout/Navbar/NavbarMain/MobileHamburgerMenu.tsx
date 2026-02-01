@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { authClient } from "@/lib/authClient";
 import { Menu, ShoppingCart, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,6 +18,7 @@ const navLinks = [
 export const MobileHamburgerMenu = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { data } = authClient.useSession();
 
   return (
     <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -50,7 +52,7 @@ export const MobileHamburgerMenu = () => {
 
           <div className="flex flex-col gap-2">
             <Link
-              href="/profile"
+              href="/profile/profile"
               onClick={() => setIsMobileMenuOpen(false)}
               className="py-3 px-4 rounded-lg font-medium text-foreground hover:bg-muted flex items-center gap-3"
             >
@@ -58,7 +60,7 @@ export const MobileHamburgerMenu = () => {
               My Account
             </Link>
             <Link
-              href="/orders"
+              href="/profile/order"
               onClick={() => setIsMobileMenuOpen(false)}
               className="py-3 px-4 rounded-lg font-medium text-foreground hover:bg-muted flex items-center gap-3"
             >
@@ -66,10 +68,11 @@ export const MobileHamburgerMenu = () => {
               My Orders
             </Link>
           </div>
-
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full mt-4">
-            Sign In
-          </Button>
+          {!data && (
+            <Button className="bg-primary md:hidden hover:bg-primary/90 text-primary-foreground rounded-full mt-4">
+              Sign In
+            </Button>
+          )}
         </div>
       </SheetContent>
     </Sheet>

@@ -42,7 +42,7 @@ export const DeleteDialog = ({
           <AlertDialogCancel onClick={() => setIsOpen(false)}>
             Cancel
           </AlertDialogCancel>
-          <Button disabled={disabled} onClick={onConfirm}>
+          <Button variant="destructive" disabled={disabled} onClick={onConfirm}>
             {confirmText}
           </Button>
         </AlertDialogFooter>

@@ -1,9 +1,9 @@
-import { ACCESS_TOKEN_NAME } from "../../constant/cookies";
-import { UserRole } from "../../prisma/generated/enums";
-import { UnauthorizedError } from "../error/UnauthorizedError";
-import { prisma } from "../lib/db/prisma";
-import { supabase } from "../lib/supabase/server";
 import { NextFunction, Request, Response } from "express";
+import { InvalidTokenError } from "../error/InvalidTokenError";
+import { auth } from "../lib/auth"; // your BetterAuth client
+import { fromNodeHeaders } from "better-auth/node";
+import { UserRole } from "../../prisma/generated/enums";
+import { prisma } from "../lib/db/prisma";
 
 declare global {
   namespace Express {
@@ -18,23 +18,25 @@ declare global {
 }
 
 export const isAuth = async (
-  req: UserRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const accessToken = req.cookies[ACCESS_TOKEN_NAME];
-  if (!accessToken) throw new UnauthorizedError("No access token provided");
-
-  const {
-    data: { user: supabaseUser },
-    error,
-  } = await supabase.auth.getUser(accessToken);
-  if (error || !supabaseUser) throw new UnauthorizedError("Invalid token");
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
+  if (!session || !session.user) {
+    throw new InvalidTokenError();
+  }
 
   const user = await prisma.user.findUnique({
-    where: { id: supabaseUser.id },
+    where: { id: session.user.id },
   });
-  if (!user) throw new UnauthorizedError("User not found");
-  req.body.user = { id: user.id, email: user.email, role: user.role };
+
+  if (!user) {
+    throw new InvalidTokenError();
+  }
+
+  req.user = { id: user.id, email: user.email, role: user.role };
   next();
 };

@@ -1,5 +1,3 @@
-import axios from "axios";
-
 export async function getReverseGeoIdn({
   lat,
   lng,
@@ -7,16 +5,19 @@ export async function getReverseGeoIdn({
   lat: number;
   lng: number;
 }) {
-  if (!lat || !lng) return "";
+  if (!lat || !lng)
+    return {
+      zip_code: "",
+      label: "",
+    };
 
-  try {
-    const res = await axios.get<string>("/api/reverse-geo-idn", {
-      params: { lng, lat },
-    });
+  const res = await fetch(`/api/reverse-geo-idn?lat=${lat}&lng=${lng}`);
+  if (!res.ok) throw new Error();
 
-    return res.data;
-  } catch (err) {
-    console.error(err);
-    return "";
-  }
+  const results = await res.json();
+
+  return results as {
+    zip_code: string;
+    label: string;
+  };
 }

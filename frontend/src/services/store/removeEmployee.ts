@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axiosInstance";
+import { apiFetch } from "@/lib/apiFetch";
 import {
   RemoveEmployeeInput,
   RemoveEmployeeSchema,
@@ -11,14 +11,16 @@ export const removeEmployee = async (inputData: RemoveEmployeeInput) => {
 
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0].message;
-    toast.error(firstError || "Invalid input");
+    if (typeof window !== "undefined") {
+      toast.error(firstError || "Invalid input");
+    }
     throw new Error(firstError);
   }
 
   const { id, employeeId } = inputData;
-  const res = await axiosInstance.delete<User>(
-    `/stores/${id}/employees/${employeeId}`
-  );
+  const res = await apiFetch<User>(`/stores/${id}/employees/${employeeId}`, {
+    method: "DELETE",
+  });
 
-  return res.data;
+  return res;
 };

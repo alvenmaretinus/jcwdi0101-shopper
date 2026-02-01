@@ -3,17 +3,23 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/src/index.js",
-    "dev": "nodemon src/index.ts"
+    "dev": "nodemon src/index.ts",
+    "test-db": "ts-node scripts/test-db.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
-    "@supabase/supabase-js": "^2.90.1",
+    "@react-email/components": "^1.0.6",
+    "better-auth": "^1.4.17",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "geolib": "^3.3.4",
+    "lru-cache": "^11.2.4",
+    "nodemailer": "^7.0.12",
     "pg": "^8.16.3",
+    "prisma": "^7.2.0",
     "uuid": "^13.0.0",
     "zod": "^4.3.5"
   },
@@ -22,8 +28,9 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.9",
+    "@types/nodemailer": "^7.0.5",
+    "@types/react-dom": "^19.2.3",
     "nodemon": "^3.1.11",
-    "prisma": "^7.2.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
