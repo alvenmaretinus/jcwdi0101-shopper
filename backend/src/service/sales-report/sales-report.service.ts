@@ -11,6 +11,6 @@ export class SalesReportService implements Service {
     }
 
     async getSalesReportByFilter(params: GetSalesReportByFilterInput): Promise<[SalesReportEntity[], number]> {
-        return await this.salesReportRepository.getSalesReportByFilter(params);
+        return await this.salesReportRepository.getSalesReportByFilterPaginated(params);
     }
 }

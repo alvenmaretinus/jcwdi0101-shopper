@@ -74,15 +74,15 @@ export class PrismaRepository implements SalesReportRepository {
         return where;
     }
     
-    async getSalesReportByFilter(params: SalesReportByFilterEntity): Promise<[SalesReportEntity[], number]> {
+    async getSalesReportByFilterPaginated(params: SalesReportByFilterEntity): Promise<[SalesReportEntity[], number]> {
         const completionDateFilter: DateTimeFilter = this.prepareDateTimeFilter(params.monthAndYear);
         const optionalOrderItemsFilter: OrderItemListRelationFilter | undefined = this.generateOptionalOrderItemsFilter(params.categoryId, params.productName);
         const orderWhereInput: OrderWhereInput = this.prepareOrderWhereInput(params.storeId, completionDateFilter, optionalOrderItemsFilter);
         const orderInclude: OrderInclude = this.prepareOrderInclude();
         const orderBy: OrderOrderByWithRelationInput = { deliveredAt: 'desc', id: 'asc' };
         
-        const [results, count] = await this.execute(orderWhereInput, orderInclude, params.take, params.skip, orderBy);
-        return [toDomainModels(results), count];
+        const [results, totalRowsInDBCount] = await this.execute(orderWhereInput, orderInclude, params.take, params.skip, orderBy);
+        return [toDomainModels(results), totalRowsInDBCount];
     } 
 }
 

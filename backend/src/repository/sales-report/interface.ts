@@ -1,5 +1,5 @@
 import { SalesReportByFilterEntity, SalesReportEntity } from "./entities";
 
 export interface SalesReportRepository {
-    getSalesReportByFilter(params: SalesReportByFilterEntity): Promise<[SalesReportEntity[], number]>;
+    getSalesReportByFilterPaginated(params: SalesReportByFilterEntity): Promise<[SalesReportEntity[], number]>;
 }
