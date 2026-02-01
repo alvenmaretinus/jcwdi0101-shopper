@@ -1,7 +1,7 @@
 import { StockReport } from "../../repository/stock-report/entities";
 import { StockReportRepository } from "../../repository/stock-report/interface";
 import { GetStockReportByFilterInput } from "../../schema/stock-report/GetStockReportByFilterSchema";
-import {Service} from "./interface";
+import { Service } from "./interface";
 
 export class StockReportService implements Service {
     private stockReportRepo: StockReportRepository;
