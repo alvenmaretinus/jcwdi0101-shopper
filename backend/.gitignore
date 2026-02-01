@@ -11,5 +11,8 @@ dist/
 prisma/generated/
 prisma/migrations/
 
+# Ignore Prisma migration folders (already ignored above but keep explicit)
+prisma/migrations/*
+
 # node_modules
 node_modules/
