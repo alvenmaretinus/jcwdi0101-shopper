@@ -1,5 +1,4 @@
-import { Or } from "@prisma/client/runtime/client";
-import { Order, PrismaClient } from "../../../prisma/generated/client";
+import { PrismaClient } from "../../../prisma/generated/client";
 import { QueryMode } from "../../../prisma/generated/internal/prismaNamespaceBrowser";
 import { DateTimeFilter, Order$orderItemsArgs, OrderFindManyArgs, OrderInclude, OrderItemInclude, OrderItemListRelationFilter, OrderItemWhereInput, OrderOrderByWithRelationInput, OrderWhereInput, ProductDefaultArgs, ProductInclude, ProductWhereInput } from "../../../prisma/generated/models";
 import { OrderItemSalesReportEntity, SalesReportByFilterEntity, SalesReportEntity } from "./entities";
