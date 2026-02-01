@@ -1,4 +1,5 @@
 import { PrismaClient } from "../../../prisma/generated/client";
+import { toDomainModels } from "./mapper";
 import { FindStockReportsByFilterReq, StockReport } from "./entities";
 import { StockReportRepository } from "./interface";
 
@@ -10,7 +11,7 @@ export class PrismaRepository implements StockReportRepository {
     }
 
     async findStockReportsByFilter(filter: FindStockReportsByFilterReq): Promise<StockReport[]> {
-        let res: StockReport[] = await this.prisma.productMovement.findMany({
+        const res: StockReport[] = await this.prisma.productMovement.findMany({
             where: {
                 OR: [
                     { fromStoreId: filter.storeId },
@@ -39,9 +40,6 @@ export class PrismaRepository implements StockReportRepository {
             skip: filter.skip,
             take: filter.take,
         });
-        for (let r of res) {
-            r.quantityChange = r.fromStoreId != null && r.fromStoreId === filter.storeId ? -Math.abs(r.quantityChange) : Math.abs(r.quantityChange);
-        }
-        return res;
+        return toDomainModels(res, filter);
     }
 }

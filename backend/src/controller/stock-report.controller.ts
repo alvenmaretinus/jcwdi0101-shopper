@@ -14,6 +14,7 @@ const router = Router();
 
 router.get("/", isAuth, isAdmin, async (req, res) => {
     const inputData = GetStockReportByFilterSchema.parse(req.query);
+    // Additional check: if the user is ADMIN, ensure they can only access their own store's data
     if (req.user != undefined 
         && req.user.role === UserRole.ADMIN 
         && req.user.storeId != null 
