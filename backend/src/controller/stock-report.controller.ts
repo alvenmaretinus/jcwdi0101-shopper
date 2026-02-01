@@ -22,8 +22,8 @@ router.get("/", isAuth, isAdmin, async (req, res) => {
     return res.json({
         data: result.items,
         total: result.total,
-        page: Math.floor(inputData.take ? inputData.skip / inputData.take : 0) + 1,
-        totalPages: inputData.take ? Math.ceil(result.total / inputData.take) : 1,
+        page: Math.floor(inputData.skip / inputData.take) + 1,
+        totalPages: Math.ceil(result.total / inputData.take),
     });
 });
 
