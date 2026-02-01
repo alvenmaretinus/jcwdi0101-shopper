@@ -221,7 +221,8 @@ model ProductMovement {
   product   Product @relation(fields: [productId], references: [id])
   productId String
 
-  @@index([fromStoreId, toStoreId, createdAt])
+  @@index([fromStoreId, createdAt])
+  @@index([toStoreId, createdAt])
 }
 
 model Cart {
