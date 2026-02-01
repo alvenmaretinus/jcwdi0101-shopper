@@ -11,11 +11,14 @@ export type SalesReportEntity = {
     total_price: number;
 }
 
+// This DTO is exclusively for transferring filter parameters to the repository layer
 export type SalesReportByFilterEntity = {
     storeId: string
     monthAndYear: string
     categoryId?: string
     productName?: string
+    take: number
+    skip: number
 }
 
 type category = {

@@ -8,7 +8,7 @@ import { prisma } from "../lib/db/prisma"
 import { SalesReportEntity } from "../repository/sales-report/entities"
 import { isAuth } from "../middleware/isAuth"
 import { isAdmin } from "../middleware/isAdmin"
-import { UserRole } from "../../prisma/generated/browser"
+import { UserRole } from "../../prisma/generated/enums"
 
 const router = Router()
 
@@ -17,7 +17,7 @@ const salesReportService: Service = new SalesReportService(salesReportRepository
 
 router.get("/", isAuth, isAdmin, async (req, res) => {
     const inputData: GetSalesReportByFilterInput = GetSalesReportByFilterSchema.parse(req.query)
-    if (req.user!.role == UserRole.ADMIN && inputData.storeId !== req.user!.storeId) {
+    if (req.user!.role === UserRole.ADMIN && inputData.storeId !== req.user!.storeId) {
         return res.status(403).json({ message: "Forbidden" })
     }
     const result: SalesReportEntity[] = await salesReportService.getSalesReportByFilter(inputData)
