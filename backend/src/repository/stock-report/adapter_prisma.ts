@@ -39,7 +39,7 @@ export class PrismaRepository implements StockReportRepository {
             createdAt: true,
         };
 
-        const [rows, count] = await this.prisma.$transaction([
+        const [rows, count]: [StockReport[], number] = await this.prisma.$transaction([
             this.prisma.productMovement.findMany({
                 where,
                 select,
