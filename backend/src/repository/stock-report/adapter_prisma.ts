@@ -17,8 +17,8 @@ export class PrismaRepository implements StockReportRepository {
                     { toStoreId: filter.storeId },
                 ],
                 createdAt: {
-                    gte: new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth - 1, 1)),
-                    lt: new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth, 1)),
+                    gte: new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth, 1)),
+                    lt: filter.createdAtMonth == 12 ? new Date(Date.UTC(filter.createdAtYear + 1, 0, 1)) : new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth + 1, 1)),
                 },
             },
             select: {
