@@ -32,10 +32,8 @@ export class OrderLifecycleService {
 
     if (!order) throw new BadRequestError("Order not found");
 
-    // Early return for idempotency: already processed to PROCESSING (safe for concurrent webhook calls)
-    if (order.status === "PROCESSING") {
-      return order;
-    }
+    // Note: Idempotency check moved inside transaction (line ~115) to avoid race condition window.
+    // This ensures that concurrent webhook calls don't both pass checks and enter transaction logic.
 
     // Support both PAYMENT_PENDING (gateway) and PAYMENT_WAITING_CONFIRMATION (bank transfer proof uploaded)
     const validStatuses = ["PAYMENT_PENDING", "PAYMENT_WAITING_CONFIRMATION"];
@@ -87,13 +85,20 @@ export class OrderLifecycleService {
     for (const candidate of storesWithDistance) {
       const store = candidate.store;
 
+      // Batch load productStore records for this store to avoid N+1 query
+      const storeProducts = await db.productStore.findMany({
+        where: {
+          storeId: store.id,
+          productId: { in: productIds },
+        },
+      });
+      const psMap: Record<string, any> = {};
+      for (const ps of storeProducts) psMap[ps.productId] = ps;
+
+      // Check if all items can be fulfilled
       let canFulfill = true;
       for (const it of items) {
-        const ps = await db.productStore.findUnique({
-          where: {
-            productId_storeId: { productId: it.productId, storeId: store.id },
-          },
-        });
+        const ps = psMap[it.productId];
         if (!ps || ps.quantity < it.quantity) {
           canFulfill = false;
           break;

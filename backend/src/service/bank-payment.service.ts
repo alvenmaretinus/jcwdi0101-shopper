@@ -1,5 +1,6 @@
 import { prisma } from "../lib/db/prisma";
 import { BadRequestError } from "../error/BadRequestError";
+import { UnauthorizedError } from "../error/UnauthorizedError";
 import type { PrismaClient } from "../../prisma/generated/client";
 
 /**
@@ -61,15 +62,25 @@ export class BankPaymentService {
    * Reject payment proof and allow user to re-upload
    * @param orderId Order ID
    * @param rejectionReason Optional rejection reason for audit trail
+   * @param adminId Optional admin ID for authorization check
+   * @param adminStoreId Optional admin store ID for store-scoped authorization
    * @returns Updated order with PAYMENT_PENDING status
    */
-  static async rejectPaymentProof(orderId: string, rejectionReason?: string) {
+  static async rejectPaymentProof(orderId: string, rejectionReason?: string, adminId?: string, adminStoreId?: string) {
     const db: PrismaClient = prisma;
 
     // Verify order exists
     const order = await db.order.findUnique({ where: { id: orderId } });
     if (!order) {
       throw new BadRequestError("Order not found");
+    }
+
+    // If admin provided, verify they own the store (unless they are SUPERADMIN)
+    if (adminId && adminStoreId) {
+      const admin = await db.user.findUnique({ where: { id: adminId } });
+      if (admin?.role === "ADMIN" && admin.storeId !== order.storeId) {
+        throw new UnauthorizedError("You can only reject proofs for orders from your own store");
+      }
     }
 
     // Order must be PAYMENT_WAITING_CONFIRMATION

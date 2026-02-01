@@ -201,6 +201,20 @@ router.post("/:id/admin-cancel", isAuth, isAdmin, async (req: Request, res: Resp
   try {
     const orderId = req.params.id as string;
     const { reason } = req.body;
+    const userRole = req.user?.role as string;
+    const userId = req.user?.id as string;
+
+    // If ADMIN, verify they own the store for this order
+    if (userRole === "ADMIN") {
+      const { prisma } = await import("../lib/db/prisma");
+      const order = await prisma.order.findUnique({ where: { id: orderId } });
+      if (!order) throw new NotFoundError("Order not found");
+
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (user?.storeId !== order.storeId) {
+        throw new UnauthorizedError("You can only cancel orders from your own store");
+      }
+    }
 
     const order = await OrderService.adminCancelOrder(orderId, reason);
     return res.status(200).json({ success: true, data: order, message: "Order cancelled by admin, stock refunded if applicable" });
@@ -264,6 +278,21 @@ router.post("/:id/confirm", isAuth, async (req: Request, res: Response, next: Ne
 router.post("/:id/approve", isAuth, isAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orderId = req.params.id as string;
+    const userRole = req.user?.role as string;
+    const userId = req.user?.id as string;
+
+    // If ADMIN, verify they own the store for this order
+    if (userRole === "ADMIN") {
+      const { prisma } = await import("../lib/db/prisma");
+      const order = await prisma.order.findUnique({ where: { id: orderId } });
+      if (!order) throw new NotFoundError("Order not found");
+
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (user?.storeId !== order.storeId) {
+        throw new UnauthorizedError("You can only approve orders from your own store");
+      }
+    }
+
     const order = await OrderService.confirmPayment(orderId);
     return res.status(200).json({ success: true, data: order });
   } catch (err: any) {

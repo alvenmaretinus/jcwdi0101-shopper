@@ -9,18 +9,26 @@ import { auth } from "./lib/auth";
 import cron from "node-cron";
 import { OrderService } from "./service/order.service";
 
-// ✅ CRITICAL: Validate all required environment variables at startup
+const isProduction = process.env.NODE_ENV === "production";
 const requiredEnvVars = ["MIDTRANS_SERVER_KEY", "MIDTRANS_CLIENT_KEY", "BANK_ACCOUNT_NUMBER", "BANK_ACCOUNT_HOLDER", "KOMERCE_API_KEY"];
 
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    console.error(`❌ FATAL: Missing required environment variable: ${envVar}`);
+if (isProduction) {
+  const missingVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
+  if (missingVars.length > 0) {
+    console.error(`❌ FATAL: Missing required environment variables in production: ${missingVars.join(", ")}`);
     console.error("Please configure all required env vars in .env file");
     process.exit(1);
   }
+  console.log("✅ All required payment environment variables loaded for production");
+} else {
+  const missingVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
+  if (missingVars.length > 0) {
+    console.warn(`⚠️  Warning: Missing environment variables in ${process.env.NODE_ENV || "development"} mode: ${missingVars.join(", ")}`);
+    console.warn("   Payment features may not work. Configure .env file if needed.");
+  } else {
+    console.log("✅ All required payment environment variables loaded");
+  }
 }
-
-console.log("✅ All required environment variables loaded");
 
 const app = express();
 const port = process.env.PORT! || 3001;
@@ -34,8 +42,26 @@ app.use(
   }),
 );
 
-// Serve uploaded files (payment proofs, etc.) at /uploads path
-app.use("/uploads", express.static("uploads"));
+// Serve uploaded files (payment proofs, etc.) at /uploads path (protected with API key)
+const uploadsAuthMiddleware: express.RequestHandler = (req, res, next) => {
+  // Allow authentication via x-api-key header for programmatic access
+  const apiKey = req.header("x-api-key");
+  const kommerceApiKey = process.env.KOMERCE_API_KEY;
+
+  // Allow authenticated users via session
+  if (req.user) {
+    return next();
+  }
+
+  // Allow API key based access (e.g., for webhooks or backend services)
+  if (apiKey && kommerceApiKey && apiKey === kommerceApiKey) {
+    return next();
+  }
+
+  // Deny access
+  return res.status(401).json({ error: "Unauthorized access to uploads. Provide valid authentication or x-api-key header." });
+};
+app.use("/uploads", uploadsAuthMiddleware, express.static("uploads"));
 
 app.all("/api/auth/*splat", toNodeHandler(auth));
 

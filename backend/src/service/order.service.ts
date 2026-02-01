@@ -49,12 +49,26 @@ export class OrderService {
     }
 
     // pick nearest store that has enough stock for all items
+    // Batch load productStore records to avoid N+1 queries
+    const productIds = items.map((i) => i.productId);
     let candidateStore = null as Store | null;
     for (const s of storesWithDistance) {
       const storeCandidate = s.store;
+
+      // Batch load all productStore records for this store at once
+      const storeProducts = await db.productStore.findMany({
+        where: {
+          storeId: storeCandidate.id,
+          productId: { in: productIds },
+        },
+      });
+      const psMap: Record<string, any> = {};
+      for (const ps of storeProducts) psMap[ps.productId] = ps;
+
+      // Check if all items can be fulfilled
       let canFulfill = true;
       for (const it of items) {
-        const ps = await db.productStore.findUnique({ where: { productId_storeId: { productId: it.productId, storeId: storeCandidate.id } } });
+        const ps = psMap[it.productId];
         if (!ps || ps.quantity < it.quantity) {
           canFulfill = false;
           break;
@@ -70,7 +84,7 @@ export class OrderService {
       throw new BadRequestError("No store within 5 km can fulfill the entire order.");
     }
 
-    const productIds = items.map((i) => i.productId);
+    // productIds already declared earlier (line 53)
     const products = await db.product.findMany({ where: { id: { in: productIds } }, include: { category: true } });
     type ProductWithCategory = Prisma.ProductGetPayload<{ include: { category: true } }>;
     const productMap: Record<string, ProductWithCategory | undefined> = {};
@@ -180,12 +194,14 @@ export class OrderService {
    * Reject payment proof and reset order to PAYMENT_PENDING
    * @param orderId Order ID
    * @param rejectionReason Optional reason for rejection
+   * @param adminId Optional admin ID for authorization check
+   * @param adminStoreId Optional admin store ID for store-scoped authorization
    * @returns Updated order
    * @desc Delegates to BankPaymentService.rejectPaymentProof()
    */
-  static async rejectPaymentProof(orderId: string, rejectionReason?: string) {
+  static async rejectPaymentProof(orderId: string, rejectionReason?: string, adminId?: string, adminStoreId?: string) {
     const { BankPaymentService } = await import("./bank-payment.service");
-    return BankPaymentService.rejectPaymentProof(orderId, rejectionReason);
+    return BankPaymentService.rejectPaymentProof(orderId, rejectionReason, adminId, adminStoreId);
   }
 
   /**

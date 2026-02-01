@@ -107,8 +107,18 @@ router.post("/:id/reject-proof", isAuth, isAdmin, async (req: Request, res: Resp
   try {
     const orderId = req.params.id as string;
     const { reason } = req.body;
+    const adminId = req.user?.id as string;
 
-    const order = await OrderService.rejectPaymentProof(orderId, reason);
+    // Get storeId from user if ADMIN
+    let adminStoreId: string | undefined;
+    const userRole = req.user?.role;
+    if (userRole === "ADMIN") {
+      const { prisma } = await import("../lib/db/prisma");
+      const user = await prisma.user.findUnique({ where: { id: adminId } });
+      adminStoreId = user?.storeId ?? undefined;
+    }
+
+    const order = await OrderService.rejectPaymentProof(orderId, reason, adminId, adminStoreId);
     return res.status(200).json({
       success: true,
       data: order,
