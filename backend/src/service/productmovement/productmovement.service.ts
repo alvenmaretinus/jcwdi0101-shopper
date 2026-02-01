@@ -1,4 +1,4 @@
-import { MovementType } from "../../../prisma/generated/browser";
+import { MovementType } from "../../../prisma/generated/enums";
 import { ProductMovementRepo } from "../../repository/productmovement/interface";
 import { CreateProductMovementInput } from "../../schema/productmovement";
 import { Service } from "../productmovement/interface";

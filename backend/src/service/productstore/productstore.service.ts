@@ -4,8 +4,6 @@ import { Service } from "./interface";
 import { ProductStoreRepo} from "../../repository/productstore/interface";
 import { CreateProductStoreInput } from "../../schema/productstore/CreateProductStoreSchema";
 import { ProductMovementRepo } from "../../repository/productmovement/interface";
-import { ProductsRepo } from "../../repository/product/interface";
-import { StoreRepository } from "../../repository/store.repository";
 import { GetProductStoresByFilterInput, UpdateProductStoreInput } from "../../schema/productstore";
 import { ProductStore } from "../../repository/productstore/entities";
 
