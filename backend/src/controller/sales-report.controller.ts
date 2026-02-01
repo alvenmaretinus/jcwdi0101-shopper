@@ -20,8 +20,13 @@ router.get("/", isAuth, isAdmin, async (req, res) => {
     if (req.user!.role === UserRole.ADMIN && inputData.storeId !== req.user!.storeId) {
         return res.status(403).json({ message: "Forbidden" })
     }
-    const result: SalesReportEntity[] = await salesReportService.getSalesReportByFilter(inputData)
-    return res.json(result)
+    const [data, count]: [SalesReportEntity[], number] = await salesReportService.getSalesReportByFilter(inputData)
+    return res.json({
+        data: data,
+        count: count,
+        page: Math.floor(inputData.skip / inputData.take) + 1,
+        pageSize: Math.min(inputData.take, data.length),
+    })
 })
 
 export default router;

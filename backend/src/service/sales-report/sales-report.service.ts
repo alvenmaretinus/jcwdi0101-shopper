@@ -10,7 +10,7 @@ export class SalesReportService implements Service {
         this.salesReportRepository = salesReportRepository;
     }
 
-    async getSalesReportByFilter(params: GetSalesReportByFilterInput): Promise<SalesReportEntity[]> {
+    async getSalesReportByFilter(params: GetSalesReportByFilterInput): Promise<[SalesReportEntity[], number]> {
         return await this.salesReportRepository.getSalesReportByFilter(params);
     }
 }
