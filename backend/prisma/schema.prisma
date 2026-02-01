@@ -220,6 +220,9 @@ model ProductMovement {
   toStore   Store?  @relation(name: "toStore", fields: [toStoreId], references: [id])
   product   Product @relation(fields: [productId], references: [id])
   productId String
+
+  @@index([fromStoreId, createdAt])
+  @@index([toStoreId, createdAt])
 }
 
 model Cart {
