@@ -1,4 +1,4 @@
-import { MovementType, PrismaClient } from "../../../prisma/generated/client";
+import { PrismaClient } from "../../../prisma/generated/client";
 import { FindStockReportsByFilterReq, StockReport } from "./entities";
 import { StockReportRepository } from "./interface";
 
@@ -17,8 +17,9 @@ export class PrismaRepository implements StockReportRepository {
                     { toStoreId: filter.storeId },
                 ],
                 createdAt: {
-                    gte: new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth, 1)),
-                    lt: filter.createdAtMonth == 12 ? new Date(Date.UTC(filter.createdAtYear + 1, 0, 1)) : new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth + 1, 1)),
+                    // Date in JS is 0 to 11. Adjust accordingly.
+                    gte: new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth-1, 1)),
+                    lt: filter.createdAtMonth == 11 ? new Date(Date.UTC(filter.createdAtYear, 0, 1)) : new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth, 1)),
                 },
             },
             select: {
