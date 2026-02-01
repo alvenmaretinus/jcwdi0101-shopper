@@ -49,26 +49,29 @@ app.use("/api", appRouter);
 // Global error handler
 app.use(errorHandler);
 
-// Auto-expire pending orders every hour
-cron.schedule("0 * * * *", async () => {
-  try {
-    await OrderService.expirePendingOrders();
-  } catch (err) {
-    console.error("[Cron] Error expiring pending orders:", err);
-  }
-});
-
-// Auto-confirm orders 2 days after shipping (check every 6 hours)
-cron.schedule("0 */6 * * *", async () => {
-  try {
-    await OrderService.autoConfirmOrders();
-  } catch (err) {
-    console.error("[Cron] Error auto-confirming orders:", err);
-  }
-});
-
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
+
+  // Initialize cron jobs after server is ready
+  console.log("Initializing scheduled tasks...");
+
+  // Auto-expire pending orders every hour
+  cron.schedule("0 * * * *", async () => {
+    try {
+      await OrderService.expirePendingOrders();
+    } catch (err) {
+      console.error("[Cron] Error expiring pending orders:", err);
+    }
+  });
+
+  // Auto-confirm orders 2 days after shipping (check every 6 hours)
+  cron.schedule("0 */6 * * *", async () => {
+    try {
+      await OrderService.autoConfirmOrders();
+    } catch (err) {
+      console.error("[Cron] Error auto-confirming orders:", err);
+    }
+  });
 });
 
 export default app;

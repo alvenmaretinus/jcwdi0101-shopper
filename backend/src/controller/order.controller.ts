@@ -108,14 +108,14 @@ router.post("/webhook/midtrans", async (req: Request, res: Response, next: NextF
 
     if (!signature) {
       console.error("[Webhook] Missing signature_key");
-      return res.status(200).json({ success: false, message: "Missing signature_key in webhook payload" });
+      return res.status(401).json({ success: false, message: "Missing signature_key in webhook payload" });
     }
 
     // Verify webhook signature (security: prevent unauthorized calls)
     const isValidSignature = MidtransService.verifyWebhookSignature(orderId, statusCode, grossAmount, signature);
     if (!isValidSignature) {
       console.error("[Webhook] Invalid signature - potential security threat", { orderId: webhookData.order_id, clientIP: req.ip });
-      return res.status(403).json({ success: false, message: "Invalid webhook signature" });
+      return res.status(401).json({ success: false, message: "Invalid webhook signature" });
     }
     await OrderService.handleMidtransWebhook(webhookData);
 

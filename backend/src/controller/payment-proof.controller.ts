@@ -85,6 +85,15 @@ router.post("/:id/upload-proof", isAuth, handleMulterUpload, async (req: Request
       message: "Payment proof uploaded successfully (waiting for admin confirmation)",
     });
   } catch (err: any) {
+    // Clean up uploaded file if service operation fails
+    try {
+      if (req.file && req.file.path) {
+        const fs = await import("fs");
+        fs.promises.unlink(req.file.path).catch(() => {});
+      }
+    } catch {
+      // Swallow cleanup errors to avoid masking the original error
+    }
     next(err);
   }
 });

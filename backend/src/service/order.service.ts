@@ -290,7 +290,7 @@ export class OrderService {
    * Confirm order delivery by customer
    * @param orderId Order ID
    * @param userId User ID (authorization)
-   * @returns Updated order with COMPLETED status
+   * @returns Updated order with DELIVERED status
    * @throws UnauthorizedError if user doesn't own order
    * @throws BadRequestError if order not in SHIPPED status
    * @desc Delegates to OrderLifecycleService.confirmOrder()
@@ -327,9 +327,9 @@ export class OrderService {
    * Handle Midtrans webhook notification
    * @param webhookData Midtrans webhook payload
    * @returns Processing result
-   * @throws InvalidTokenError if signature verification fails
+   * @note Handles: settlement, failure, cancellation, expiry, refund statuses
    * @desc Delegates to MidtransPaymentService.handleMidtransWebhook()
-   * @security Requires valid Midtrans signature verification
+   * @security Signature verification handled by controller layer
    */
   static async handleMidtransWebhook(webhookData: any) {
     const { MidtransPaymentService } = await import("./midtrans-payment.service");
