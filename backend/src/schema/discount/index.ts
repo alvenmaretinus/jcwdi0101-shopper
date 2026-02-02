@@ -1,8 +1,8 @@
 import {CreateDiscountSchema, CreateDiscountInput } from './CreateDiscountSchema';
 import {UpdateDiscountSchema, UpdateDiscountInput} from './UpdateDiscountSchema'    ;
-import {GetDiscountByIdSchema, GetDiscountByIdInput} from './GetDiscountByIDSchema';
+import {GetDiscountByIdSchema, GetDiscountByIdInput} from './GetDiscountByIdSchema';
 import {GetDiscountsByFilterSchema, GetDiscountsByFilterInput} from './GetDiscountsByFilterSchema';
-import {DeleteDiscountByIdSchema, DeleteDiscountByIdInput} from './DeleteDiscountByIDSchema';
+import {DeleteDiscountByIdSchema, DeleteDiscountByIdInput} from './DeleteDiscountByIdSchema';
 
 export {
     CreateDiscountSchema, CreateDiscountInput
