@@ -7,7 +7,7 @@ export const CreateDiscountSchema = z.strictObject({
     isWithMinimum: z.boolean(),
     minimumPrice: z.number().min(0, "Minimum price must be at least 0").optional(),
     isTiedToProduct: z.boolean(),
-    productId: z.string().uuid("Invalid product ID").optional(),
+    productId: z.uuid("Invalid product ID").optional(),
     buyQuantity: z.number().int().min(0, "Buy quantity must be at least 0").optional(),
     freeQuantity: z.number().int().min(0, "Free quantity must be at least 0").optional(),
     startsAt: z.date().optional(),

@@ -9,8 +9,8 @@ const discountService = new DiscountService(discountsRepo);
 
 const router = Router();
 
-router.post("/", async (req, res) => {
-    const inputData: GetDiscountsByFilterInput = GetDiscountsByFilterSchema.parse(req.body);
+router.get("/", async (req, res) => {
+    const inputData: GetDiscountsByFilterInput = GetDiscountsByFilterSchema.parse(req.query);
     const discounts = await discountService.getDiscountsByFilter(inputData); 
     return res.json(discounts);
 }); 

@@ -21,7 +21,7 @@ export type DiscountCreateReq = {
 export type DiscountUpdateReq = {
     percentage?: Decimal;
     amount?: number;
-    type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
+    type?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
     
     isWithMinimum: boolean;
     minimumPrice?: number;
