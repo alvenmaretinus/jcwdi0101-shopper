@@ -42,6 +42,7 @@ export const errorHandler = (
     console.log("ZodError: " + message);
     return res.status(400).json({ error: "Bad Request" });
   }
+  
 
   if (isPrismaError(err)) {
     console.log("PrismaError: " + err.message);

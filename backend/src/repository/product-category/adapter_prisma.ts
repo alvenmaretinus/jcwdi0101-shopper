@@ -1,4 +1,5 @@
-import { PrismaClient } from "../../../prisma/generated/client";
+import { Prisma, PrismaClient } from "../../../prisma/generated/client";
+import { NotFoundError } from "../../error/NotFoundError";
 import { CreateProductCategoryReq, GetProductCategoryReq, ProductCategory } from "./entities";
 import { ProductCategoryRepo } from "./interface";
 
@@ -32,18 +33,33 @@ export class PrismaRepository implements ProductCategoryRepo {
         return newCategory;
     }
     async updateCategory(id: string, data: ProductCategory): Promise<ProductCategory> {
-        const updatedCategory = await this.prisma.productCategory.update({
-            where: { id },
-            data: {
-                ...data,
-                updatedAt: new Date(),
-            },
-        });
+        let updatedCategory: ProductCategory;
+        try{
+            updatedCategory = await this.prisma.productCategory.update({
+                where: { id },
+                data: {
+                    ...data,
+                    updatedAt: new Date(),
+                },
+            });
+        } catch (error: any) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                throw new NotFoundError("Category not found");
+            }
+            throw error;
+        }
         return updatedCategory;
     }
     async deleteCategory(id: string): Promise<void> {
-        await this.prisma.productCategory.delete({
-            where: { id },
-        });
+        try {
+            await this.prisma.productCategory.delete({
+                where: { id },
+            });
+        } catch (error: any) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                throw new NotFoundError("Failed to delete category");
+            }
+            throw error;
+        }
     }
 }
