@@ -1,5 +1,5 @@
 import { ProductCategoryRepo } from "../../repository/product-category/interface";
-import { CreateProductCategoryInput, GetProductCategoriesByFilterInput } from "../../schema/product-categories";
+import { CreateProductCategoryInput, GetProductCategoriesByFilterInput, UpdateProductCategoryInput } from "../../schema/product-categories";
 import { ProductCategory } from "../../repository/product-category/entities";
 import { Service } from "./interface";
 
@@ -18,7 +18,7 @@ export class ProductCategoryService implements Service {
     async createProductCategory(data: CreateProductCategoryInput): Promise<ProductCategory> {
         return this.productCategoryRepo.createCategory(data);
     }
-    async updateProductCategory(id: string, data: ProductCategory): Promise<ProductCategory> {
+    async updateProductCategory(id: string, data: UpdateProductCategoryInput): Promise<ProductCategory> {
         return this.productCategoryRepo.updateCategory(id, data);
     }
     async deleteProductCategory(id: string): Promise<void> {
