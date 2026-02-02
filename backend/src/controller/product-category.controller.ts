@@ -6,7 +6,6 @@ import { PrismaRepository } from "../repository/product-category/adapter_prisma"
 import { Service } from "../service/product-category/interface";
 import { CreateProductCategorySchema, DeleteProductCategoryByIdSchema, GetProductCategoriesByFilterSchema, GetProductCategoryByIdSchema, UpdateProductCategorySchema } from "../schema/product-categories";
 import { isAuth } from "../middleware/isAuth";
-import { isAdmin } from "../middleware/isAdmin";
 import { isSuperAdmin } from "../middleware/isSuperAdmin";
 
 const productCategoryRepo: ProductCategoryRepo = new PrismaRepository(prisma);
@@ -34,11 +33,10 @@ router.post("/", isAuth, isSuperAdmin, async (req, res) => {
 });
 
 router.patch("/:id", isAuth, isSuperAdmin, async (req, res) => {
-  const { id } = UpdateProductCategorySchema.parse({
-    ...req.params,
+  const { id, ...updateData } = UpdateProductCategorySchema.parse({
+    ...req.body,
     id: req.params.id,
   });
-  const updateData = UpdateProductCategorySchema.parse(req.body);
   const updatedCategory = await productCategoryService.updateProductCategory(id, updateData);
   return res.json(updatedCategory);
 });
