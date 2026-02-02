@@ -24,6 +24,9 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   const { id } = GetProductCategoryByIdSchema.parse(req.params);
   const category = await productCategoryService.getProductCategoryById(id);
+  if (!category) {
+    return res.status(404).json({ message: "Product category not found" });
+  }
   return res.json(category);
 });
 
