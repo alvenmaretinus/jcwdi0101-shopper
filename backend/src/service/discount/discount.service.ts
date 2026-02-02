@@ -2,7 +2,7 @@ import { CreateDiscountInput, GetDiscountsByFilterInput, UpdateDiscountInput } f
 import { DiscountCreateReq, DiscountResponse, DiscountUpdateReq } from "../../repository/discount/entity";
 import { Service } from "./interface";
 import { DiscountRepo } from "../../repository/discount/interface";
-import { Decimal } from "../../../prisma/generated/internal/prismaNamespaceBrowser";
+import { Decimal } from "decimal.js"
 
 export class DiscountService implements Service {
    private repo: DiscountRepo;
@@ -25,9 +25,14 @@ export class DiscountService implements Service {
         return this.repo.updateDiscount(id, UpdateData);
     }
     async getDiscountsByFilter(filter: GetDiscountsByFilterInput): Promise<DiscountResponse[]> {
-        const formattedFilter: Partial<GetDiscountsByFilterInput> = {
-            ...filter,
+        const { activeOnDate, ...rest } = filter as any;
+        const formattedFilter: any = {
+            ...rest,
         };
+        if (activeOnDate) {
+            formattedFilter.startsAt = { lte: activeOnDate };
+            formattedFilter.endsAt = { gte: activeOnDate };
+        }
         return this.repo.getDiscountsByFilter(formattedFilter);
     }
     async getDiscountById(id: string): Promise<DiscountResponse | null> {

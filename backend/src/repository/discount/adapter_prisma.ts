@@ -23,9 +23,13 @@ export class PrismaRepository implements DiscountRepo {
         return discount;
     }
     async updateDiscount(id: string, data: DiscountUpdateReq): Promise<DiscountResponse> {
+         const updateData = {
+            ...data,
+            ...(data.type !== undefined ? { type: data.type as DiscountType } : {}),
+        };
         const discount = await this.prisma.discount.update({
             where: { id },
-            data,
+            data: updateData,
         });
         return discount as DiscountResponse;
     } 

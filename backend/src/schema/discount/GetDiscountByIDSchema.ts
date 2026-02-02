@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { DiscountByIDSchema } from "./DiscountByIDSchema";
+import { DiscountByIdSchema } from "./DiscountByIdSchema";
 
-export const GetDiscountByIDSchema = DiscountByIDSchema;
+export const GetDiscountByIdSchema = DiscountByIdSchema;
 
-export type GetDiscountByIDInput = z.infer<typeof GetDiscountByIDSchema>;
+export type GetDiscountByIdInput = z.infer<typeof GetDiscountByIdSchema>;

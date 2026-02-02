@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { PrismaRepository }  from '../repository/discount/adapter_prisma';
 import { prisma } from '../lib/db/prisma';
 import { DiscountService } from '../service/discount/discount.service';
-import { GetDiscountByIDSchema, GetDiscountByIDInput, GetDiscountsByFilterInput, GetDiscountsByFilterSchema, CreateDiscountInput, CreateDiscountSchema, UpdateDiscountSchema, UpdateDiscountInput} from '../schema/discount/';
+import { GetDiscountByIdSchema, GetDiscountByIdInput, GetDiscountsByFilterInput, GetDiscountsByFilterSchema, CreateDiscountInput, CreateDiscountSchema, UpdateDiscountSchema, UpdateDiscountInput} from '../schema/discount/';
 
 const discountsRepo = new PrismaRepository(prisma);
 const discountService = new DiscountService(discountsRepo);
@@ -33,13 +33,13 @@ router.patch("/:id", async (req, res) => {
 });
 
 router.delete("/:id", async (req, res) => {
-    const inputData: GetDiscountByIDInput = GetDiscountByIDSchema.parse(req.params);
+    const inputData: GetDiscountByIdInput = GetDiscountByIdSchema.parse(req.params);
     await discountService.deleteDiscount(inputData.id); 
     return res.status(204).send();
 });
 
 router.get("/:id", async (req, res) => {
-    const inputData: GetDiscountByIDInput = GetDiscountByIDSchema.parse(req.params);
+    const inputData: GetDiscountByIdInput = GetDiscountByIdSchema.parse(req.params);
     const discount = await discountService.getDiscountById(inputData.id); 
     if (!discount) {
         return res.status(404).json({ message: "Discount not found" });
