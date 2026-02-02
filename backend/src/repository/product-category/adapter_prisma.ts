@@ -1,6 +1,6 @@
 import { Prisma, PrismaClient } from "../../../prisma/generated/client";
 import { NotFoundError } from "../../error/NotFoundError";
-import { CreateProductCategoryReq, GetProductCategoryReq, ProductCategory } from "./entities";
+import { CreateProductCategoryReq, GetProductCategoryReq, ProductCategory, UpdateProductCategoryReq } from "./entities";
 import { ProductCategoryRepo } from "./interface";
 
 export class PrismaRepository implements ProductCategoryRepo {
@@ -22,24 +22,19 @@ export class PrismaRepository implements ProductCategoryRepo {
         return category;
     }
     async createCategory(data: CreateProductCategoryReq): Promise<ProductCategory> {
-        const now = new Date();
         const newCategory = await this.prisma.productCategory.create({
-            data: {
-                ...data,
-                createdAt: now,
-                updatedAt: now,
-            },
+            data: data,
         });
         return newCategory;
     }
-    async updateCategory(id: string, data: ProductCategory): Promise<ProductCategory> {
+    async updateCategory(id: string, data: UpdateProductCategoryReq): Promise<ProductCategory> {
         let updatedCategory: ProductCategory;
         try{
             updatedCategory = await this.prisma.productCategory.update({
                 where: { id },
                 data: {
                     ...data,
-                    updatedAt: new Date(),
+                    updatedAt: new Date(Date.now()),
                 },
             });
         } catch (error: any) {

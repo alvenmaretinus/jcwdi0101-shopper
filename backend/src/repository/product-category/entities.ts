@@ -8,6 +8,10 @@ export type GetProductCategoryReq = {
     category?: string
 }
 
+export type UpdateProductCategoryReq = {
+    category: string
+}
+
 export type ProductCategory = {
     id?: string
     category: string
