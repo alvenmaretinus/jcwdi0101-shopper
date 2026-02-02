@@ -1,6 +1,7 @@
 import { ProductsRepo } from './interface';
 import { PrismaClient } from '../../../prisma/generated/client';
 import { Product, ProductReq, ProductWithStock, ProductWhereClause } from './entities';
+import { QueryMode } from '../../../prisma/generated/internal/prismaNamespaceBrowser';
 
 
 export class PrismaRepository implements ProductsRepo {
@@ -40,7 +41,7 @@ export class PrismaRepository implements ProductsRepo {
         if (name) {
             where.name = {
                 contains: name,
-                mode: 'insensitive'
+                mode: QueryMode.insensitive
             };
         }
 

@@ -1,9 +1,9 @@
-import { DefaultAddressBadge } from "@/components/Badge/DefaultAddressBadge";
 import { Button } from "@/components/ui/button";
 import { getUserAddresses } from "@/services/user-address/getUserAddresses";
 import { Plus } from "lucide-react";
 import { headers } from "next/headers";
 import Link from "next/link";
+import { DefaultBadge } from "@/components/Badge/DefaultBadge";
 
 export default async function AddressPage() {
   const nextHeaders = await headers();
@@ -32,7 +32,7 @@ export default async function AddressPage() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{address.addressType}</span>
-                    {address.isDefault && <DefaultAddressBadge />}
+                    {address.isDefault && <DefaultBadge />}
                   </div>
                 </div>
                 <p className="text-muted-foreground">{address.addressName}</p>

@@ -11,7 +11,7 @@ import { addEmployee } from "@/services/store/addEmployee";
 import { getStoreById } from "@/services/store/getStoreById";
 import { Store } from "@/types/Store";
 import { User } from "@/types/User";
-import { useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import z from "zod";
 import { getUserByEmail } from "@/services/user/getUserByEmail";
 
@@ -19,12 +19,20 @@ type Props = {
   isAdminOpen: boolean;
   setIsAdminOpen: (open: boolean) => void;
   store: Store;
+  setStoreWithEmployees: Dispatch<
+    SetStateAction<
+      Store & {
+        employees: User[];
+      }
+    >
+  >;
 };
 
 export const AddAdminDialog = ({
   isAdminOpen,
   setIsAdminOpen,
   store,
+  setStoreWithEmployees,
 }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -67,9 +75,16 @@ export const AddAdminDialog = ({
     try {
       setIsSubmitting(true);
       const { id } = foundUser;
-      await addEmployee({ id: store.id, userId: id });
+      const newEmployee = await addEmployee({ id: store.id, userId: id });
+      setStoreWithEmployees((prev) => {
+        const { employees, ...store } = prev;
+        return {
+          ...store,
+          employees: [...employees, newEmployee],
+        };
+      });
+
       setIsAdminOpen(false);
-      window.location.reload();
     } catch (error) {
     } finally {
       setIsSubmitting(false);

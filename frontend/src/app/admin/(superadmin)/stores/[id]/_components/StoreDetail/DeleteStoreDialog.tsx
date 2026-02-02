@@ -2,6 +2,7 @@ import { DeleteDialog } from "@/components/Dialog/DeleteDialog";
 import { Button } from "@/components/ui/button";
 import { deleteStoreById } from "@/services/store/deleteStoreById";
 import { Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Props = {
@@ -11,12 +12,13 @@ type Props = {
 const DeleteStoreDialog = ({ storeId }: Props) => {
   const [isDeleteStoreOpen, setIsDeleteStoreOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
 
   const handleDeleteStore = async () => {
     try {
       setIsDeleting(true);
       await deleteStoreById({ id: storeId });
-      window.location.href = "/admin/stores/";
+      router.push("/admin/stores/");
     } catch (error) {
     } finally {
       setIsDeleting(false);
