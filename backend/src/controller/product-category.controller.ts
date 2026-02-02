@@ -30,11 +30,10 @@ router.post("/product-category", async (req, res) => {
 });
 
 router.patch("/product-category/:id", async (req, res) => {
-  const { id } = UpdateProductCategorySchema.parse({
+  const { id, ...updateData } = UpdateProductCategorySchema.parse({
     ...req.params,
-    id: req.params.id,
+    ...req.body,
   });
-  const updateData = req.body;
   const updatedCategory = await productCategoryService.updateProductCategory(id, updateData);
   return res.json(updatedCategory);
 });
