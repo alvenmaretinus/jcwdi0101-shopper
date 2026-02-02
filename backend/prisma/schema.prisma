@@ -91,16 +91,16 @@ enum AddressType {
 }
 
 model UserAddress {
-  id        String  @id @default(uuid())
+  id String @id @default(uuid())
 
-  addressType AddressType
-  addressName String
+  addressType   AddressType
+  addressName   String
   recipientName String
-  
+
   isDefault Boolean @default(false)
   longitude Float
   latitude  Float
-  postCode String
+  postCode  String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -111,24 +111,26 @@ model UserAddress {
 }
 
 model Store {
-  id          String  @id @default(uuid())
-  name        String
-  description String?
-  phone       String
-  longitude   Float
-  latitude    Float
-  addressName String
-  postCode    String
-  isDefault   Boolean
+  id            String  @id @default(uuid())
+  name          String
+  description   String?
+  phone         String
+  longitude     Float
+  latitude      Float
+  addressName   String
+  postCode      String
+  isDefault     Boolean
   isSoftDeleted Boolean @default(false)
-  
+
   employees User[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  productStores ProductStore[]
-  orders        Order[]
+  productStores        ProductStore[]
+  productMovementsFrom ProductMovement[] @relation(name: "fromStore")
+  productMovementsTo   ProductMovement[] @relation(name: "toStore")
+  orders               Order[]
 }
 
 enum OrderStatus {
@@ -216,11 +218,16 @@ model ProductMovement {
   productCategory String
   movementType    MovementType
   description     String?
-  fromStoreName   String?
-  toStoreName     String?
+  fromStoreId     String?
+  toStoreId       String?
 
+  fromStore Store?  @relation(name: "fromStore", fields: [fromStoreId], references: [id])
+  toStore   Store?  @relation(name: "toStore", fields: [toStoreId], references: [id])
   product   Product @relation(fields: [productId], references: [id])
   productId String
+
+  @@index([fromStoreId, createdAt])
+  @@index([toStoreId, createdAt])
 }
 
 model Cart {
@@ -303,15 +310,14 @@ model ProductStore {
 
   @@unique([productId, storeId])
 }
-model ProductTotal{
-  id       String   @id @default(uuid())
+
+model ProductTotal {
+  id            String @id @default(uuid())
   totalQuantity Int
-  productId String
+  productId     String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([productId])
 }
-
-
