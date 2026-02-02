@@ -1,6 +1,7 @@
 import { prisma } from "../lib/db/prisma";
 import { BadRequestError } from "../error/BadRequestError";
 import type { PrismaClient } from "../../prisma/generated/client";
+import { MovementType } from "../../prisma/generated/client";
 
 /**
  * OrderAdminService handles admin-specific order operations
@@ -59,7 +60,7 @@ export class OrderAdminService {
               productName: item.productName,
               productCategory: item.productCategory,
               quantityChange: item.quantity,
-              movementType: "CANCELED",
+              movementType: MovementType.CANCELED,
               createdAt: new Date(),
             },
           });

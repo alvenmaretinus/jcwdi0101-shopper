@@ -133,9 +133,34 @@ export class OrderLifecycleService {
           const updateData: any = { status: "PROCESSING" };
           if (store.id !== order.storeId) {
             console.info(`[OrderLifecycleService] Order ${orderId} store changed from ${order.storeId} to ${store.id} at confirmation`);
+
+            // Recalculate shipping cost for the new store to ensure correct total
+            const distanceKm = storesWithDistance.find((s) => s.store.id === store.id)?.distanceKm ?? 0;
+            const costPerKm = 1000;
+            let newShippingCost = Math.ceil(distanceKm * costPerKm);
+
+            try {
+              const { ShippingCostService } = await import("./shipping-cost.service");
+              const userAddress = await db.userAddress.findUnique({ where: { id: order.userAddressId } });
+              const scInput = {
+                originPostCode: String(store.postCode ?? ""),
+                destinationPostCode: String(userAddress?.postCode ?? ""),
+                weight: 1,
+                itemValue: order.subtotal,
+              };
+              const scData = await ShippingCostService.getShippingCost(scInput);
+              const option = scData.calculate_reguler?.[0] ?? scData.calculate_instant?.[0] ?? scData.calculate_cargo?.[0];
+              newShippingCost = option?.shipping_cost_net ?? newShippingCost;
+            } catch (e) {
+              console.warn(`[OrderLifecycleService] Shipping cost recalculation failed for order ${orderId}, using fallback`);
+            }
+
+            // Update store info and recalculated shipping cost
             updateData.storeId = store.id;
             updateData.storeAddress = store.addressName;
             updateData.storeName = store.name;
+            updateData.shippingCost = newShippingCost;
+            updateData.grandTotal = order.subtotal + newShippingCost - order.totalDiscount;
           }
 
           const updated = await tx.order.update({

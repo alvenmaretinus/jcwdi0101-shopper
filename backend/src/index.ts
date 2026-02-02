@@ -42,7 +42,15 @@ app.use(
   }),
 );
 
-// Serve uploaded files (payment proofs, etc.) at /uploads path (protected with API key)
+app.all("/api/auth/*splat", toNodeHandler(auth));
+
+// Parse JSON bodies
+app.use(express.json());
+
+// Parse cookies
+app.use(cookieParser());
+
+// Serve uploaded files (payment proofs, etc.) at /uploads path (protected with API key + session auth)
 const uploadsAuthMiddleware: express.RequestHandler = (req, res, next) => {
   // Allow authentication via x-api-key header for programmatic access
   const apiKey = req.header("x-api-key");
@@ -62,14 +70,6 @@ const uploadsAuthMiddleware: express.RequestHandler = (req, res, next) => {
   return res.status(401).json({ error: "Unauthorized access to uploads. Provide valid authentication or x-api-key header." });
 };
 app.use("/uploads", uploadsAuthMiddleware, express.static("uploads"));
-
-app.all("/api/auth/*splat", toNodeHandler(auth));
-
-// Parse JSON bodies
-app.use(express.json());
-
-// Parse cookies
-app.use(cookieParser());
 
 app.use("/api", appRouter);
 // Global error handler
