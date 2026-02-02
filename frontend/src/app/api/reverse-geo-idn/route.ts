@@ -13,7 +13,6 @@ export async function GET(request: Request) {
       lat: Number(lat),
       lng: Number(lng),
     });
-
     return NextResponse.json(result || "");
   } catch (err) {
     console.error(err);
@@ -48,7 +47,6 @@ async function getReverseGeoIdn({ lat, lng }: { lat: number; lng: number }) {
     );
 
     if (!res.ok) throw new Error();
-
     const data = await res.json();
 
     if (!data.results?.length) return "";

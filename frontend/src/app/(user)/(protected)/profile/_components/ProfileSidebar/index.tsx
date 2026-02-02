@@ -8,6 +8,7 @@ import { authClient } from "@/lib/authClient";
 import { useState } from "react";
 import { ChangePictureDialog } from "./ChangePictureDialog";
 import { format } from "date-fns";
+import { User } from "@/types/User";
 
 const Item = ({
   href,
@@ -30,7 +31,7 @@ const Item = ({
   </Link>
 );
 
-export const ProfileSidebar = () => {
+export const ProfileSidebar = (props:{user:User}) => {
   const [isChangeImageOpen, setIsChangeImageOpen] = useState(false);
   const path = usePathname();
   const router = useRouter();
@@ -60,7 +61,7 @@ export const ProfileSidebar = () => {
             "
         >
           <Image
-            src={user?.image || "/default_profile.png"}
+            src={user?.image||props.user.image || "/default_profile.png"}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             fill
             className="object-cover"
@@ -74,10 +75,10 @@ export const ProfileSidebar = () => {
           setIsUploadPicture={setIsUploading}
         />
 
-        <p className="font-bold">{user?.name||"user"}</p>
-        <p className="text-xs text-muted-foreground">{user?.email||"mail@shopper.com"}</p>
+        <p className="font-bold">{user?.name|| props.user.name|| "user"}</p>
+        <p className="text-xs text-muted-foreground">{user?.email||props.user.email||"mail@shopper.com"}</p>
         <p className="text-xs text-muted-foreground mt-1">
-         {user?.createdAt? "Member since " + format(user.createdAt, "dd MMMM yyyy") : "Member since ?"}
+         {"Member since " + format(props.user.createdAt||user?.createdAt, "dd MMMM yyyy") }
         </p>
       </div>
 

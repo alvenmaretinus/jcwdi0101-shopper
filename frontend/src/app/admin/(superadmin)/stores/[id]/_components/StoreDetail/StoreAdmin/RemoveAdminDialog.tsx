@@ -10,6 +10,13 @@ type Props = {
   store: Store;
   selectedAdmin: User | null;
   setSelectedAdmin: Dispatch<SetStateAction<User | null>>;
+  setStoreWithEmployees: Dispatch<
+    SetStateAction<
+      Store & {
+        employees: User[];
+      }
+    >
+  >;
 };
 
 export const RemoveAdminDialog = ({
@@ -18,6 +25,7 @@ export const RemoveAdminDialog = ({
   store,
   selectedAdmin,
   setSelectedAdmin,
+  setStoreWithEmployees,
 }: Props) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -25,11 +33,19 @@ export const RemoveAdminDialog = ({
     if (!selectedAdmin?.id) return;
     try {
       setIsDeleting(true);
-      await removeEmployee({
+      const removedEmployee = await removeEmployee({
         id: store.id,
         employeeId: selectedAdmin.id,
       });
-      window.location.reload();
+      setStoreWithEmployees((prev) => {
+        const { employees, ...store } = prev;
+        return {
+          ...store,
+          employees: employees.filter((e) => e.id !== removedEmployee.id),
+        };
+      });
+      setIsDeleting(false);
+      setIsOpen(false);
     } catch (error) {
       setIsDeleting(false);
     }

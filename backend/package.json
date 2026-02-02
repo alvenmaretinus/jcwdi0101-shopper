@@ -3,7 +3,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/src/index.js",
-    "dev": "nodemon src/index.ts"
+    "dev": "nodemon src/index.ts",
+    "test-db": "ts-node scripts/test-db.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.2.0",
@@ -14,6 +15,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "geolib": "^3.3.4",
     "lru-cache": "^11.2.4",
     "nodemailer": "^7.0.12",
     "pg": "^8.16.3",
@@ -28,6 +30,8 @@
     "@types/node": "^25.0.9",
     "@types/nodemailer": "^7.0.5",
     "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",

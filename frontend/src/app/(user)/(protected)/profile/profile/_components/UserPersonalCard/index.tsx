@@ -8,6 +8,7 @@ import { ChangeNameDialog } from "./ChangeNameDialog";
 import { useState } from "react";
 import { ChangeEmailDialog } from "./ChangeEmailDialog";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
+import { User } from "@/types/User";
 
 const InfoItem = ({
   label,
@@ -36,7 +37,7 @@ const InfoItem = ({
   </div>
 );
 
-export const UserCard = () => {
+export const UserCard = (props: {user: User}) => {
   const [isChangeNameOpen, setIsChangeNameOpen] = useState(false);
   const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -51,7 +52,7 @@ export const UserCard = () => {
       <div className="space-y-4">
         <InfoItem
           label="Name"
-          value={user?.name || "-"}
+          value={user?.name || props.user.name}
           buttonText="Change Name"
           icon={<Edit2 className="h-4 w-4" />}
           onClick={() => setIsChangeNameOpen(true)}
@@ -66,7 +67,7 @@ export const UserCard = () => {
 
         <InfoItem
           label="Email"
-          value={user?.email || "-"}
+          value={user?.email || props.user.email}
           buttonText="Change Email"
           icon={<Mail className="h-4 w-4" />}
           onClick={() => setIsChangeEmailOpen(true)}
@@ -80,7 +81,7 @@ export const UserCard = () => {
 
         <InfoItem
           label="Password"
-          value={user ? "••••••••" : "-"}
+          value="••••••••" 
           buttonText="Change Password"
           icon={<KeyRound className="h-4 w-4" />}
           onClick={() => setIsChangePasswordOpen(true)}
