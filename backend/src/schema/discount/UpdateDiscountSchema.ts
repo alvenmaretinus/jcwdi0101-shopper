@@ -11,8 +11,8 @@ export const UpdateDiscountSchema = z.strictObject({
     productId: z.uuid("Invalid product ID").optional(),
     buyQuantity: z.number().int().min(0, "Buy quantity must be at least 0").optional(),
     freeQuantity: z.number().int().min(0, "Free quantity must be at least 0").optional(),
-    startsAt: z.date().optional(),
-    endsAt: z.date().optional(),
+    startsAt: z.coerce.date().optional(),
+    endsAt: z.coerce.date().optional(),
 });
 
 export type UpdateDiscountInput = z.infer<typeof UpdateDiscountSchema>;
