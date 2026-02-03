@@ -17,7 +17,7 @@ export class PrismaRepository implements StockReportRepository {
    */
   private buildStockReportQuery(filter: FindStockReportsByFilterReq) {
     const createdAtStart = new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth - 1, 1));
-    const createdAtEnd = filter.createdAtMonth === 11 ? new Date(Date.UTC(filter.createdAtYear + 1, 0, 1)) : new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth, 1));
+    const createdAtEnd = filter.createdAtMonth === 12 ? new Date(Date.UTC(filter.createdAtYear + 1, 0, 1)) : new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth, 1));
 
     // Properly typed where clause - Prisma will validate at compile-time
     const where: Prisma.ProductMovementWhereInput = {

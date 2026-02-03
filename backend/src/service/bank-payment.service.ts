@@ -27,7 +27,7 @@ export class BankPaymentService {
       throw new BadRequestError("Order not found");
     }
     if (order.userId !== userId) {
-      throw new BadRequestError("Unauthorized - order does not belong to user");
+      throw new UnauthorizedError("Unauthorized - order does not belong to user");
     }
 
     // Order must be PAYMENT_PENDING
