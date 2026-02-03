@@ -41,10 +41,10 @@ export class PrismaRepository implements ProductStoreRepo {
     async updateProductStore(id: string, data: Partial<ProductStore>, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore> {
         const client = tx ?? this.prisma;
         const productStoreData: Partial<ProductStoreUpdateInput> = {
-            ...data,
+            ...(data.quantity !== undefined ? { quantity: data.quantity } : {}),
             updatedAt: new Date(),
-            product: data.productId ? { connect: { id: data.productId } } : undefined,
-            store: data.storeId ? { connect: { id: data.storeId } } : undefined,
+            ...(data.productId ? { product: { connect: { id: data.productId } } } : {}),
+            ...(data.storeId ? { store: { connect: { id: data.storeId } } } : {}),
         }
         const updatedProductStore = await client.productStore.update({
             where: { id: id },
