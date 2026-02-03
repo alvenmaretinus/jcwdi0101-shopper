@@ -3,6 +3,7 @@ import { PrismaClient } from '../../../prisma/generated/client';
 import { Product, CreateProductReq, GetProductReq, ProductWithStock, ProductWhereClause, UpdateProductReq } from './entities';
 import { ProductCreateInput} from '../../../prisma/generated/models';
 import { toDomainModel, toDomainModels } from './mapper';
+import { QueryMode } from '../../../prisma/generated/internal/prismaNamespaceBrowser';
 
 
 export class PrismaRepository implements ProductsRepo {
@@ -42,7 +43,7 @@ export class PrismaRepository implements ProductsRepo {
         if (name) {
             where.name = {
                 contains: name,
-                mode: 'insensitive'
+                mode: QueryMode.insensitive
             };
         }
 
