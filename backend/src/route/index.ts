@@ -9,6 +9,8 @@ import cartRouter from "./cart.route";
 import orderRoute from "./order";
 import userAddressRouter from "./user-address";
 import shippingCostRouter from "./shipping-cost";
+import salesReportRouter from "./sales-report.route";
+import stockReportRouter from "./stock-report.route";
 
 export const appRouter = Router();
 
@@ -21,3 +23,5 @@ appRouter.use(cartRouter);
 appRouter.use(orderRoute);
 appRouter.use(userAddressRouter);
 appRouter.use(shippingCostRouter);
+appRouter.use(salesReportRouter);
+appRouter.use(stockReportRouter);

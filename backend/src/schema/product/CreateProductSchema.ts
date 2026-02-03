@@ -1,4 +1,4 @@
-import { z } from "zod"; 
+import { z } from "zod";
 
 export const CreateProductSchema = z.strictObject({
     name: z.string().max(255, "Product name must be at most 255 characters"),
