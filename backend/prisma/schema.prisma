@@ -308,6 +308,7 @@ model ProductStore {
   @@unique([productId, storeId])
 }
 
+// TODO: When business wants to implement vouchers, use this model.
 model Voucher {
   id        String  @id @default(uuid())
   discountId String

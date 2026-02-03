@@ -1,5 +1,5 @@
 import { CreateDiscountInput, GetDiscountsByFilterInput, UpdateDiscountInput } from "../../schema/discount/index";
-import { DiscountCreateReq, DiscountResponse, DiscountUpdateReq } from "../../repository/discount/entity";
+import { DiscountCreateReq, DiscountFilter, DiscountResponse, DiscountUpdateReq } from "../../repository/discount/entity";
 import { Service } from "./interface";
 import { DiscountRepo } from "../../repository/discount/interface";
 import { Decimal } from "decimal.js"
@@ -17,16 +17,17 @@ export class DiscountService implements Service {
         };
         return this.repo.createDiscount(CreateData);
     }
-    async updateDiscount(id: string, data: UpdateDiscountInput): Promise<DiscountResponse> {
-        const UpdateData: DiscountUpdateReq = {
-            ...data,
-            percentage: data.percentage !== undefined ? Decimal(data.percentage) : undefined,
+    async updateDiscount(data: UpdateDiscountInput): Promise<DiscountResponse> {
+        const { id, ...restData } = data;
+        const UpdateData: Partial<DiscountUpdateReq> = {
+            ...restData,
+            percentage: restData.percentage !== undefined ? Decimal(restData.percentage) : undefined,
         };
         return this.repo.updateDiscount(id, UpdateData);
     }
     async getDiscountsByFilter(filter: GetDiscountsByFilterInput): Promise<DiscountResponse[]> {
-        const { activeOnDate, ...rest } = filter as any;
-        const formattedFilter: any = {
+        const { activeOnDate, ...rest } = filter;
+        const formattedFilter: Partial<DiscountFilter> = {
             ...rest,
         };
         if (activeOnDate) {

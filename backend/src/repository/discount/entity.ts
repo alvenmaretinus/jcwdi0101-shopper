@@ -1,4 +1,5 @@
 import { Decimal } from "decimal.js"
+import { Prisma } from "../../../prisma/generated/client";
 
 export type DiscountCreateReq = {
     percentage?: Decimal;
@@ -23,10 +24,10 @@ export type DiscountUpdateReq = {
     amount?: number;
     type?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
     
-    isWithMinimum: boolean;
+    isWithMinimum?: boolean;
     minimumPrice?: number;
     
-    isTiedToProduct: boolean;
+    isTiedToProduct?: boolean;
     productId?: string;
 
     buyQuantity?: number;
@@ -39,19 +40,19 @@ export type DiscountUpdateReq = {
 export type DiscountFilter = {
     percentage?: Decimal;
     amount?: number;
-    type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
+    type?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
     
     isWithMinimum?: boolean;
     minimumPrice?: number;
     
-    isTiedToProduct: boolean;
+    isTiedToProduct?: boolean;
     productId?: string;
 
     buyQuantity?: number;
     freeQuantity?: number;
 
-    startsAt?: Date;
-    endsAt?: Date;
+    startsAt?: Prisma.DateTimeNullableFilter;
+    endsAt?: Prisma.DateTimeNullableFilter;
 }
 
 export type  DiscountResponse = {

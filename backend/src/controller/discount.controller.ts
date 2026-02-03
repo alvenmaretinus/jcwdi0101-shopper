@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { PrismaRepository }  from '../repository/discount/adapter_prisma';
 import { prisma } from '../lib/db/prisma';
 import { DiscountService } from '../service/discount/discount.service';
-import { GetDiscountByIdSchema, GetDiscountByIdInput, GetDiscountsByFilterInput, GetDiscountsByFilterSchema, CreateDiscountInput, CreateDiscountSchema, UpdateDiscountSchema, UpdateDiscountInput} from '../schema/discount/';
+import { GetDiscountByIdInput, GetDiscountByIdSchema, GetDiscountsByFilterInput, GetDiscountsByFilterSchema, CreateDiscountInput, CreateDiscountSchema, UpdateDiscountSchema, UpdateDiscountInput} from '../schema/discount/';
 
 const discountsRepo = new PrismaRepository(prisma);
 const discountService = new DiscountService(discountsRepo);
@@ -10,7 +10,7 @@ const discountService = new DiscountService(discountsRepo);
 const router = Router();
 
 router.get("/", async (req, res) => {
-    const inputData: GetDiscountsByFilterInput = GetDiscountsByFilterSchema.parse(req.query);
+    const inputData: GetDiscountsByFilterInput = GetDiscountsByFilterSchema.parse(req.body);
     const discounts = await discountService.getDiscountsByFilter(inputData); 
     return res.json(discounts);
 }); 
@@ -28,7 +28,7 @@ router.patch("/:id", async (req, res) => {
         id: id,
     });
     
-    const updatedDiscount = await discountService.updateDiscount(id, inputData); 
+    const updatedDiscount = await discountService.updateDiscount(inputData); 
     return res.json(updatedDiscount);
 });
 
