@@ -50,12 +50,17 @@ export class PrismaRepository implements ProductStoreRepo {
         });
         return updatedProductStore;
     }
-    async deleteProductStore(id: string): Promise<ProductStore> {
-        const data = await this.getProductStoreByID(id);
+
+    async deleteProductStore(id: string, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore> {
+        const client = tx ?? this.prisma;
+        const data = await client.productStore.findUnique({
+            where: { id: id },
+        });
         if (!data) {
             throw new Error(`ProductStore with id ${id} not found`);
         }
-        await this.prisma.productStore.delete({
+        
+        await client.productStore.delete({
             where: { id: id },
         });
         return data;

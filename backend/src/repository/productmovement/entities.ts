@@ -6,8 +6,8 @@ export type ProductMovementReq = {
     movementType: MovementType;
     description: string | null;
     productId: string; //All product-related data should be fetched using relations
-    fromStoreName?: string | null;
-    toStoreName?: string | null;
+    fromStoreId?: string | null;
+    toStoreId?: string | null;
 }
 
 export type ProductMovement = {
@@ -16,11 +16,9 @@ export type ProductMovement = {
     quantityChange: number;
     createdAt: Date;
     updatedAt: Date;
-    productName: string;
-    productCategory: string;
     movementType: MovementType;
     description: string | null;
-    fromStoreName: string | null;
-    toStoreName: string | null;
+    fromStoreId: string | null;
+    toStoreId: string | null;
     productId: string;
 }

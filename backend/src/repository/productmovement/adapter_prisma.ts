@@ -1,5 +1,5 @@
-import { PrismaClient, ProductMovement } from "../../../prisma/generated/client";
-import { ProductMovementReq } from "./entities";
+import { PrismaClient } from "../../../prisma/generated/client";
+import { ProductMovementReq, ProductMovement } from "./entities";
 import { ProductMovementRepo } from "./interface";
 import { v4 } from "uuid";
 
@@ -9,14 +9,12 @@ class PrismaRepository implements ProductMovementRepo {
     constructor(prisma: PrismaClient) {
         this.prisma = prisma;
     }
-    // TODO: Define Mapper from prisma type to our type
-    async createProductMovement(data: ProductMovementReq): Promise<ProductMovement> {
-        return this.prisma.productMovement.create({
+    async createProductMovement(data: ProductMovementReq, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductMovement> {
+        const client = tx ?? this.prisma;
+        return client.productMovement.create({
             data: {
                 id: v4(),
                 ...data,
-                productName: '', // TODO: When the productstore is merged update this
-                productCategory: '',
             },
         });
     }
