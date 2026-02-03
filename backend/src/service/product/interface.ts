@@ -1,5 +1,13 @@
+import { Product, ProductWithStock } from "../../repository/product/entities";
+import { CreateProductInput, FilterInput, UpdateProductInput } from "../../schema/product";
+
 export interface ProductService {
-    getProductsByFilterWithOptionalStock(filter: Partial<any>, withStock: boolean): Promise<any[]>
+    getProductsByFilterWithOptionalStock(filter: Partial<FilterInput>, withStock: boolean): Promise<
+            ProductWithStock[]
+            | Product[]>
+    createProduct(data: CreateProductInput): Promise<Product>;
+    updateProduct(id: string, data: UpdateProductInput): Promise<Product>;
+    deleteProduct(id: string): Promise<void>;
 }
 
 export type Service = ProductService;
