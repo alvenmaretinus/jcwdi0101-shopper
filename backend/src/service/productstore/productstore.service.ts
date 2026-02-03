@@ -44,11 +44,11 @@ class ProductStoreService implements Service {
         return await this.prisma.$transaction(async (
             tx: Omit<PrismaClient<never, undefined, DefaultArgs>,
              "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">) => {
-            const oldData: ProductStore | null = await this.productStoreRepo.getProductStoreByID(id);
+            const oldData: ProductStore | null = await this.productStoreRepo.getProductStoreByID(id, tx);
             if (oldData == null) {
                 throw new Error(`ProductStore with id ${id} not found`);
             }
-            const ret: ProductStore = await this.productStoreRepo.updateProductStore(id, data);
+            const ret: ProductStore = await this.productStoreRepo.updateProductStore(id, data, tx);
             
             const deltaQuantity = ret.quantity - oldData.quantity;
             if (deltaQuantity === 0) {
