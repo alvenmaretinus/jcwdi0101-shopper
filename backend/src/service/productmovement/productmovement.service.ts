@@ -4,7 +4,7 @@ import { CreateProductMovementInput, GetProductMovementsByFilterInput } from "..
 import { Service } from "../productmovement/interface";
 import { ProductMovement, CreateProductMovementReq } from "../../repository/productmovement/entities";
 
-class ProductMovementService implements Service {
+export class ProductMovementService implements Service {
     private productMovementRepo: ProductMovementRepo;
 
     constructor(productMovementRepo: ProductMovementRepo) {
@@ -26,5 +26,3 @@ class ProductMovementService implements Service {
         return this.productMovementRepo.getProductMovementsByFilter(filter);
     }
 }
-
-export { ProductMovementService };

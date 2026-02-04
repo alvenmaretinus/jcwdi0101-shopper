@@ -83,6 +83,10 @@ export class ProductStoreService implements Service {
             tx: Prisma.TransactionClient) => {
             const ret = await this.productStoreRepo.deleteProductStore(id, tx);
 
+            if (ret.quantity === 0) {
+                return;
+            }
+
             const movementData: CreateProductMovementReq = {
                 quantityChange: -ret.quantity,
                 movementType: MovementType.ADJUSTMENT,
