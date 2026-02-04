@@ -2,7 +2,7 @@ import { MovementType } from "../../../prisma/generated/enums";
 import { ProductMovementRepo } from "../../repository/productmovement/interface";
 import { CreateProductMovementInput } from "../../schema/productmovement";
 import { Service } from "../productmovement/interface";
-import { ProductMovement, ProductMovementReq } from "../../repository/productmovement/entities";
+import { ProductMovement, CreateProductMovementReq } from "../../repository/productmovement/entities";
 
 class ProductMovementService implements Service {
     private productMovementRepo: ProductMovementRepo;
@@ -13,7 +13,7 @@ class ProductMovementService implements Service {
 
     async createProductMovement(data: CreateProductMovementInput): Promise<ProductMovement> {
         // TODO: modify this function when Stock Report is merged with the changes to the DB schema
-        const inputData: ProductMovementReq = {
+        const inputData: CreateProductMovementReq = {
             ...data,
             movementType: data.movementType as MovementType,
             orderId: data.orderId || null,

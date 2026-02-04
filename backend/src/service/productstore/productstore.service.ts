@@ -1,5 +1,5 @@
 import { MovementType } from "../../../prisma/generated/enums";
-import { ProductMovementReq } from "../../repository/productmovement/entities";
+import { CreateProductMovementReq } from "../../repository/productmovement/entities";
 import { Service } from "./interface";
 import { ProductStoreRepo} from "../../repository/productstore/interface";
 import { CreateProductStoreInput } from "../../schema/productstore/CreateProductStoreSchema";
@@ -26,7 +26,7 @@ class ProductStoreService implements Service {
              "$connect" | "$disconnect" | "$on" | "$use" | "$transaction" | "$extends">) => {
             const productStore = await this.productStoreRepo.createProductStore(data, tx);
 
-            const movementData: ProductMovementReq = {
+            const movementData: CreateProductMovementReq = {
                 quantityChange: data.quantity,
                 movementType: MovementType.ADJUSTMENT,
                 productId: data.productId,
@@ -61,7 +61,7 @@ class ProductStoreService implements Service {
                 return ret;
             }
 
-            const movementData: ProductMovementReq = {
+            const movementData: CreateProductMovementReq = {
                 quantityChange: deltaQuantity,
                 movementType: MovementType.ADJUSTMENT,
                 productId: ret.productId,
@@ -79,7 +79,7 @@ class ProductStoreService implements Service {
              "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">) => {
             const ret = await this.productStoreRepo.deleteProductStore(id, tx);
 
-            const movementData: ProductMovementReq = {
+            const movementData: CreateProductMovementReq = {
                 quantityChange: -ret.quantity,
                 movementType: MovementType.ADJUSTMENT,
                 productId: ret.productId,

@@ -1,6 +1,16 @@
 import { MovementType } from "../../../prisma/generated/enums";
 
-export type ProductMovementReq = {
+export type CreateProductMovementReq = {
+    orderId: string | null;
+    quantityChange: number;
+    movementType: MovementType;
+    description: string | null;
+    productId: string; //All product-related data should be fetched using relations
+    fromStoreId?: string | null;
+    toStoreId?: string | null;
+}
+
+export type GetProductMovementReq = {
     orderId: string | null;
     quantityChange: number;
     movementType: MovementType;

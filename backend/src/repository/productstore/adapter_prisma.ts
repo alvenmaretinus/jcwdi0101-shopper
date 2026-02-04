@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../../prisma/generated/client";
+import { Prisma, PrismaClient } from "../../../prisma/generated/client";
 import { ProductStoreCreateInput, ProductStoreUpdateInput } from "../../../prisma/generated/models";
 import { NotFoundError } from "../../error/NotFoundError";
 import { ProductStoreReq, ProductStore } from "./entities";
@@ -12,7 +12,7 @@ export class PrismaRepository implements ProductStoreRepo {
         this.prisma = prisma;
     }
 
-    async createProductStore(data: ProductStoreReq, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore> {
+    async createProductStore(data: ProductStoreReq, tx?: Prisma.TransactionClient): Promise<ProductStore> {
         const client = tx ?? this.prisma;
         const now: Date = new Date();
         const productStoreData: ProductStoreCreateInput = {
@@ -27,7 +27,7 @@ export class PrismaRepository implements ProductStoreRepo {
         });
         return createdProductStore;
     }
-    async getProductStoreByID(id: string, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore | null> {
+    async getProductStoreByID(id: string, tx?: Prisma.TransactionClient): Promise<ProductStore | null> {
         const client = tx ?? this.prisma;
         const productStore = await client.productStore.findUnique({
             where: { id: id },
@@ -40,7 +40,7 @@ export class PrismaRepository implements ProductStoreRepo {
         });
         return productStores;
     }
-    async updateProductStore(id: string, data: Partial<ProductStore>, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore> {
+    async updateProductStore(id: string, data: Partial<ProductStore>, tx?: Prisma.TransactionClient): Promise<ProductStore> {
         const client = tx ?? this.prisma;
         const productStoreData: Partial<ProductStoreUpdateInput> = {
             ...(data.quantity !== undefined ? { quantity: data.quantity } : {}),
@@ -55,7 +55,7 @@ export class PrismaRepository implements ProductStoreRepo {
         return updatedProductStore;
     }
 
-    async deleteProductStore(id: string, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore> {
+    async deleteProductStore(id: string, tx?: Prisma.TransactionClient): Promise<ProductStore> {
         const client = tx ?? this.prisma;
         const data = await client.productStore.findUnique({
             where: { id: id },
