@@ -2,7 +2,7 @@ import { CreateDiscountInput, GetDiscountsByFilterInput, UpdateDiscountInput } f
 import { DiscountCreateReq, DiscountFilter, DiscountResponse, DiscountUpdateReq } from "../../repository/discount/entity";
 import { Service } from "./interface";
 import { DiscountRepo } from "../../repository/discount/interface";
-import { Decimal } from "decimal.js";
+import Decimal from "decimal.js";
 
 export class DiscountService implements Service {
    private repo: DiscountRepo;
