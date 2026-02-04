@@ -174,8 +174,6 @@ export class OrderLifecycleService {
             await tx.productMovement.create({
               data: {
                 quantityChange: -it.quantity,
-                productName: p?.name ?? "",
-                productCategory: p?.category?.category ?? "",
                 movementType: "SOLD",
                 productId: it.productId,
               },
