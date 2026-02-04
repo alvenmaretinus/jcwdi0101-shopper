@@ -13,7 +13,7 @@ import { Service } from "../service/productmovement/interface";
 const productMovementRepo: ProductMovementRepo = new ProductMovementRepoImpl(prisma);
 const productMovementService: Service = new ProductMovementService(productMovementRepo);
 
-const  router = Router()
+const router = Router()
 
 router.post("/", isAuth, isSuperAdmin, async (req, res) => {
   const inputData = CreateProductMovementSchema.parse(req.body);
