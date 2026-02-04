@@ -11,13 +11,13 @@ export type CreateProductMovementReq = {
 }
 
 export type GetProductMovementReq = {
-    orderId: string | null;
+    orderId: string;
     quantityChange: number;
     movementType: MovementType;
-    description: string | null;
+    description: string;
     productId: string; //All product-related data should be fetched using relations
-    fromStoreId?: string | null;
-    toStoreId?: string | null;
+    fromStoreId: string;
+    toStoreId: string;
 }
 
 export type ProductMovement = {

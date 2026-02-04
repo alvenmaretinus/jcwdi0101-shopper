@@ -1,7 +1,6 @@
-import { PrismaClient } from "../../../prisma/generated/client";
+import { Prisma, PrismaClient } from "../../../prisma/generated/client";
 import { CreateProductMovementReq, GetProductMovementReq, ProductMovement } from "./entities";
 import { ProductMovementRepo } from "./interface";
-import { v4 } from "uuid";
 
 class PrismaRepository implements ProductMovementRepo {
     private prisma: PrismaClient;
@@ -9,11 +8,10 @@ class PrismaRepository implements ProductMovementRepo {
     constructor(prisma: PrismaClient) {
         this.prisma = prisma;
     }
-    async createProductMovement(data: CreateProductMovementReq, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductMovement> {
+    async createProductMovement(data: CreateProductMovementReq, tx?: Prisma.TransactionClient): Promise<ProductMovement> {
         const client = tx ?? this.prisma;
         return client.productMovement.create({
             data: {
-                id: v4(),
                 ...data,
             },
         });

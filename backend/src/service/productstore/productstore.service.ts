@@ -6,7 +6,7 @@ import { CreateProductStoreInput } from "../../schema/productstore/CreateProduct
 import { ProductMovementRepo } from "../../repository/productmovement/interface";
 import { GetProductStoresByFilterInput, UpdateProductStoreInput } from "../../schema/productstore";
 import { ProductStore } from "../../repository/productstore/entities";
-import { PrismaClient } from "../../../prisma/generated/client";
+import { Prisma, PrismaClient } from "../../../prisma/generated/client";
 import { DefaultArgs } from "@prisma/client/runtime/client";
 import { NotFoundError} from "../../error/NotFoundError";
 
@@ -22,8 +22,7 @@ class ProductStoreService implements Service {
     }
     async createProductStore(data: CreateProductStoreInput): Promise<ProductStore> {
         return await this.prisma.$transaction(async (
-            tx: Omit<PrismaClient<never, undefined, DefaultArgs>,
-             "$connect" | "$disconnect" | "$on" | "$use" | "$transaction" | "$extends">) => {
+            tx: Prisma.TransactionClient) => {
             const productStore = await this.productStoreRepo.createProductStore(data, tx);
 
             const movementData: CreateProductMovementReq = {
@@ -49,8 +48,7 @@ class ProductStoreService implements Service {
     async updateProductStore(data: UpdateProductStoreInput): Promise<ProductStore> {
         const {id, ...rest} = data;
         return await this.prisma.$transaction(async (
-            tx: Omit<PrismaClient<never, undefined, DefaultArgs>,
-             "$connect" | "$disconnect" | "$on" | "$use" | "$transaction" | "$extends">) => {
+            tx: Prisma.TransactionClient) => {
             const oldData: ProductStore | null = await this.productStoreRepo.getProductStoreByID(id, tx);
             if (oldData == null) {
                 throw new NotFoundError(`ProductStore with id ${id} not found`);
