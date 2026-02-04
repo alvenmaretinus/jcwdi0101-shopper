@@ -18,8 +18,8 @@ class ProductMovementService implements Service {
             movementType: data.movementType as MovementType,
             orderId: data.orderId || null,
             description: data.description || null,
-            fromStoreName: data.fromStoreName || null,
-            toStoreName: data.toStoreName || null
+            fromStoreId: data.fromStoreId || null,
+            toStoreId: data.toStoreId || null,
         }
         return this.productMovementRepo.createProductMovement(inputData);
     }

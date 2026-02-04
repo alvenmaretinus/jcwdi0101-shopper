@@ -1,5 +1,6 @@
 import { PrismaClient } from "../../../prisma/generated/client";
 import { ProductStoreCreateInput, ProductStoreUpdateInput } from "../../../prisma/generated/models";
+import { NotFoundError } from "../../error/NotFoundError";
 import { ProductStoreReq, ProductStore } from "./entities";
 import { ProductStoreRepo } from "./interface";
 
@@ -59,7 +60,7 @@ export class PrismaRepository implements ProductStoreRepo {
             where: { id: id },
         });
         if (!data) {
-            throw new Error(`ProductStore with id ${id} not found`);
+            throw new NotFoundError(`ProductStore with id ${id} not found`);
         }
         
         await client.productStore.delete({

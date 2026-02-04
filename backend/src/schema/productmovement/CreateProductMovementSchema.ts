@@ -7,8 +7,8 @@ export const CreateProductMovementSchema = z.strictObject({
     productCategory: z.string().max(255, "Product category must be at most 255 characters"),
     movementType: z.enum(["PURCHASED" , "SOLD" , "REALLOCATED" , "CANCELED" , "ADJUSTMENT"]),
     description: z.string().max(500, "Description must be at most 500 characters").nullable().optional(),
-    fromStoreName: z.string().max(255, "From store name must be at most 255 characters").nullable().optional(),
-    toStoreName: z.string().max(255, "To store name must be at most 255 characters").nullable().optional(),
+    fromStoreId: z.uuid().nullable().optional(),
+    toStoreId: z.uuid().nullable().optional(),
     productId: z.uuid("Invalid product ID"),
 });
 
