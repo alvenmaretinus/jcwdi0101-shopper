@@ -2,4 +2,4 @@ export { CreateProductStoreInput, CreateProductStoreSchema} from "./CreateProduc
 export { GetProductStoreByIdInput, GetProductStoreByIdSchema } from "./GetProductStoreByIdSchema";
 export { GetProductStoresByFilterInput, GetProductStoresByFilterSchema } from "./GetProductStoreByFilter";
 export { UpdateProductStoreInput, UpdateProductStoreSchema } from "./UpdateProductStoreSchema";
-export { DeleteProductStoreByIdInput, DeleteProductStoreByIdSchema } from "./DeleteProductByIdSchema";
+export { DeleteProductStoreByIdInput, DeleteProductStoreByIdSchema } from "./DeleteProductStoreByIdSchema";
