@@ -5,8 +5,6 @@ import { DiscountService } from '../service/discount/discount.service';
 import { GetDiscountByIdInput, GetDiscountByIdSchema, GetDiscountsByFilterInput, GetDiscountsByFilterSchema, CreateDiscountInput, CreateDiscountSchema, UpdateDiscountSchema, UpdateDiscountInput, DeleteDiscountByIdInput, DeleteDiscountByIdSchema} from '../schema/discount/';
 import { isSuperAdmin } from '../middleware/isSuperAdmin';
 import { isAuth } from '../middleware/isAuth';
-import { isAdmin } from '../middleware/isAdmin';
-import { UserRole } from '../../prisma/generated/enums';
 
 const discountsRepo = new PrismaRepository(prisma);
 const discountService = new DiscountService(discountsRepo);

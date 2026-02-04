@@ -38,7 +38,7 @@ export class DiscountService implements Service {
      * if discount is active based on startsAt and endsAt fields.
      */
     async getDiscountsByFilter(filter: GetDiscountsByFilterInput): Promise<DiscountResponse[]> {
-        const { activeOnDate, percentage, ...rest } = filter;
+        const { percentage, ...rest } = filter;
         const formattedFilter: Partial<DiscountFilter> = { 
             ...rest,
             ...(percentage !== undefined ? { percentage: new Decimal(percentage) } : {}),
