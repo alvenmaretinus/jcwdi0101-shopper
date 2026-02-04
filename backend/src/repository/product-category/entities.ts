@@ -13,8 +13,8 @@ export type UpdateProductCategoryReq = {
 }
 
 export type ProductCategory = {
-    id?: string
+    id: string
     category: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
+    createdAt: Date | string
+    updatedAt: Date | string
 }
