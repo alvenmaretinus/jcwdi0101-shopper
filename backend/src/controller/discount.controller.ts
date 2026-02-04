@@ -21,7 +21,7 @@ router.get("/",  async (req, res) => {
 router.post("/", isAuth, isSuperAdmin, async (req, res) => {
     const inputData: CreateDiscountInput = CreateDiscountSchema.parse(req.body);
     const createdDiscount = await discountService.createDiscount(inputData); 
-    return res.json(createdDiscount);
+    return res.status(201).json(createdDiscount);
 });
 
 router.patch("/:id", isAuth, isSuperAdmin, async (req, res) => {
