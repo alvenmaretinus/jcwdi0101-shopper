@@ -62,6 +62,9 @@ export type  DiscountResponse = {
     
     isWithMinimum: boolean;
     minimumPrice: number | null;
+
+    isLimited: boolean;
+    limit: number | null;
     
     isTiedToProduct: boolean;
     productId: string | null;
@@ -71,5 +74,10 @@ export type  DiscountResponse = {
 
     startsAt: Date | null;
     endsAt: Date | null;
+
+    createdAt: Date;
+    updatedAt: Date;
 }
     
+
+
