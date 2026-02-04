@@ -7,7 +7,6 @@ import { Service } from "../service/product-category/interface";
 import { CreateProductCategorySchema, DeleteProductCategoryByIdSchema, GetProductCategoriesByFilterSchema, GetProductCategoryByIdSchema, UpdateProductCategorySchema } from "../schema/product-categories";
 import { isAuth } from "../middleware/isAuth";
 import { isSuperAdmin } from "../middleware/isSuperAdmin";
-import { NotFoundError } from "../error/NotFoundError";
 
 const productCategoryRepo: ProductCategoryRepo = new PrismaRepository(prisma);
 const productCategoryService: Service = new ProductCategoryService(productCategoryRepo);
@@ -47,14 +46,7 @@ router.patch("/:id", isAuth, isSuperAdmin, async (req, res) => {
 
 router.delete("/:id", isAuth, isSuperAdmin, async (req, res) => {
   const { id } = DeleteProductCategoryByIdSchema.parse(req.params);
-  try{
-    await productCategoryService.deleteProductCategory(id);
-  } catch (error: any) {
-    if (error instanceof NotFoundError) {
-      return res.status(404).json({ message: "Product category not found" });
-    }
-    throw error;
-  }
+  await productCategoryService.deleteProductCategory(id);
   return res.status(204).send();
 }); 
 

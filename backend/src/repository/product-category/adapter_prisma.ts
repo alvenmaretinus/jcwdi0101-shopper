@@ -38,6 +38,8 @@ export class PrismaRepository implements ProductCategoryRepo {
                 },
             });
         } catch (error: any) {
+            // TODO: Handle more errors if needed 
+            // e.g. if we want to emit custom error conflict with unique keys upon rename
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
                 throw new NotFoundError("Category not found");
             }
@@ -51,8 +53,10 @@ export class PrismaRepository implements ProductCategoryRepo {
                 where: { id },
             });
         } catch (error: any) {
+            // TODO: Handle more errors if needed
+            // e.g. if we want to emit custom error conflict with unique keys upon rename
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-                throw new NotFoundError("Failed to delete category");
+                throw new NotFoundError("Category not found");
             }
             throw error;
         }
