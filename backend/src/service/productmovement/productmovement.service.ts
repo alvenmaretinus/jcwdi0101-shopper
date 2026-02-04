@@ -1,6 +1,6 @@
 import { MovementType } from "../../../prisma/generated/enums";
 import { ProductMovementRepo } from "../../repository/productmovement/interface";
-import { CreateProductMovementInput } from "../../schema/productmovement";
+import { CreateProductMovementInput, GetProductMovementsByFilterInput } from "../../schema/productmovement";
 import { Service } from "../productmovement/interface";
 import { ProductMovement, CreateProductMovementReq } from "../../repository/productmovement/entities";
 
@@ -22,7 +22,7 @@ class ProductMovementService implements Service {
         }
         return this.productMovementRepo.createProductMovement(inputData);
     }
-    async getProductMovementsByFilter(filter: GetProductMovementInput): Promise<ProductMovement[]> {
+    async getProductMovementsByFilter(filter: GetProductMovementsByFilterInput): Promise<ProductMovement[]> {
         return this.productMovementRepo.getProductMovementsByFilter(filter);
     }
 }
