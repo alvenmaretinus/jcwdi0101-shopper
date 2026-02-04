@@ -51,8 +51,7 @@ export type DiscountFilter = {
     buyQuantity?: number;
     freeQuantity?: number;
 
-    startsAt?: Prisma.DateTimeNullableFilter;
-    endsAt?: Prisma.DateTimeNullableFilter;
+    activeOnDate?: Date;
 }
 
 export type  DiscountResponse = {

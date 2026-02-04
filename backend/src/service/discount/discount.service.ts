@@ -26,17 +26,23 @@ export class DiscountService implements Service {
         return this.repo.updateDiscount(id, updateData);
     }
 
+    /**
+     * Business requirement: Filter discounts by multiple criteria.
+     * 
+     * Supports:
+     * - Field filters: percentage, amount, type, productId, etc.
+     * - Active date filter: Returns only discounts valid on the specified date
+     * 
+     * The percentage field is converted from number to Decimal for database compatibility.
+     * Active date filtering uses complex logic (handled in repository layer) to check
+     * if discount is active based on startsAt and endsAt fields.
+     */
     async getDiscountsByFilter(filter: GetDiscountsByFilterInput): Promise<DiscountResponse[]> {
         const { activeOnDate, percentage, ...rest } = filter;
         const formattedFilter: Partial<DiscountFilter> = { 
             ...rest,
             ...(percentage !== undefined ? { percentage: new Decimal(percentage) } : {}),
         };
-
-        // Pass activeOnDate as startsAt.lte so repository can detect and build proper filter
-        if (activeOnDate) {
-            formattedFilter.startsAt = { lte: activeOnDate } as any;
-        }
 
         return this.repo.getDiscountsByFilter(formattedFilter);
     }

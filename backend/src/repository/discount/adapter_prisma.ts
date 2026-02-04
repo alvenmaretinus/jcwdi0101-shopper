@@ -35,7 +35,10 @@ export class PrismaRepository implements DiscountRepo {
     }
 
     /**
-     * Build OR condition for startsAt (null or <= activeOnDate)
+     * Business requirement: Build OR condition for startsAt date filtering.
+     * A discount is active if:
+     * - startsAt is NULL (no start date restriction), OR
+     * - startsAt <= activeOnDate (discount has already started)
      */
     private buildStartsAtCondition(activeOnDate: Date): Prisma.DiscountWhereInput[] {
         const startsAtIsNull: Prisma.DiscountWhereInput = { startsAt: null };
@@ -44,7 +47,10 @@ export class PrismaRepository implements DiscountRepo {
     }
 
     /**
-     * Build OR condition for endsAt (null or >= activeOnDate)
+     * Business requirement: Build OR condition for endsAt date filtering.
+     * A discount is active if:
+     * - endsAt is NULL (no end date restriction), OR
+     * - endsAt >= activeOnDate (discount has not yet ended)
      */
     private buildEndsAtCondition(activeOnDate: Date): Prisma.DiscountWhereInput[] {
         const endsAtIsNull: Prisma.DiscountWhereInput = { endsAt: null };
@@ -53,7 +59,9 @@ export class PrismaRepository implements DiscountRepo {
     }
 
     /**
-     * Build complete date range filter with explicit AND/OR structure
+     * Business requirement: Build complete date range filter for active discounts.
+     * Combines startsAt and endsAt conditions with AND logic.
+     * This ensures only discounts valid on the specified date are returned.
      */
     private buildActiveDateFilter(activeOnDate: Date): Prisma.DiscountWhereInput[] {
         const startsAtOrConditions: Prisma.DiscountWhereInput[] = this.buildStartsAtCondition(activeOnDate);
@@ -66,59 +74,36 @@ export class PrismaRepository implements DiscountRepo {
     }
 
     /**
-     * Format filter with active date conditions if provided
-     *
-     * - Preserves explicit startsAt/endsAt filters passed by callers.
-     * - Handles activeOnDate separately, without overloading startsAt.
+     * Business requirement: Format filter to support both regular field filtering AND active date filtering.
+     * 
+     * Regular filters (percentage, amount, type, etc.) are applied directly.
+     * 
+     * Active date filtering: When activeOnDate is provided,
+     * the system returns only discounts that are valid on that specific date:
+     * - startsAt IS NULL OR startsAt <= activeOnDate
+     * - AND endsAt IS NULL OR endsAt >= activeOnDate
      */
     private formatFilter(filter: Partial<DiscountFilter>): Prisma.DiscountWhereInput {
-        // Destructure known date-related fields while keeping the rest of the filters intact
-        const { startsAt, endsAt, activeOnDate, ...rest } = filter as any;
+        const { activeOnDate, ...rest } = filter;
         const formattedFilter: Prisma.DiscountWhereInput = { ...rest };
 
-        // Preserve explicit startsAt/endsAt filters provided by the caller
-        if (startsAt !== undefined) {
-            (formattedFilter as any).startsAt = startsAt;
-        }
-        if (endsAt !== undefined) {
-            (formattedFilter as any).endsAt = endsAt;
+        if (activeOnDate) {
+            const andConditions: Prisma.DiscountWhereInput[] = this.buildActiveDateFilter(activeOnDate);
+            formattedFilter.AND = andConditions;
         }
 
-        // Determine the effective "active on date" value:
-        // 1. Prefer explicit activeOnDate if present.
-        // 2. Fallback: for backwards compatibility, treat startsAt.lte as activeOnDate.
-        let effectiveActiveOnDate: Date | undefined;
-
-        if (activeOnDate instanceof Date) {
-            effectiveActiveOnDate = activeOnDate;
-        } else if (
-            startsAt &&
-            typeof startsAt === "object" &&
-            "lte" in startsAt &&
-            (startsAt as any).lte instanceof Date
-        ) {
-            effectiveActiveOnDate = (startsAt as any).lte as Date;
-        }
-
-        if (effectiveActiveOnDate) {
-            const andConditions: Prisma.DiscountWhereInput[] =
-                this.buildActiveDateFilter(effectiveActiveOnDate);
-
-            // Merge with any existing AND conditions on the filter
-            if ((formattedFilter as any).AND) {
-                const existingAnd = (formattedFilter as any).AND;
-                if (Array.isArray(existingAnd)) {
-                    (formattedFilter as any).AND = [...existingAnd, ...andConditions];
-                } else {
-                    (formattedFilter as any).AND = [existingAnd, ...andConditions];
-                }
-            } else {
-                (formattedFilter as any).AND = andConditions;
-            }
-        }
         return formattedFilter;
     }
  
+    /**
+     * Business requirement: Get discounts with flexible filtering options.
+     * 
+     * Supports:
+     * - Regular field filters: percentage, amount, type, productId, etc.
+     * - Active date filtering: Returns only discounts valid on a specific date
+     * 
+     * Complex date range logic is handled by formatFilter() method.
+     */
     async getDiscountsByFilter(filter: Partial<DiscountFilter>): Promise<DiscountResponse[]> {
         const formattedFilter: Prisma.DiscountWhereInput = this.formatFilter(filter);
         const discounts = await this.prisma.discount.findMany({
