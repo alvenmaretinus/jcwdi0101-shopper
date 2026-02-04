@@ -45,8 +45,8 @@ export class PrismaRepository implements ProductStoreRepo {
         const productStoreData: Partial<ProductStoreUpdateInput> = {
             ...(data.quantity !== undefined ? { quantity: data.quantity } : {}),
             updatedAt: new Date(),
-            ...(data.productId ? { product: { connect: { id: data.productId } } } : {}),
-            ...(data.storeId ? { store: { connect: { id: data.storeId } } } : {}),
+            ...(data.productId !== undefined ? { product: { connect: { id: data.productId } } } : {}),
+            ...(data.storeId !== undefined ? { store: { connect: { id: data.storeId } } } : {}),
         }
         const updatedProductStore = await client.productStore.update({
             where: { id: id },
