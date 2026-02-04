@@ -342,6 +342,7 @@ model Discount {
   isWithMinimum Boolean @default(false)
   minimumPrice Int?
 
+  //This field is for future use when business wants to limit the number of uses for a discount
   isLimited   Boolean @default(false)
   limit       Int?
 
