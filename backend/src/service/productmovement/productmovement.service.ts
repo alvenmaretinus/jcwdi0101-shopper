@@ -12,7 +12,6 @@ class ProductMovementService implements Service {
     }
 
     async createProductMovement(data: CreateProductMovementInput): Promise<ProductMovement> {
-        // TODO: modify this function when Stock Report is merged with the changes to the DB schema
         const inputData: CreateProductMovementReq = {
             ...data,
             movementType: data.movementType as MovementType,

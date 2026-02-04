@@ -32,7 +32,8 @@ router.get("/:id", async (req, res) => {
   return res.json(result);
 });
 
-// Even non-authenticated users can get product store info
+// We want non-logged in users to be able to see product availability in stores
+// Hence no isAuth middleware here
 router.get("/", async (req, res) => {
   const inputData = GetProductStoresByFilterSchema.parse(req.query);
   const result = await productStoreService.getProductStoresByFilter(inputData);
