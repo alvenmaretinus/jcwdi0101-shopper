@@ -7,10 +7,9 @@ import { ProductMovementRepo } from "../../repository/productmovement/interface"
 import { GetProductStoresByFilterInput, UpdateProductStoreInput } from "../../schema/productstore";
 import { ProductStore } from "../../repository/productstore/entities";
 import { Prisma, PrismaClient } from "../../../prisma/generated/client";
-import { DefaultArgs } from "@prisma/client/runtime/client";
 import { NotFoundError } from "../../error/NotFoundError";
 
-class ProductStoreService implements Service {
+export class ProductStoreService implements Service {
     private productStoreRepo: ProductStoreRepo;
     private productMovementRepo: ProductMovementRepo;
     private prisma: PrismaClient;
@@ -97,5 +96,3 @@ class ProductStoreService implements Service {
         });
     }
 }
-
-export { ProductStoreService };
