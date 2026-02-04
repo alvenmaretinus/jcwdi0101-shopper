@@ -8,6 +8,7 @@ import orderRoute from "./order";
 import userAddressRouter from "./user-address";
 import shippingCostRouter from "./shipping-cost";
 import discountRouter from "./discount.route";
+import productCategoryRouter from "./product-category.route";
 import salesReportRouter from "./sales-report.route";
 import stockReportRouter from "./stock-report.route";
 
@@ -21,5 +22,6 @@ appRouter.use(orderRoute);
 appRouter.use(userAddressRouter);
 appRouter.use(shippingCostRouter);
 appRouter.use(discountRouter);
+appRouter.use(productCategoryRouter);
 appRouter.use(salesReportRouter);
 appRouter.use(stockReportRouter);
