@@ -12,7 +12,7 @@ export class PrismaRepository implements StockReportRepository {
   }
 
   /**
-   * Calculate the date range for the given month and year
+   * Calculate the date range for the given month and year (for filtering)
    */
   private buildDateRange(year: number, month: number): { start: Date; end: Date } {
     const start: Date = new Date(Date.UTC(year, month - 1, 1));
@@ -24,7 +24,7 @@ export class PrismaRepository implements StockReportRepository {
   }
 
   /**
-   * Build store filter condition (fromStore OR toStore)
+   * Build store filter condition (fromStore OR toStore) with verbose structure
    */
   private buildStoreFilter(storeId: string): Prisma.ProductMovementWhereInput {
     const fromStoreCondition: Prisma.ProductMovementWhereInput = { 
@@ -44,7 +44,7 @@ export class PrismaRepository implements StockReportRepository {
   }
 
   /**
-   * Build date filter condition
+   * Build date filter condition with verbose structure
    */
   private buildDateFilter(start: Date, end: Date): Prisma.ProductMovementWhereInput {
     const createdAtRange: Prisma.DateTimeFilter = {
