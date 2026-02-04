@@ -46,7 +46,8 @@ class ProductStoreService implements Service {
         return this.productStoreRepo.getProductStoresByFilter(filter);
     }
 
-    async updateProductStore(id: string, data: Partial<UpdateProductStoreInput>): Promise<ProductStore> {
+    async updateProductStore(data: UpdateProductStoreInput): Promise<ProductStore> {
+        const {id, ...rest} = data;
         return await this.prisma.$transaction(async (
             tx: Omit<PrismaClient<never, undefined, DefaultArgs>,
              "$connect" | "$disconnect" | "$on" | "$use" | "$transaction" | "$extends">) => {
@@ -54,7 +55,7 @@ class ProductStoreService implements Service {
             if (oldData == null) {
                 throw new NotFoundError(`ProductStore with id ${id} not found`);
             }
-            const ret: ProductStore = await this.productStoreRepo.updateProductStore(id, data, tx);
+            const ret: ProductStore = await this.productStoreRepo.updateProductStore(id, rest, tx);
             
             const deltaQuantity = ret.quantity - oldData.quantity;
             if (deltaQuantity === 0) {
