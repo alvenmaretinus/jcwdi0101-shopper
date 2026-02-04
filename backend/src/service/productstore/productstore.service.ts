@@ -65,7 +65,7 @@ class ProductStoreService implements Service {
                 movementType: MovementType.ADJUSTMENT,
                 productId: ret.productId,
                 orderId: null,
-                description: "Update movement on product store update",
+                description: "Create movement on product store update",
                 toStoreId: ret.storeId,
             }
             await this.productMovementRepo.createProductMovement(movementData, tx);
@@ -83,7 +83,7 @@ class ProductStoreService implements Service {
                 movementType: MovementType.ADJUSTMENT,
                 productId: ret.productId,
                 orderId: null,
-                description: "Update movement on product store deletion",
+                description: "Create movement on product store deletion",
                 fromStoreId: ret.storeId,
             }
             await this.productMovementRepo.createProductMovement(movementData, tx);
