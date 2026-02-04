@@ -25,8 +25,9 @@ export class PrismaRepository implements ProductStoreRepo {
         });
         return createdProductStore;
     }
-    async getProductStoreByID(id: string): Promise<ProductStore | null> {
-        const productStore = await this.prisma.productStore.findUnique({
+    async getProductStoreByID(id: string, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore | null> {
+        const client = tx ?? this.prisma;
+        const productStore = await client.productStore.findUnique({
             where: { id: id },
         });
         return productStore;
@@ -37,25 +38,31 @@ export class PrismaRepository implements ProductStoreRepo {
         });
         return productStores;
     }
-    async updateProductStore(id: string, data: Partial<ProductStore>): Promise<ProductStore> {
+    async updateProductStore(id: string, data: Partial<ProductStore>, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore> {
+        const client = tx ?? this.prisma;
         const productStoreData: Partial<ProductStoreUpdateInput> = {
-            ...data,
+            ...(data.quantity !== undefined ? { quantity: data.quantity } : {}),
             updatedAt: new Date(),
-            product: data.productId ? { connect: { id: data.productId } } : undefined,
-            store: data.storeId ? { connect: { id: data.storeId } } : undefined,
+            ...(data.productId ? { product: { connect: { id: data.productId } } } : {}),
+            ...(data.storeId ? { store: { connect: { id: data.storeId } } } : {}),
         }
-        const updatedProductStore = await this.prisma.productStore.update({
+        const updatedProductStore = await client.productStore.update({
             where: { id: id },
             data: productStoreData,
         });
         return updatedProductStore;
     }
-    async deleteProductStore(id: string): Promise<ProductStore> {
-        const data = await this.getProductStoreByID(id);
+
+    async deleteProductStore(id: string, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore> {
+        const client = tx ?? this.prisma;
+        const data = await client.productStore.findUnique({
+            where: { id: id },
+        });
         if (!data) {
             throw new Error(`ProductStore with id ${id} not found`);
         }
-        await this.prisma.productStore.delete({
+        
+        await client.productStore.delete({
             where: { id: id },
         });
         return data;

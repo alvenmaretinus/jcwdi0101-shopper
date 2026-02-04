@@ -14,7 +14,7 @@ import { GetProductStoreByIdSchema, CreateProductStoreSchema, GetProductStoresBy
 const productStoreRepo: ProductStoreRepo = new ProductStoreRepoImpl(prisma);
 const productMovementRepo: ProductMovementRepo = new ProductMovementRepoImpl(prisma);
 
-const productStoreService: ProductStoreServiceInterface = new ProductStoreService(productStoreRepo, productMovementRepo);
+const productStoreService: ProductStoreServiceInterface = new ProductStoreService(productStoreRepo, productMovementRepo, prisma);
 
 const router = Router()
 

@@ -6,14 +6,18 @@ import { CreateProductStoreInput } from "../../schema/productstore/CreateProduct
 import { ProductMovementRepo } from "../../repository/productmovement/interface";
 import { GetProductStoresByFilterInput, UpdateProductStoreInput } from "../../schema/productstore";
 import { ProductStore } from "../../repository/productstore/entities";
+import { PrismaClient } from "../../../prisma/generated/client";
+import { DefaultArgs } from "@prisma/client/runtime/client";
 
 class ProductStoreService implements Service {
     private productStoreRepo: ProductStoreRepo;
     private productMovementRepo: ProductMovementRepo;
+    private prisma: PrismaClient;
 
-    constructor(productStoreRepo: ProductStoreRepo, productMovementRepo: ProductMovementRepo) {
+    constructor(productStoreRepo: ProductStoreRepo, productMovementRepo: ProductMovementRepo, prisma: PrismaClient) {
         this.productStoreRepo = productStoreRepo;
         this.productMovementRepo = productMovementRepo;
+        this.prisma = prisma;
     }
     async createProductStore(data: CreateProductStoreInput): Promise<ProductStore> {
         const productStore = await this.productStoreRepo.createProductStore(data);
@@ -37,38 +41,46 @@ class ProductStoreService implements Service {
     }
 
     async updateProductStore(id: string, data: Partial<UpdateProductStoreInput>): Promise<ProductStore> {
-        const oldData = await this.productStoreRepo.getProductStoreByID(id);
-        if (oldData == null) {
-            throw new Error(`ProductStore with id ${id} not found`);
-        }
-        const ret = await this.productStoreRepo.updateProductStore(id, data);
-        
-        const deltaQuantity = ret.quantity - (oldData ? oldData.quantity : 0)
-        if (deltaQuantity === 0) {
-            return ret;
-        }
+        return await this.prisma.$transaction(async (
+            tx: Omit<PrismaClient<never, undefined, DefaultArgs>,
+             "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">) => {
+            const oldData: ProductStore | null = await this.productStoreRepo.getProductStoreByID(id, tx);
+            if (oldData == null) {
+                throw new Error(`ProductStore with id ${id} not found`);
+            }
+            const ret: ProductStore = await this.productStoreRepo.updateProductStore(id, data, tx);
+            
+            const deltaQuantity = ret.quantity - oldData.quantity;
+            if (deltaQuantity === 0) {
+                return ret;
+            }
 
-        const movementData: ProductMovementReq = {
-            quantityChange: deltaQuantity,
-            movementType: MovementType.ADJUSTMENT,
-            productId: ret.productId,
-            orderId: null,
-            description: "Update movement on product store update",
-        }
-        await this.productMovementRepo.createProductMovement(movementData);
-        return ret;
+            const movementData: ProductMovementReq = {
+                quantityChange: deltaQuantity,
+                movementType: MovementType.ADJUSTMENT,
+                productId: ret.productId,
+                orderId: null,
+                description: "Update movement on product store update",
+            }
+            await this.productMovementRepo.createProductMovement(movementData, tx);
+            return ret;
+        });
     }
     async deleteProductStore(id: string): Promise<void> {
-        const ret = await this.productStoreRepo.deleteProductStore(id);
+        await this.prisma.$transaction(async (
+            tx: Omit<PrismaClient<never, undefined, DefaultArgs>,
+             "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">) => {
+            const ret = await this.productStoreRepo.deleteProductStore(id, tx);
 
-        const movementData: ProductMovementReq = {
-            quantityChange: -ret.quantity,
-            movementType: MovementType.ADJUSTMENT,
-            productId: ret.productId,
-            orderId: null,
-            description: "Update movement on product store deletion",
-        }
-        await this.productMovementRepo.createProductMovement(movementData);
+            const movementData: ProductMovementReq = {
+                quantityChange: -ret.quantity,
+                movementType: MovementType.ADJUSTMENT,
+                productId: ret.productId,
+                orderId: null,
+                description: "Update movement on product store deletion",
+            }
+            await this.productMovementRepo.createProductMovement(movementData, tx);
+        });
     }
 }
 
