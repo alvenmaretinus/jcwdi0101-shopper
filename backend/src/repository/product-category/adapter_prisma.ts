@@ -57,10 +57,10 @@ export class PrismaRepository implements ProductCategoryRepo {
             }
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError &&
-                (error.code === 'P2003' || error.code === 'P2014')
+                error.code === 'P2002'
             ) {
-                // Foreign key constraint violation: category has related products
-                throw new ConflictError("Cannot update category because there are products associated with it");
+                // Unique constraint violation: attempting to rename to an existing category name
+                throw new ConflictError("Cannot update category because a category with the given name already exists");
             }
             throw error;
         }
