@@ -58,6 +58,13 @@ export class PrismaRepository implements ProductCategoryRepo {
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
                 throw new NotFoundError("Category not found");
             }
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                (error.code === 'P2003' || error.code === 'P2014')
+            ) {
+                // Foreign key constraint violation: category has related products
+                throw new Error("Cannot delete category because there are products associated with it");
+            }
             throw error;
         }
     }
