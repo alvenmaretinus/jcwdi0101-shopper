@@ -1,4 +1,4 @@
-import { DiscountCreateReq, DiscountUpdateReq, DiscountResponse, DiscountFilter,  } from "./entity";
+import { DiscountCreateReq, DiscountUpdateReq, DiscountResponse, DiscountFilter } from "./entity";
 
 export interface DiscountRepo {
     createDiscount(data: DiscountCreateReq): Promise<DiscountResponse>;

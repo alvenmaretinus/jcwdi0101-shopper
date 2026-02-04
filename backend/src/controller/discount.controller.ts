@@ -10,15 +10,15 @@ const discountService = new DiscountService(discountsRepo);
 const router = Router();
 
 router.get("/", async (req, res) => {
-    const inputData: GetDiscountsByFilterInput = GetDiscountsByFilterSchema.parse(req.body);
+    const inputData: GetDiscountsByFilterInput = GetDiscountsByFilterSchema.parse(req.query);
     const discounts = await discountService.getDiscountsByFilter(inputData); 
     return res.json(discounts);
 }); 
 
 router.post("/", async (req, res) => {
     const inputData: CreateDiscountInput = CreateDiscountSchema.parse(req.body);
-    const discounts = await discountService.createDiscount(inputData); 
-    return res.json(discounts);
+    const createdDiscount = await discountService.createDiscount(inputData); 
+    return res.json(createdDiscount);
 });
 
 router.patch("/:id", async (req, res) => {

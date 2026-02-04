@@ -11,19 +11,19 @@ export class DiscountService implements Service {
     }
     
     async createDiscount(data: CreateDiscountInput): Promise<DiscountResponse> {
-        const CreateData: DiscountCreateReq = {
+        const createData: DiscountCreateReq = {
             ...data,
             percentage: data.percentage !== undefined ? Decimal(data.percentage) : undefined,
         };
-        return this.repo.createDiscount(CreateData);
+        return this.repo.createDiscount(createData);
     }
     async updateDiscount(data: UpdateDiscountInput): Promise<DiscountResponse> {
         const { id, ...restData } = data;
-        const UpdateData: Partial<DiscountUpdateReq> = {
+        const updateData: Partial<DiscountUpdateReq> = {
             ...restData,
             percentage: restData.percentage !== undefined ? Decimal(restData.percentage) : undefined,
         };
-        return this.repo.updateDiscount(id, UpdateData);
+        return this.repo.updateDiscount(id, updateData);
     }
     async getDiscountsByFilter(filter: GetDiscountsByFilterInput): Promise<DiscountResponse[]> {
         const { activeOnDate, ...rest } = filter;
