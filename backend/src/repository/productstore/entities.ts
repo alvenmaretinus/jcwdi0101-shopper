@@ -6,6 +6,8 @@ export type ProductStoreCreateInput = {
 
 // Note: Only `quantity` is updatable. `productId` and `storeId` are immutable after creation
 // and cannot be changed via update operations.
+// Note: Only `quantity` is updatable. `productId` and `storeId` are immutable after creation
+// and cannot be changed via update operations.
 export type ProductStoreUpdateInput = {
     quantity?: number
 }
