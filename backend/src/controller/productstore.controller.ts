@@ -40,6 +40,7 @@ router.get("/", async (req, res) => {
   return res.json(result);
 });
 
+// UpdateProductStore only allows updates to quantity
 router.patch("/:id",  isAuth, isSuperAdmin, async (req, res) => {
   const inputData = UpdateProductStoreSchema.parse({...req.body, id: req.params.id});
   const result = await productStoreService.updateProductStore(inputData);

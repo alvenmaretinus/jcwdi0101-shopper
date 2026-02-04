@@ -6,8 +6,6 @@ export type ProductStoreCreateInput = {
 
 export type ProductStoreUpdateInput = {
     quantity?: number
-    productId?: string
-    storeId?: string
 }
 
 export type ProductStoreGetInput = {

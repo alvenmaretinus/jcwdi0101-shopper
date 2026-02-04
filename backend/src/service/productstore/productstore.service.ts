@@ -1,7 +1,7 @@
 import { MovementType } from "../../../prisma/generated/enums";
 import { CreateProductMovementReq } from "../../repository/productmovement/entities";
 import { Service } from "./interface";
-import { ProductStoreRepo} from "../../repository/productstore/interface";
+import { ProductStoreRepo } from "../../repository/productstore/interface";
 import { CreateProductStoreInput } from "../../schema/productstore/CreateProductStoreSchema";
 import { ProductMovementRepo } from "../../repository/productmovement/interface";
 import { GetProductStoresByFilterInput, UpdateProductStoreInput } from "../../schema/productstore";
