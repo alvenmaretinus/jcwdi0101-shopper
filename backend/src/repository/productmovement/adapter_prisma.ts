@@ -16,8 +16,12 @@ class PrismaRepository implements ProductMovementRepo {
             },
         });
     }
-    async getProductMovementsByFilter(filter: Partial<GetProductMovementReq>): Promise<ProductMovement[]> {
-        return this.prisma.productMovement.findMany({
+    async getProductMovementsByFilter(
+        filter: Partial<GetProductMovementReq>,
+        tx?: Prisma.TransactionClient
+    ): Promise<ProductMovement[]> {
+        const client = tx ?? this.prisma;
+        return client.productMovement.findMany({
             where: filter,
         });
     }
