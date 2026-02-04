@@ -9,7 +9,7 @@ export type GetProductCategoryReq = {
 }
 
 export type UpdateProductCategoryReq = {
-    category: string
+    category: string // Required since we only have one field to update
 }
 
 export type ProductCategory = {

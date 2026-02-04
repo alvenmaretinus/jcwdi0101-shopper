@@ -29,7 +29,7 @@ export class PrismaRepository implements ProductCategoryRepo {
     }
     async updateCategory(id: string, data: UpdateProductCategoryReq): Promise<ProductCategory> {
         let updatedCategory: ProductCategory;
-        try{
+        try {
             updatedCategory = await this.prisma.productCategory.update({
                 where: { id },
                 data: {

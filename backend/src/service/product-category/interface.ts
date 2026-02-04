@@ -5,7 +5,7 @@ interface ProductCategoryService {
     getProductCategoriesByFilter(filter: Partial<GetProductCategoriesByFilterInput>): Promise<ProductCategory[]>;
     getProductCategoryById(id: string): Promise<ProductCategory | null>;
     createProductCategory(data: CreateProductCategoryInput): Promise<ProductCategory>;
-    updateProductCategory(id: string, data: UpdateProductCategoryInput): Promise<ProductCategory>;
+    updateProductCategory(data: UpdateProductCategoryInput): Promise<ProductCategory>;
     deleteProductCategory(id: string): Promise<void>;
 }
 

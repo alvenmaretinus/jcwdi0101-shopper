@@ -18,8 +18,9 @@ export class ProductCategoryService implements Service {
     async createProductCategory(data: CreateProductCategoryInput): Promise<ProductCategory> {
         return this.productCategoryRepo.createCategory(data);
     }
-    async updateProductCategory(id: string, data: UpdateProductCategoryInput): Promise<ProductCategory> {
-        return this.productCategoryRepo.updateCategory(id, data);
+    async updateProductCategory(data: UpdateProductCategoryInput): Promise<ProductCategory> {
+        const {id , ...updateData} = data;
+        return this.productCategoryRepo.updateCategory(id, updateData);
     }
     async deleteProductCategory(id: string): Promise<void> {
         return this.productCategoryRepo.deleteCategory(id);
