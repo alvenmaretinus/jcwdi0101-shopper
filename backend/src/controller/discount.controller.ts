@@ -33,13 +33,13 @@ router.patch("/:id", async (req, res) => {
 });
 
 router.delete("/:id", async (req, res) => {
-    const inputData: GetDiscountByIdInput = GetDiscountByIdSchema.parse(req.params);
+    const inputData: DeleteDiscountByIdInput = DeleteDiscountByIdSchema.parse(req.params);
     await discountService.deleteDiscount(inputData.id); 
     return res.status(204).send();
 });
 
 router.get("/:id", async (req, res) => {
-    const inputData: DeleteDiscountByIdInput = DeleteDiscountByIdSchema.parse(req.params);
+    const inputData: GetDiscountByIdInput = GetDiscountByIdSchema.parse(req.params);
     const discount = await discountService.getDiscountById(inputData.id); 
     if (!discount) {
         return res.status(404).json({ message: "Discount not found" });
