@@ -8,7 +8,7 @@ import { GetProductStoresByFilterInput, UpdateProductStoreInput } from "../../sc
 import { ProductStore } from "../../repository/productstore/entities";
 import { Prisma, PrismaClient } from "../../../prisma/generated/client";
 import { DefaultArgs } from "@prisma/client/runtime/client";
-import { NotFoundError} from "../../error/NotFoundError";
+import { NotFoundError } from "../../error/NotFoundError";
 
 class ProductStoreService implements Service {
     private productStoreRepo: ProductStoreRepo;
