@@ -13,7 +13,7 @@ export class DiscountService implements Service {
     async createDiscount(data: CreateDiscountInput): Promise<DiscountResponse> {
         const createData: DiscountCreateReq = {
             ...data,
-            percentage: data.percentage !== undefined ? Decimal(data.percentage) : undefined,
+            percentage: data.percentage !== undefined ? new Decimal(data.percentage) : undefined,
         };
         return this.repo.createDiscount(createData);
     }
@@ -21,7 +21,7 @@ export class DiscountService implements Service {
         const { id, ...restData } = data;
         const updateData: Partial<DiscountUpdateReq> = {
             ...restData,
-            percentage: restData.percentage !== undefined ? Decimal(restData.percentage) : undefined,
+            percentage: restData.percentage !== undefined ? new Decimal(restData.percentage) : undefined,
         };
         return this.repo.updateDiscount(id, updateData);
     }
@@ -30,6 +30,7 @@ export class DiscountService implements Service {
         const formattedFilter: Partial<DiscountFilter> = {
             ...rest,
         };
+        // Assuming all discounts are close-ended intervals
         if (activeOnDate) {
             formattedFilter.startsAt = { lte: activeOnDate };
             formattedFilter.endsAt = { gte: activeOnDate };

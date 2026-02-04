@@ -1,10 +1,10 @@
 import {z} from "zod";
 
 const FilterSchema = z.strictObject({
-  id: z.string().uuid("Invalid product ID").optional(),
+  id: z.uuid("Invalid product ID").optional(),
   name: z.string().max(255, "Product name must be at most 255 characters").optional(),
-  categoryId: z.string().uuid("Invalid category ID").optional(),
-  storeId: z.string().uuid("Invalid store ID").optional(),
+  categoryId: z.uuid("Invalid category ID").optional(),
+  storeId: z.uuid("Invalid store ID").optional(),
 });
 
 export type FilterInput = z.infer<typeof FilterSchema>;
