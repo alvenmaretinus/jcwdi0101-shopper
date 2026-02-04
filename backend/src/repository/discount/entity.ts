@@ -1,4 +1,4 @@
-import { Decimal } from "decimal.js"
+import Decimal from "decimal.js";
 import { Prisma } from "../../../prisma/generated/client";
 
 export type DiscountCreateReq = {
