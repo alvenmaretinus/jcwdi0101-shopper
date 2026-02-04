@@ -2,14 +2,14 @@ import { z } from "zod";
 
 export const GetDiscountsByFilterSchema = z.strictObject({
     percentage: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid decimal format").transform(val => parseFloat(val)).pipe(z.number().min(0).max(100)).optional(),
-    amount: z.number().min(0).optional(),
+    amount: z.coerce.number().min(0).optional(),
     type: z.enum(['PERCENTAGE', 'FIXED_AMOUNT', 'QUANTITY']).optional(),
     isWithMinimum: z.boolean().default(false),
-    minimumPrice: z.number().optional(),
+    minimumPrice: z.coerce.number().optional(),
     isTiedToProduct: z.boolean().default(false),
     productId: z.uuid("Invalid product ID").optional(),
-    buyQuantity: z.number().int().min(1).optional(),
-    freeQuantity: z.number().int().min(1).optional(),
+    buyQuantity: z.coerce.number().int().min(1).optional(),
+    freeQuantity: z.coerce.number().int().min(1).optional(),
     activeOnDate: z.coerce.date().optional(),
 });
 
