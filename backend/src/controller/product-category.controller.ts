@@ -40,7 +40,7 @@ router.patch("/:id", isAuth, isSuperAdmin, async (req, res) => {
     ...req.body,
     id: req.params.id,
   });
-  const updatedCategory = await productCategoryService.updateProductCategory(data.id, data);
+  const updatedCategory = await productCategoryService.updateProductCategory(data);
   return res.json(updatedCategory);
 });
 
