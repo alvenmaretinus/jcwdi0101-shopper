@@ -5,7 +5,7 @@ import { Service } from "../productmovement/interface";
 import { ProductMovement, ProductMovementReq } from "../../repository/productmovement/entities";
 
 class ProductMovementService implements Service {
-    private productMovementRepo!: ProductMovementRepo;
+    private productMovementRepo: ProductMovementRepo;
 
     constructor(productMovementRepo: ProductMovementRepo) {
         this.productMovementRepo = productMovementRepo;

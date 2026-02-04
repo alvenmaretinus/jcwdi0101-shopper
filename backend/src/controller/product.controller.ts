@@ -35,8 +35,8 @@ router.post("/product", isAuth, isSuperAdmin, async (req, res) => {
 });
 
 router.patch("/product/:id", isAuth, isSuperAdmin, async (req, res) => {
-    const inputData  = UpdateProductSchema.parse({ id: req.params.id, ...req.body });
-    const updatedProduct = await productService.updateProduct(inputData.id, inputData);
+    const inputData = UpdateProductSchema.parse({ id: req.params.id, ...req.body });
+    const updatedProduct = await productService.updateProduct(inputData);
     return res.json(updatedProduct);
 });
 

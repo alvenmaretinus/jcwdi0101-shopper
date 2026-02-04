@@ -6,7 +6,7 @@ export interface ProductService {
             ProductWithStock[]
             | Product[]>
     createProduct(data: CreateProductInput): Promise<Product>;
-    updateProduct(id: string, data: UpdateProductInput): Promise<Product>;
+    updateProduct(data: UpdateProductInput): Promise<Product>;
     deleteProduct(id: string): Promise<void>;
 }
 

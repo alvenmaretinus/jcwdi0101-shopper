@@ -12,7 +12,8 @@ export class PrismaRepository implements ProductStoreRepo {
         this.prisma = prisma;
     }
 
-    async createProductStore(data: ProductStoreReq): Promise<ProductStore> {
+    async createProductStore(data: ProductStoreReq, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore> {
+        const client = tx ?? this.prisma;
         const now: Date = new Date();
         const productStoreData: ProductStoreCreateInput = {
             quantity: data.quantity,
@@ -21,7 +22,7 @@ export class PrismaRepository implements ProductStoreRepo {
             product: { connect: { id: data.productId } },
             store: { connect: { id: data.storeId } },
         }
-        const createdProductStore = await this.prisma.productStore.create({
+        const createdProductStore = await client.productStore.create({
             data: productStoreData,
         });
         return createdProductStore;

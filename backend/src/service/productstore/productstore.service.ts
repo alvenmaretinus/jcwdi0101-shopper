@@ -8,6 +8,7 @@ import { GetProductStoresByFilterInput, UpdateProductStoreInput } from "../../sc
 import { ProductStore } from "../../repository/productstore/entities";
 import { PrismaClient } from "../../../prisma/generated/client";
 import { DefaultArgs } from "@prisma/client/runtime/client";
+import { NotFoundError} from "../../error/NotFoundError";
 
 class ProductStoreService implements Service {
     private productStoreRepo: ProductStoreRepo;
@@ -20,17 +21,21 @@ class ProductStoreService implements Service {
         this.prisma = prisma;
     }
     async createProductStore(data: CreateProductStoreInput): Promise<ProductStore> {
-        const productStore = await this.productStoreRepo.createProductStore(data);
+        return await this.prisma.$transaction(async (
+            tx: Omit<PrismaClient<never, undefined, DefaultArgs>,
+             "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">) => {
+            const productStore = await this.productStoreRepo.createProductStore(data, tx);
 
-        const movementData: ProductMovementReq = {
-            quantityChange: data.quantity,
-            movementType: MovementType.ADJUSTMENT,
-            productId: data.productId,
-            orderId: null,
-            description: "Initial stock added on product store creation",
-        }
-        await this.productMovementRepo.createProductMovement(movementData);
-        return productStore;
+            const movementData: ProductMovementReq = {
+                quantityChange: data.quantity,
+                movementType: MovementType.ADJUSTMENT,
+                productId: data.productId,
+                orderId: null,
+                description: "Initial stock added on product store creation",
+            }
+            await this.productMovementRepo.createProductMovement(movementData, tx);
+            return productStore;
+        });
     }
 
     async getProductStoreByID(id: string): Promise<ProductStore | null> {
@@ -46,7 +51,7 @@ class ProductStoreService implements Service {
              "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">) => {
             const oldData: ProductStore | null = await this.productStoreRepo.getProductStoreByID(id, tx);
             if (oldData == null) {
-                throw new Error(`ProductStore with id ${id} not found`);
+                throw new NotFoundError(`ProductStore with id ${id} not found`);
             }
             const ret: ProductStore = await this.productStoreRepo.updateProductStore(id, data, tx);
             
