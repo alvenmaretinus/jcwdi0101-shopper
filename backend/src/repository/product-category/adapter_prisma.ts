@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from "../../../prisma/generated/client";
+import { ConflictError } from "../../error/ConflictError";
 import { NotFoundError } from "../../error/NotFoundError";
 import { CreateProductCategoryReq, GetProductCategoryReq, ProductCategory, UpdateProductCategoryReq } from "./entities";
 import { ProductCategoryRepo } from "./interface";
@@ -22,10 +23,21 @@ export class PrismaRepository implements ProductCategoryRepo {
         return category;
     }
     async createCategory(data: CreateProductCategoryReq): Promise<ProductCategory> {
-        const newCategory = await this.prisma.productCategory.create({
-            data: data,
-        });
-        return newCategory;
+        try {
+            const newCategory = await this.prisma.productCategory.create({
+                data: data,
+            });
+            return newCategory;
+        } catch (error: any) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                (error.code === 'P2003' || error.code === 'P2014')
+            ) {
+                // Foreign key constraint violation: category has related products
+                throw new ConflictError("Cannot create category because there are products associated with the data supplied");
+            }
+            throw error;
+        }
     }
     async updateCategory(id: string, data: UpdateProductCategoryReq): Promise<ProductCategory> {
         let updatedCategory: ProductCategory;
@@ -42,6 +54,13 @@ export class PrismaRepository implements ProductCategoryRepo {
             // e.g. if we want to emit custom error conflict with unique keys upon rename
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
                 throw new NotFoundError("Category not found");
+            }
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                (error.code === 'P2003' || error.code === 'P2014')
+            ) {
+                // Foreign key constraint violation: category has related products
+                throw new ConflictError("Cannot update category because there are products associated with it");
             }
             throw error;
         }
@@ -63,7 +82,7 @@ export class PrismaRepository implements ProductCategoryRepo {
                 (error.code === 'P2003' || error.code === 'P2014')
             ) {
                 // Foreign key constraint violation: category has related products
-                throw new Error("Cannot delete category because there are products associated with it");
+                throw new ConflictError("Cannot delete category because there are products associated with it");
             }
             throw error;
         }
