@@ -67,18 +67,55 @@ export class PrismaRepository implements DiscountRepo {
 
     /**
      * Format filter with active date conditions if provided
+     *
+     * - Preserves explicit startsAt/endsAt filters passed by callers.
+     * - Handles activeOnDate separately, without overloading startsAt.
      */
     private formatFilter(filter: Partial<DiscountFilter>): Prisma.DiscountWhereInput {
-        const { startsAt, endsAt, ...rest } = filter;
+        // Destructure known date-related fields while keeping the rest of the filters intact
+        const { startsAt, endsAt, activeOnDate, ...rest } = filter as any;
         const formattedFilter: Prisma.DiscountWhereInput = { ...rest };
 
-        // Check if startsAt contains a Date value (indicating activeOnDate filtering)
-        if (startsAt && typeof startsAt === 'object' && 'lte' in startsAt) {
-            const activeOnDate: Date = (startsAt as Prisma.DateTimeNullableFilter<"Discount">).lte as Date;
-            const andConditions: Prisma.DiscountWhereInput[] = this.buildActiveDateFilter(activeOnDate);
-            formattedFilter.AND = andConditions;
+        // Preserve explicit startsAt/endsAt filters provided by the caller
+        if (startsAt !== undefined) {
+            (formattedFilter as any).startsAt = startsAt;
+        }
+        if (endsAt !== undefined) {
+            (formattedFilter as any).endsAt = endsAt;
         }
 
+        // Determine the effective "active on date" value:
+        // 1. Prefer explicit activeOnDate if present.
+        // 2. Fallback: for backwards compatibility, treat startsAt.lte as activeOnDate.
+        let effectiveActiveOnDate: Date | undefined;
+
+        if (activeOnDate instanceof Date) {
+            effectiveActiveOnDate = activeOnDate;
+        } else if (
+            startsAt &&
+            typeof startsAt === "object" &&
+            "lte" in startsAt &&
+            (startsAt as any).lte instanceof Date
+        ) {
+            effectiveActiveOnDate = (startsAt as any).lte as Date;
+        }
+
+        if (effectiveActiveOnDate) {
+            const andConditions: Prisma.DiscountWhereInput[] =
+                this.buildActiveDateFilter(effectiveActiveOnDate);
+
+            // Merge with any existing AND conditions on the filter
+            if ((formattedFilter as any).AND) {
+                const existingAnd = (formattedFilter as any).AND;
+                if (Array.isArray(existingAnd)) {
+                    (formattedFilter as any).AND = [...existingAnd, ...andConditions];
+                } else {
+                    (formattedFilter as any).AND = [existingAnd, ...andConditions];
+                }
+            } else {
+                (formattedFilter as any).AND = andConditions;
+            }
+        }
         return formattedFilter;
     }
  
