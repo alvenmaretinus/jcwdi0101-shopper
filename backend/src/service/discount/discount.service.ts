@@ -30,10 +30,24 @@ export class DiscountService implements Service {
         const formattedFilter: Partial<DiscountFilter> = {
             ...rest,
         };
-        // Assuming all discounts are close-ended intervals
         if (activeOnDate) {
-            formattedFilter.startsAt = { lte: activeOnDate };
-            formattedFilter.endsAt = { gte: activeOnDate };
+            // Treat null startsAt/endsAt as unbounded intervals:
+            // (startsAt IS NULL OR startsAt <= activeOnDate)
+            // AND (endsAt IS NULL OR endsAt >= activeOnDate)
+            (formattedFilter as any).AND = [
+                {
+                    OR: [
+                        { startsAt: null },
+                        { startsAt: { lte: activeOnDate } },
+                    ],
+                },
+                {
+                    OR: [
+                        { endsAt: null },
+                        { endsAt: { gte: activeOnDate } },
+                    ],
+                },
+            ];
         }
         return this.repo.getDiscountsByFilter(formattedFilter);
     }
