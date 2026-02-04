@@ -27,8 +27,11 @@ export class DiscountService implements Service {
     }
 
     async getDiscountsByFilter(filter: GetDiscountsByFilterInput): Promise<DiscountResponse[]> {
-        const { activeOnDate, ...rest } = filter;
-        const formattedFilter: Partial<DiscountFilter> = { ...rest };
+        const { activeOnDate, percentage, ...rest } = filter;
+        const formattedFilter: Partial<DiscountFilter> = { 
+            ...rest,
+            ...(percentage !== undefined ? { percentage: new Decimal(percentage) } : {}),
+        };
 
         // Pass activeOnDate as startsAt.lte so repository can detect and build proper filter
         if (activeOnDate) {
