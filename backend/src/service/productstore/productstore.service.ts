@@ -23,7 +23,7 @@ class ProductStoreService implements Service {
     async createProductStore(data: CreateProductStoreInput): Promise<ProductStore> {
         return await this.prisma.$transaction(async (
             tx: Omit<PrismaClient<never, undefined, DefaultArgs>,
-             "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">) => {
+             "$connect" | "$disconnect" | "$on" | "$use" | "$transaction" | "$extends">) => {
             const productStore = await this.productStoreRepo.createProductStore(data, tx);
 
             const movementData: ProductMovementReq = {
@@ -32,6 +32,7 @@ class ProductStoreService implements Service {
                 productId: data.productId,
                 orderId: null,
                 description: "Initial stock added on product store creation",
+                toStoreId: data.storeId,
             }
             await this.productMovementRepo.createProductMovement(movementData, tx);
             return productStore;
@@ -48,7 +49,7 @@ class ProductStoreService implements Service {
     async updateProductStore(id: string, data: Partial<UpdateProductStoreInput>): Promise<ProductStore> {
         return await this.prisma.$transaction(async (
             tx: Omit<PrismaClient<never, undefined, DefaultArgs>,
-             "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">) => {
+             "$connect" | "$disconnect" | "$on" | "$use" | "$transaction" | "$extends">) => {
             const oldData: ProductStore | null = await this.productStoreRepo.getProductStoreByID(id, tx);
             if (oldData == null) {
                 throw new NotFoundError(`ProductStore with id ${id} not found`);
@@ -66,6 +67,7 @@ class ProductStoreService implements Service {
                 productId: ret.productId,
                 orderId: null,
                 description: "Update movement on product store update",
+                toStoreId: ret.storeId,
             }
             await this.productMovementRepo.createProductMovement(movementData, tx);
             return ret;
@@ -83,6 +85,7 @@ class ProductStoreService implements Service {
                 productId: ret.productId,
                 orderId: null,
                 description: "Update movement on product store deletion",
+                fromStoreId: ret.storeId,
             }
             await this.productMovementRepo.createProductMovement(movementData, tx);
         });
