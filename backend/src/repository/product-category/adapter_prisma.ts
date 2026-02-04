@@ -73,7 +73,7 @@ export class PrismaRepository implements ProductCategoryRepo {
             });
         } catch (error: any) {
             // TODO: Handle more errors if needed
-            // e.g. if we want to emit custom error conflict with unique keys upon rename
+            // e.g. additional constraint violations specific to delete operations
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
                 throw new NotFoundError("Category not found");
             }
