@@ -16,8 +16,7 @@ const productMovementRepo: ProductMovementRepo = new ProductMovementRepoImpl(pri
 
 const productStoreService: ProductStoreServiceInterface = new ProductStoreService(productStoreRepo, productMovementRepo, prisma);
 
-const router = Router()
-
+const router = Router();
 
 router.post("/", isAuth, isSuperAdmin, async (req, res) => {
   const inputData = CreateProductStoreSchema.parse(req.body);

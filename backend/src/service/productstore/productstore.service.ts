@@ -71,7 +71,8 @@ class ProductStoreService implements Service {
                 productId: ret.productId,
                 orderId: null,
                 description: "Create movement on product store update",
-                toStoreId: ret.storeId,
+                fromStoreId: deltaQuantity < 0 ? ret.storeId : null,
+                toStoreId: deltaQuantity > 0 ? ret.storeId : null,
             }
             await this.productMovementRepo.createProductMovement(movementData, tx);
             return ret;
