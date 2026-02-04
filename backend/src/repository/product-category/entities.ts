@@ -4,7 +4,7 @@ export type CreateProductCategoryReq = {
 }
 
 export type GetProductCategoryReq = {
-    id: string
+    id?: string
     category?: string
 }
 
