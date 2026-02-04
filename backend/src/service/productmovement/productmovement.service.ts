@@ -22,7 +22,7 @@ class ProductMovementService implements Service {
         }
         return this.productMovementRepo.createProductMovement(inputData);
     }
-    async getProductMovementsByFilter(filter: Partial<ProductMovement>): Promise<ProductMovement[]> {
+    async getProductMovementsByFilter(filter: GetProductMovementInput): Promise<ProductMovement[]> {
         return this.productMovementRepo.getProductMovementsByFilter(filter);
     }
 }
