@@ -13,12 +13,12 @@ export class PrismaRepository implements DiscountRepo {
     }
 
     async createDiscount(data: DiscountCreateReq): Promise<DiscountResponse> {
-        const DiscountCreateData: DiscountCreateInput = {
+        const discountCreateData: DiscountCreateInput = {
             ...data,
             type: data.type as DiscountType,
         }
         const discount: DiscountResponse = await this.prisma.discount.create(
-            { data: DiscountCreateData }
+            { data: discountCreateData }
         );
         return discount;
     }
