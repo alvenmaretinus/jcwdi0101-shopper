@@ -214,8 +214,6 @@ model ProductMovement {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  productName     String
-  productCategory String
   movementType    MovementType
   description     String?
   fromStoreId     String?

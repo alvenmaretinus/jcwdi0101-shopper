@@ -29,8 +29,9 @@ export class ProductService implements Service {
         return this.productRepo.createProduct(data);
     }
 
-    async updateProduct(id: string, data: UpdateProductInput): Promise<Product> {
-        return this.productRepo.updateProduct(id, data);
+    async updateProduct(data: UpdateProductInput): Promise<Product> {
+        const {id, ...updateData} = data;
+        return this.productRepo.updateProduct(id, updateData);
     }
 
     async deleteProduct(id: string): Promise<void> {

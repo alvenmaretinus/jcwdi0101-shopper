@@ -57,8 +57,6 @@ export class OrderAdminService {
           await tx.productMovement.create({
             data: {
               productId: item.productId,
-              productName: item.productName,
-              productCategory: item.productCategory,
               quantityChange: item.quantity,
               movementType: MovementType.CANCELED,
               createdAt: new Date(),

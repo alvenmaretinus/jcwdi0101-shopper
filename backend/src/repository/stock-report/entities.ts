@@ -15,8 +15,6 @@ export type StockReport = {
     createdAt: Date;
     updatedAt: Date;
     productId: string;
-    productCategory: string;
-    productName: string;
     orderId: string | null;
     quantityChange: number;
     movementType: MovementType;
