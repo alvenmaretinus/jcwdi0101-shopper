@@ -12,30 +12,54 @@ export class PrismaRepository implements StockReportRepository {
   }
 
   /**
-   * Build properly typed query for stock report filtering
-   * Separates concerns: query building vs execution
+   * Calculate the date range for the given month and year
    */
-  private buildStockReportQuery(filter: FindStockReportsByFilterReq) {
-    const createdAtStart = new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth - 1, 1));
-    const createdAtEnd = filter.createdAtMonth === 12 ? new Date(Date.UTC(filter.createdAtYear + 1, 0, 1)) : new Date(Date.UTC(filter.createdAtYear, filter.createdAtMonth, 1));
+  private buildDateRange(year: number, month: number): { start: Date; end: Date } {
+    const start: Date = new Date(Date.UTC(year, month - 1, 1));
+    const end: Date = month === 12 
+      ? new Date(Date.UTC(year + 1, 0, 1)) 
+      : new Date(Date.UTC(year, month, 1));
+    
+    return { start, end };
+  }
 
-    // Properly typed where clause - Prisma will validate at compile-time
-    const where: Prisma.ProductMovementWhereInput = {
-      AND: [
-        {
-          OR: [{ fromStoreId: filter.storeId }, { toStoreId: filter.storeId }],
-        },
-        {
-          createdAt: {
-            gte: createdAtStart,
-            lt: createdAtEnd,
-          },
-        },
-      ],
+  /**
+   * Build store filter condition (fromStore OR toStore)
+   */
+  private buildStoreFilter(storeId: string): Prisma.ProductMovementWhereInput {
+    const fromStoreCondition: Prisma.ProductMovementWhereInput = { 
+      fromStoreId: storeId 
     };
+    
+    const toStoreCondition: Prisma.ProductMovementWhereInput = { 
+      toStoreId: storeId 
+    };
+    
+    const storeOrConditions: Prisma.ProductMovementWhereInput[] = [
+      fromStoreCondition, 
+      toStoreCondition
+    ];
+    
+    return { OR: storeOrConditions };
+  }
 
-    // Use const assertion for type inference
-    const select = {
+  /**
+   * Build date filter condition
+   */
+  private buildDateFilter(start: Date, end: Date): Prisma.ProductMovementWhereInput {
+    const createdAtRange: Prisma.DateTimeFilter = {
+      gte: start,
+      lt: end,
+    };
+    
+    return { createdAt: createdAtRange };
+  }
+
+  /**
+   * Build select clause for product movement query
+   */
+  private buildProductMovementSelect(): Prisma.ProductMovementSelect {
+    return {
       id: true,
       description: true,
       updatedAt: true,
@@ -47,24 +71,48 @@ export class PrismaRepository implements StockReportRepository {
       quantityChange: true,
       createdAt: true,
     } as const;
+  }
+
+  /**
+   * Build properly typed query for stock report filtering
+   * Separates concerns: query building vs execution
+   */
+  private buildStockReportQuery(filter: FindStockReportsByFilterReq) {
+    const { start, end } = this.buildDateRange(filter.createdAtYear, filter.createdAtMonth);
+    const storeFilterCondition = this.buildStoreFilter(filter.storeId);
+    const dateFilterCondition = this.buildDateFilter(start, end);
+    
+    const andConditions: Prisma.ProductMovementWhereInput[] = [
+      storeFilterCondition,
+      dateFilterCondition,
+    ];
+
+    const where: Prisma.ProductMovementWhereInput = {
+      AND: andConditions,
+    };
+
+    const select = this.buildProductMovementSelect();
 
     return { where, select };
   }
 
-  async findStockReportsByFilter(filter: FindStockReportsByFilterReq): Promise<{ items: StockReport[]; total: number }> {
-    const { where, select } = this.buildStockReportQuery(filter);
+  private buildOrderBy(): Prisma.ProductMovementOrderByWithRelationInput[] {
+    const orderByCreatedAt: Prisma.ProductMovementOrderByWithRelationInput = { createdAt: "desc" };
+    const orderById: Prisma.ProductMovementOrderByWithRelationInput = { id: "desc" };
+    return [orderByCreatedAt, orderById];
+  }
 
-    const [rows, count]: [StockReport[], number] = await this.prisma.$transaction([
-      this.prisma.productMovement.findMany({
-        where,
-        select,
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        skip: filter.skip,
-        take: filter.take,
-      }),
+  private async fetchRowsAndCount(where: Prisma.ProductMovementWhereInput, select: Prisma.ProductMovementSelect, filter: FindStockReportsByFilterReq): Promise<[StockReport[], number]> {
+    const orderBy = this.buildOrderBy();
+    return this.prisma.$transaction([
+      this.prisma.productMovement.findMany({ where, select, orderBy, skip: filter.skip, take: filter.take }),
       this.prisma.productMovement.count({ where }),
     ]);
+  }
 
+  async findStockReportsByFilter(filter: FindStockReportsByFilterReq): Promise<{ items: StockReport[]; total: number }> {
+    const { where, select } = this.buildStockReportQuery(filter);
+    const [rows, count] = await this.fetchRowsAndCount(where, select, filter);
     return { items: toDomainModels(rows, filter), total: count };
   }
 }
