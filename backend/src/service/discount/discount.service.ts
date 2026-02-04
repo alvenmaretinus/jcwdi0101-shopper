@@ -2,7 +2,7 @@ import { CreateDiscountInput, GetDiscountsByFilterInput, UpdateDiscountInput } f
 import { DiscountCreateReq, DiscountFilter, DiscountResponse, DiscountUpdateReq } from "../../repository/discount/entity";
 import { Service } from "./interface";
 import { DiscountRepo } from "../../repository/discount/interface";
-import { Decimal } from "decimal.js"
+import { Decimal } from "decimal.js";
 
 export class DiscountService implements Service {
    private repo: DiscountRepo;
@@ -25,30 +25,16 @@ export class DiscountService implements Service {
         };
         return this.repo.updateDiscount(id, updateData);
     }
+
     async getDiscountsByFilter(filter: GetDiscountsByFilterInput): Promise<DiscountResponse[]> {
         const { activeOnDate, ...rest } = filter;
-        const formattedFilter: Partial<DiscountFilter> = {
-            ...rest,
-        };
+        const formattedFilter: Partial<DiscountFilter> = { ...rest };
+
+        // Pass activeOnDate as startsAt.lte so repository can detect and build proper filter
         if (activeOnDate) {
-            // Treat null startsAt/endsAt as unbounded intervals:
-            // (startsAt IS NULL OR startsAt <= activeOnDate)
-            // AND (endsAt IS NULL OR endsAt >= activeOnDate)
-            (formattedFilter as any).AND = [
-                {
-                    OR: [
-                        { startsAt: null },
-                        { startsAt: { lte: activeOnDate } },
-                    ],
-                },
-                {
-                    OR: [
-                        { endsAt: null },
-                        { endsAt: { gte: activeOnDate } },
-                    ],
-                },
-            ];
+            formattedFilter.startsAt = { lte: activeOnDate } as any;
         }
+
         return this.repo.getDiscountsByFilter(formattedFilter);
     }
     async getDiscountById(id: string): Promise<DiscountResponse | null> {
