@@ -1,5 +1,5 @@
 import {z} from "zod";
-import { ProductStoreByIdSchema } from "../product/ProductStoreByIdSchema";
+import { ProductStoreByIdSchema } from "../productstore/ProductStoreByIdSchema";
 
 export const GetProductStoreByIdSchema = ProductStoreByIdSchema;
 export type GetProductStoreByIdInput = z.infer<typeof GetProductStoreByIdSchema>;
