@@ -24,7 +24,12 @@ class ProductStoreService implements Service {
         return await this.prisma.$transaction(async (
             tx: Prisma.TransactionClient) => {
             const productStore = await this.productStoreRepo.createProductStore(data, tx);
-
+            
+            // Create initial stock movement if quantity > 0
+            if (data.quantity === 0) {
+                return productStore;
+            }
+            
             const movementData: CreateProductMovementReq = {
                 quantityChange: data.quantity,
                 movementType: MovementType.ADJUSTMENT,
