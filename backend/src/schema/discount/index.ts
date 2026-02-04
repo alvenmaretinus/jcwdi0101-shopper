@@ -1,13 +1,5 @@
-import {CreateDiscountSchema, CreateDiscountInput } from './CreateDiscountSchema';
-import {UpdateDiscountSchema, UpdateDiscountInput } from './UpdateDiscountSchema';
-import {GetDiscountByIdSchema, GetDiscountByIdInput } from './GetDiscountByIdSchema';
-import {GetDiscountsByFilterSchema, GetDiscountsByFilterInput } from './GetDiscountsByFilterSchema';
-import {DeleteDiscountByIdSchema, DeleteDiscountByIdInput } from './DeleteDiscountByIdSchema';
-
-export {
-    CreateDiscountSchema, CreateDiscountInput
-    , UpdateDiscountSchema, UpdateDiscountInput
-    , GetDiscountByIdSchema, GetDiscountByIdInput
-    , GetDiscountsByFilterSchema, GetDiscountsByFilterInput    
-    , DeleteDiscountByIdSchema, DeleteDiscountByIdInput
-};
+export { CreateDiscountSchema, CreateDiscountInput } from './CreateDiscountSchema';
+export { UpdateDiscountSchema, UpdateDiscountInput } from './UpdateDiscountSchema';
+export { GetDiscountByIdSchema, GetDiscountByIdInput } from './GetDiscountByIdSchema';
+export { GetDiscountsByFilterSchema, GetDiscountsByFilterInput } from './GetDiscountsByFilterSchema';
+export { DeleteDiscountByIdSchema, DeleteDiscountByIdInput } from './DeleteDiscountByIdSchema';
