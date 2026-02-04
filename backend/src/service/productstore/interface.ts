@@ -4,8 +4,8 @@ import { GetProductStoresByFilterInput, CreateProductStoreInput, UpdateProductSt
 interface ProductStoreService {
     createProductStore(data: CreateProductStoreInput): Promise<ProductStore>;
     getProductStoreByID(id: string): Promise<ProductStore | null>;
-    getProductStoresByFilter(filter: Partial<GetProductStoresByFilterInput>): Promise<ProductStore[]>;
-    updateProductStore(data: Partial<UpdateProductStoreInput>): Promise<ProductStore>;
+    getProductStoresByFilter(filter: GetProductStoresByFilterInput): Promise<ProductStore[]>;
+    updateProductStore(data: UpdateProductStoreInput): Promise<ProductStore>;
     deleteProductStore(id: string): Promise<void>;
 }
 

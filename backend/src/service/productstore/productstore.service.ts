@@ -36,6 +36,7 @@ class ProductStoreService implements Service {
                 productId: data.productId,
                 orderId: null,
                 description: "Initial stock added on product store creation",
+                fromStoreId: null,
                 toStoreId: data.storeId,
             }
             await this.productMovementRepo.createProductMovement(movementData, tx);
@@ -46,7 +47,7 @@ class ProductStoreService implements Service {
     async getProductStoreByID(id: string): Promise<ProductStore | null> {
         return this.productStoreRepo.getProductStoreByID(id);
     }
-    async getProductStoresByFilter(filter: Partial<GetProductStoresByFilterInput>): Promise<ProductStore[]> {
+    async getProductStoresByFilter(filter: GetProductStoresByFilterInput): Promise<ProductStore[]> {
         return this.productStoreRepo.getProductStoresByFilter(filter);
     }
 
@@ -80,8 +81,7 @@ class ProductStoreService implements Service {
     }
     async deleteProductStore(id: string): Promise<void> {
         await this.prisma.$transaction(async (
-            tx: Omit<PrismaClient<never, undefined, DefaultArgs>,
-             "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">) => {
+            tx: Prisma.TransactionClient) => {
             const ret = await this.productStoreRepo.deleteProductStore(id, tx);
 
             const movementData: CreateProductMovementReq = {
