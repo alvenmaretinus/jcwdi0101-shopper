@@ -46,7 +46,6 @@ export class PrismaRepository implements ProductCategoryRepo {
                 where: { id },
                 data: {
                     ...data,
-                    updatedAt: new Date(Date.now()),
                 },
             });
         } catch (error: any) {
