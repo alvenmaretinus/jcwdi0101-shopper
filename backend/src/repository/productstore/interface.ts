@@ -1,10 +1,10 @@
-import { ProductStore, ProductStoreReq } from "./entities";
-import { PrismaClient } from "../../../prisma/generated/client";
+import { ProductStore, ProductStoreCreateInput, ProductStoreUpdateInput, ProductStoreGetInput } from "./entities";
+import { Prisma } from "../../../prisma/generated/client";
 
 export interface ProductStoreRepo {
-    createProductStore(data: ProductStoreReq, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore>;
-    getProductStoreByID(id: string, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore | null>;
-    getProductStoresByFilter(filter: Partial<ProductStore>): Promise<ProductStore[]>;
-    updateProductStore(id: string, data: Partial<ProductStore>, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore>;
-    deleteProductStore(id: string, tx?: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<ProductStore>;
+    createProductStore(data: ProductStoreCreateInput, tx?: Prisma.TransactionClient): Promise<ProductStore>;
+    getProductStoreByID(id: string, tx?: Prisma.TransactionClient): Promise<ProductStore | null>;
+    getProductStoresByFilter(filter: Partial<ProductStoreGetInput>): Promise<ProductStore[]>;
+    updateProductStore(id: string, data: ProductStoreUpdateInput, tx?: Prisma.TransactionClient): Promise<ProductStore>;
+    deleteProductStore(id: string, tx?: Prisma.TransactionClient): Promise<ProductStore>;
 }

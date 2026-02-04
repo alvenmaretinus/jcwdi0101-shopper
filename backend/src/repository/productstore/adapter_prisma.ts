@@ -1,7 +1,7 @@
 import { Prisma, PrismaClient } from "../../../prisma/generated/client";
-import { ProductStoreCreateInput, ProductStoreUpdateInput } from "../../../prisma/generated/models";
+import { ProductStoreCreateInput as PrismaProductStoreCreateInput, ProductStoreUpdateInput as PrismaProductStoreUpdateInput } from "../../../prisma/generated/models";
 import { NotFoundError } from "../../error/NotFoundError";
-import { ProductStoreReq, ProductStore } from "./entities";
+import { ProductStoreCreateInput, ProductStoreUpdateInput, ProductStoreGetInput, ProductStore } from "./entities";
 import { ProductStoreRepo } from "./interface";
 
 
@@ -12,10 +12,10 @@ export class PrismaRepository implements ProductStoreRepo {
         this.prisma = prisma;
     }
 
-    async createProductStore(data: ProductStoreReq, tx?: Prisma.TransactionClient): Promise<ProductStore> {
+    async createProductStore(data: ProductStoreCreateInput, tx?: Prisma.TransactionClient): Promise<ProductStore> {
         const client = tx ?? this.prisma;
         const now: Date = new Date();
-        const productStoreData: ProductStoreCreateInput = {
+        const productStoreData: PrismaProductStoreCreateInput = {
             quantity: data.quantity,
             createdAt: now,
             updatedAt: now,
@@ -34,15 +34,15 @@ export class PrismaRepository implements ProductStoreRepo {
         });
         return productStore;
     }  
-    async getProductStoresByFilter(filter: Partial<ProductStore>): Promise<ProductStore[]> {
+    async getProductStoresByFilter(filter: Partial<ProductStoreGetInput>): Promise<ProductStore[]> {
         const productStores = await this.prisma.productStore.findMany({
             where: filter,
         });
         return productStores;
     }
-    async updateProductStore(id: string, data: Partial<ProductStore>, tx?: Prisma.TransactionClient): Promise<ProductStore> {
+    async updateProductStore(id: string, data: ProductStoreUpdateInput, tx?: Prisma.TransactionClient): Promise<ProductStore> {
         const client = tx ?? this.prisma;
-        const productStoreData: Partial<ProductStoreUpdateInput> = {
+        const productStoreData: Partial<PrismaProductStoreUpdateInput> = {
             ...(data.quantity !== undefined ? { quantity: data.quantity } : {}),
             updatedAt: new Date(),
             ...(data.productId !== undefined ? { product: { connect: { id: data.productId } } } : {}),

@@ -40,7 +40,7 @@ router.get("/", async (req, res) => {
 });
 
 router.patch("/:id",  isAuth, isSuperAdmin, async (req, res) => {
-  const inputData = UpdateProductStoreSchema.parse({id: req.params.id,  ...req.body });
+  const inputData = UpdateProductStoreSchema.parse({...req.body, id: req.params.id});
   const result = await productStoreService.updateProductStore(inputData);
   return res.json(result);
 });
