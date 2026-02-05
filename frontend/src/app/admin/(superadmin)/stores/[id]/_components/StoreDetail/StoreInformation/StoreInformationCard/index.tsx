@@ -14,8 +14,7 @@ import { Dispatch, SetStateAction, useState } from "react";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { updateStore } from "@/services/store/updateStore";
-import { toast } from "sonner";
+import { setDefaultStore } from "@/services/store/setDefaultStore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,7 +46,7 @@ export const StoreInformationCard = ({
   const handleSetDefault = async () => {
     setIsLoading(true);
     try {
-      await updateStore({ id: store.id, isDefault: true });
+      await setDefaultStore({ id: store.id });
       window.location.reload();
     } catch (error) {
       console.error(error);

@@ -12,15 +12,15 @@ export async function ProductSection() {
     defaultAddress = await getDefaultAddressByUserId(nextHeaders);
   } catch (error) {}
 
-  const products = await getNearestProducts(
-    nextHeaders,
-    defaultAddress
+  const products = await getNearestProducts({
+    headers: nextHeaders,
+    coords: defaultAddress
       ? {
           latitude: defaultAddress.latitude,
           longitude: defaultAddress.longitude,
         }
-      : undefined
-  );
+      : undefined,
+  });
 
   return (
     <section className="py-12 md:py-16 bg-muted/30">

@@ -9,8 +9,8 @@ router.get("/", async (req, res) => {
   const inputData = GetShippingCostSchema.parse({
     originPostCode,
     destinationPostCode,
-    weight: Number(weight),
-    itemValue: Number(itemValue),
+    weight,
+    itemValue,
   });
   const result = await ShippingCostService.getShippingCost(inputData);
 

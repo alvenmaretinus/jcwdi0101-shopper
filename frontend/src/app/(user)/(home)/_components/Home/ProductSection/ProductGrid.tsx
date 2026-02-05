@@ -21,9 +21,11 @@ export const ProductGrid = ({ initialProducts, isDefaultAddress }: Props) => {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
             try {
-              const products = await getNearestProducts(undefined, {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
+              const products = await getNearestProducts({
+                coords: {
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                },
               });
               setProducts(products);
             } catch (error) {

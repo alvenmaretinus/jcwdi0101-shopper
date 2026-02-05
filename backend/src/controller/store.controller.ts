@@ -7,6 +7,7 @@ import { DeleteStoreByIdSchema } from "../schema/store/DeleteStoreByIdSchema";
 import { AddEmployeeSchema } from "../schema/store/AddEmployeeSchema";
 import { RemoveEmployeeSchema } from "../schema/store/RemoveEmployeeSchema";
 import { GetNearestProductsSchema } from "../schema/store/GetNearestProductsSchema";
+import { SetDefaultStoreSchema } from "../schema/store/SetDefaultStoreSchema";
 
 const router = Router();
 
@@ -47,6 +48,12 @@ router.patch("/:id", async (req, res) => {
     ...req.body,
   });
   const result = await StoreService.updateStore(inputData);
+  return res.json(result);
+});
+
+router.patch("/:id/default", async (req, res) => {
+  const inputData = SetDefaultStoreSchema.parse(req.params);
+  const result = await StoreService.setDefaultStore(inputData);
   return res.json(result);
 });
 

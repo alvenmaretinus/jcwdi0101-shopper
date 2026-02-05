@@ -55,7 +55,6 @@ export class StoreRepository {
     const storesWithProducts = await prisma.store.findMany({
       select: {
         ...storeSelect,
-        isSoftDeleted: false,
         productStores: {
           select: {
             quantity: true,
