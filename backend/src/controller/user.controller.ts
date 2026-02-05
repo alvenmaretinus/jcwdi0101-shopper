@@ -46,4 +46,19 @@ router.delete("/user/:id", isAuth, isSuperAdmin, async (req, res) => {
   return res.status(204).send();
 });
 
+// Check if current user is an OAuth user
+router.get("/user/me/is-oauth", isAuth, async (req, res) => {
+  const user = req.user!;
+
+  const accounts = await prisma.account.findMany({
+    where: { userId: user.id },
+  });
+
+  const isOAuth = accounts.some(
+    (account) => account.providerId && account.providerId !== "credential",
+  );
+
+  return res.json({ isOAuth });
+});
+
 export default router;

@@ -5,6 +5,7 @@ type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 type ApiInit = {
   method: HttpMethod;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body?: any | undefined;
   headers?: ReadonlyHeaders;
 };
@@ -14,6 +15,7 @@ const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 export async function apiFetch<T>(url: string, input: ApiInit): Promise<T> {
   const jsonHeader = input.body ? { "Content-Type": "application/json" } : {};
   const nextHeaders = input.headers ? Object.fromEntries(input.headers) : {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const headers = { ...jsonHeader, ...nextHeaders } as any;
 
   const res = await fetch(`${apiUrl}/api${url}`, {
@@ -24,6 +26,7 @@ export async function apiFetch<T>(url: string, input: ApiInit): Promise<T> {
   });
 
   const contentType = res.headers.get("content-type") || "";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let data: any;
   if (contentType.includes("application/json")) {
     data = await res.json().catch(() => ({}));

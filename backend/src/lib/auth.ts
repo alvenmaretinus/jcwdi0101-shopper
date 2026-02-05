@@ -4,11 +4,26 @@ import { prisma } from "./db/prisma";
 import { LRUCache } from "lru-cache";
 import { sendEmailVerification, sendResetPasswordEmail } from "./email/mailer";
 import { AppError } from "../error/AppError";
+import { BadRequestError } from "../error/BadRequestError";
 
 const rateLimit = new LRUCache<string, { email: string; lastRequest: Date }>({
   max: 5000, // max 5000 IPs tracked
   ttl: 1000 * 60, // reset counts every 60 sec
 });
+
+/**
+ * Check if user is an OAuth user (has linked OAuth accounts)
+ * Returns true if user has OAuth accounts (google, etc.)
+ */
+async function isOAuthUser(userId: string): Promise<boolean> {
+  const accounts = await prisma.account.findMany({
+    where: { userId },
+  });
+  // If user has accounts with providers other than "credential", they're OAuth
+  return accounts.some(
+    (account) => account.providerId && account.providerId !== "credential",
+  );
+}
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -23,6 +38,19 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     sendResetPassword: async ({ user, token }) => {
+      // Check if user is OAuth user - prevent password reset for OAuth users
+      const hasOAuthAccount = await isOAuthUser(user.id);
+      if (hasOAuthAccount) {
+        // Don't send reset email for OAuth users
+        // They should use their OAuth provider to manage password
+        console.warn(
+          `OAuth user ${user.email} attempted to reset password. Ignoring.`,
+        );
+        throw new BadRequestError(
+          "OAuth users cannot reset password. Please use your OAuth provider.",
+        );
+      }
+
       const url = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
       sendResetPasswordEmail({
         email: user.email,
