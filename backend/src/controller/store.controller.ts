@@ -6,6 +6,7 @@ import { UpdateStoreSchema } from "../schema/store/UpdateStoreSchema";
 import { DeleteStoreByIdSchema } from "../schema/store/DeleteStoreByIdSchema";
 import { AddEmployeeSchema } from "../schema/store/AddEmployeeSchema";
 import { RemoveEmployeeSchema } from "../schema/store/RemoveEmployeeSchema";
+import { GetNearestProductsSchema } from "../schema/store/GetNearestProductsSchema";
 
 const router = Router();
 
@@ -16,8 +17,9 @@ router.get("/", async (req, res) => {
   return res.json(result);
 });
 
-router.get("/products", async (req, res) => {
-  const result = await StoreService.getStoresWithProducts();
+router.get("/nearest-products", async (req, res) => {
+  const query = GetNearestProductsSchema.parse(req.query);
+  const result = await StoreService.getNearestProducts(query);
   return res.json(result);
 });
 

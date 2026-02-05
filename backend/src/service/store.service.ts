@@ -9,8 +9,19 @@ import { GetStoreByIdInput } from "../schema/store/GetStoreByIdSchema";
 import { UpdateStoreInput } from "../schema/store/UpdateStoreSchema";
 import { GetNearestStoreInput } from "../schema/store/GetNearestStoreSchema";
 import { getDistance } from "geolib";
+import { GetNearestProductsInput } from "../schema/store/GetNearestProductsSchema";
 import { prisma } from "../lib/db/prisma";
 import { AppError } from "../error/AppError";
+
+type StoreProduct = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  category: string;
+  images: string[];
+  quantity: number;
+};
 
 export class StoreService {
   static async createStore(data: CreateStoreInput) {
@@ -43,8 +54,66 @@ export class StoreService {
     return await StoreRepository.getStoresWithEmployeeCount();
   }
 
-  static async getStoresWithProducts() {
-    return await StoreRepository.getStoresWithProducts();
+  static async getNearestProducts(data?: GetNearestProductsInput) {
+    const stores = await StoreRepository.getStoresWithProducts();
+
+    // Sort stores by distance if coordinates provided, otherwise sort by default store
+    let sortedStores = stores;
+    if (data?.latitude && data?.longitude) {
+      const { latitude, longitude } = data;
+      sortedStores = stores.sort((a, b) => {
+        const distA = getDistance(
+          { latitude, longitude },
+          { latitude: a.latitude, longitude: a.longitude },
+        );
+        const distB = getDistance(
+          { latitude, longitude },
+          { latitude: b.latitude, longitude: b.longitude },
+        );
+        return distA - distB;
+      });
+    } else {
+      // Sort by default store first when no coordinates provided
+      sortedStores = stores.sort((a, b) => {
+        if (a.isDefault === b.isDefault) return 0;
+        return a.isDefault ? -1 : 1;
+      });
+    }
+
+    // Extract unique products starting from nearest store
+    // Use Set to maintain order (nearest first) and Map to store product details
+    const uniqueProductIds = new Set<string>();
+    const productMap = new Map<string, StoreProduct>();
+
+    sortedStores.forEach((store) => {
+      store.products.forEach((product) => {
+        // Skip products with 0 quantity
+        if (product.quantity === 0) return;
+
+        // Add to Set to maintain order (only adds if not already present)
+        uniqueProductIds.add(product.id);
+
+        const existingProduct = productMap.get(product.id);
+        if (!existingProduct) {
+          // First time seeing this product (from nearest store)
+          productMap.set(product.id, { ...product });
+        } else {
+          // Aggregate stock: keep the max quantity across stores
+          const currentMaxStock = existingProduct.quantity;
+          productMap.set(product.id, {
+            ...existingProduct,
+            quantity: Math.max(currentMaxStock, product.quantity),
+          });
+        }
+      });
+    });
+
+    // Build unique products array preserving order from nearest store
+    const uniqueProducts = Array.from(uniqueProductIds)
+      .map((id) => productMap.get(id))
+      .filter((product) => product !== undefined);
+
+    return uniqueProducts;
   }
 
   static async updateStore(data: UpdateStoreInput) {
@@ -65,7 +134,7 @@ export class StoreService {
     if (isDefault) {
       if (!isDefault) {
         console.warn(
-          `User with id ${id} is trying to set default store to false`
+          `User with id ${id} is trying to set default store to false`,
         );
         throw new AppError({
           message: "Internal Server Error",
@@ -168,13 +237,13 @@ export class StoreService {
       ...store,
       distance: getDistance(
         { latitude: store.latitude, longitude: store.longitude },
-        { latitude: userAddressLatitude, longitude: userAddressLongitude }
+        { latitude: userAddressLatitude, longitude: userAddressLongitude },
       ),
     }));
 
     if (radiusMeters) {
       storesWithDistance = storesWithDistance.filter(
-        (store) => store.distance <= radiusMeters
+        (store) => store.distance <= radiusMeters,
       );
     }
 

@@ -2,7 +2,6 @@ import { prisma } from "../lib/db/prisma";
 import { Prisma } from "../../prisma/generated/client";
 import { storeSelect } from "../select/StoreSelect";
 import { userSelect } from "../select/UserSelect";
-import { DeleteStoreByIdInput } from "../schema/store/DeleteStoreByIdSchema";
 import { RemoveEmployeeInput } from "../schema/store/RemoveEmployeeSchema";
 import { AddEmployeeInput } from "../schema/store/AddEmployeeSchema";
 
@@ -82,7 +81,7 @@ export class StoreRepository {
           images: ps.product.productImages.map((pi) => pi.url),
           category: ps.product.category.category,
         })),
-      })
+      }),
     );
 
     return formattedStores;
