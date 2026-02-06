@@ -21,6 +21,7 @@
     "express": "^5.2.1",
     "geolib": "^3.3.4",
     "lru-cache": "^11.2.4",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.12",
     "pg": "^8.16.3",
     "prisma": "^7.2.0",
