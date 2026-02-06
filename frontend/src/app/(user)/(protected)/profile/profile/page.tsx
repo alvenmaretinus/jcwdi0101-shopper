@@ -1,6 +1,7 @@
 import { authClient } from "@/lib/authClient";
 import { UserCard } from "./_components/UserPersonalCard";
 import { ReferralCard } from "./_components/UserReferralCard";
+import { EnterReferralCodeCard } from "./_components/EnterReferralCodeCard";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUserByEmail } from "@/services/user/getUserByEmail";
@@ -34,6 +35,7 @@ export default async function ProfilePage() {
       <div className="shadow-md rounded-xl">
         <ReferralCard referralCode={userFull.referralCode} />
       </div>
+      <EnterReferralCodeCard />
     </div>
   );
 }
