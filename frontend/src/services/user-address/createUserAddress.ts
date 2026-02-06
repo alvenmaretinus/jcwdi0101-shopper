@@ -20,7 +20,10 @@ export const createUserAddress = async (inputData: CreateUserAddressInput) => {
     lat: inputData.latitude,
     lng: inputData.longitude,
   });
-  if (!zip_code) return toast.error("Only Indonesia is supported");
+  if (!zip_code) {
+    toast.error("Only Indonesia is supported");
+    throw new Error("Only Indonesia is supported");
+  }
   await apiFetch("/user-address", {
     method: "POST",
     body: { ...inputData, postCode: zip_code },
