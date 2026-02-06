@@ -13,16 +13,16 @@ import { isSuperAdmin } from "../middleware/isSuperAdmin";
 
 const router = Router();
 
+router.get("/nearest-products", async (req, res) => {
+  const query = GetNearestProductsSchema.parse(req.query);
+  const result = await StoreService.getNearestProducts(query);
+  return res.json(result);
+});
+
 router.use(isAuth, isSuperAdmin);
 
 router.get("/", async (req, res) => {
   const result = await StoreService.getStoresWithEmployeeCount();
-  return res.json(result);
-});
-
-router.get("/nearest-products", async (req, res) => {
-  const query = GetNearestProductsSchema.parse(req.query);
-  const result = await StoreService.getNearestProducts(query);
   return res.json(result);
 });
 
