@@ -8,10 +8,12 @@ import { AddEmployeeSchema } from "../schema/store/AddEmployeeSchema";
 import { RemoveEmployeeSchema } from "../schema/store/RemoveEmployeeSchema";
 import { GetNearestProductsSchema } from "../schema/store/GetNearestProductsSchema";
 import { SetDefaultStoreSchema } from "../schema/store/SetDefaultStoreSchema";
+import { isAuth } from "../middleware/isAuth";
+import { isSuperAdmin } from "../middleware/isSuperAdmin";
 
 const router = Router();
 
-// TODO: Use isSuperAdmin for some routes
+router.use(isAuth, isSuperAdmin);
 
 router.get("/", async (req, res) => {
   const result = await StoreService.getStoresWithEmployeeCount();
