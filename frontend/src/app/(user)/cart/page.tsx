@@ -28,12 +28,16 @@ const Cart = () => {
 
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
 
   const handleApplyPromo = async () => {
-    const success = await applyPromo(promoCode);
-    if (success) {
+    setPromoError(null);
+    const result = await applyPromo(promoCode);
+    if (result.success) {
       setAppliedPromo(promoCode.toUpperCase());
       setPromoCode("");
+    } else {
+      setPromoError(result.message);
     }
   };
 
@@ -177,8 +181,15 @@ const Cart = () => {
                     <Input
                       placeholder="Enter code"
                       value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value)}
-                      className="pl-10 rounded-full"
+                      onChange={(e) => {
+                        setPromoCode(e.target.value);
+                        setPromoError(null);
+                      }}
+                      className={`pl-10 rounded-full ${
+                        promoError
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }`}
                       disabled={!!appliedPromo}
                     />
                   </div>
@@ -191,6 +202,9 @@ const Cart = () => {
                     Apply
                   </Button>
                 </div>
+                {promoError && (
+                  <p className="text-sm text-red-500 mt-2">⚠️ {promoError}</p>
+                )}
                 {appliedPromo && (
                   <p className="text-sm text-primary mt-2">
                     ✓ {appliedPromo} applied - 10% off

@@ -83,11 +83,12 @@ export function useCart() {
         body: { code },
       });
       toast.success("Promo code applied successfully");
-      return true;
+      return { success: true, message: "" };
     } catch (error) {
       console.error("Failed to apply promo:", error);
-      toast.error("Invalid promo code");
-      return false;
+      const errorMessage = "Invalid promo code";
+      toast.error(errorMessage);
+      return { success: false, message: errorMessage };
     }
   };
 
