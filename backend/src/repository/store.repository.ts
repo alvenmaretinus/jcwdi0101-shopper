@@ -1,9 +1,8 @@
 import { prisma } from "../lib/db/prisma";
 import { Prisma } from "../../prisma/generated/client";
-import { storeSelect } from "../select/StoreSelect";
-import { userSelect } from "../select/UserSelect";
 import { RemoveEmployeeInput } from "../schema/store/RemoveEmployeeSchema";
 import { AddEmployeeInput } from "../schema/store/AddEmployeeSchema";
+import { storeCache } from "../lib/cache/store/storeCache";
 
 type BaseOmit =
   | "employees"
@@ -20,44 +19,69 @@ type UpdateStoreRepo = Partial<CreateStoreRepo> & { id: string };
 
 export class StoreRepository {
   static async createStore(data: CreateStoreRepo) {
-    return await prisma.store.create({ data, select: storeSelect });
+    await prisma.store.create({ data });
+
+    storeCache.clearAllStoresWithEmployeeCount();
+    storeCache.clearAllStores();
   }
 
   static async getAllStores() {
-    return await prisma.store.findMany({
-      select: storeSelect,
+    const cached = storeCache.getAllStores();
+    if (cached) return cached;
+
+    const stores = await prisma.store.findMany({
       where: { isSoftDeleted: false },
     });
+    if (stores.length === 0) return [];
+    storeCache.setAllStores(stores);
+
+    return stores;
   }
 
   static async getDefaultStore() {
-    return await prisma.store.findFirst({
+    const cached = storeCache.getDefaultStore();
+    if (cached) return cached;
+
+    const store = await prisma.store.findFirst({
       where: { isDefault: true, isSoftDeleted: false },
-      select: storeSelect,
     });
+    if (store) storeCache.setDefaultStore(store);
+
+    return store;
   }
 
   static async getStoreById({ id }: { id: string }) {
-    return await prisma.store.findUnique({
+    const cached = storeCache.getStoreById(id);
+    if (cached) return cached;
+
+    const store = await prisma.store.findUnique({
       where: { id, isSoftDeleted: false },
-      select: storeSelect,
     });
+    if (store) storeCache.setStoreById(store);
+
+    return store;
   }
 
   static async getStoreByIdWithEmployee({ id }: { id: string }) {
-    return await prisma.store.findUnique({
+    const cached = storeCache.getStoreByIdWithEmployee(id);
+    if (cached) return cached;
+
+    const store = await prisma.store.findUnique({
       where: { id, isSoftDeleted: false },
-      select: { ...storeSelect, employees: { select: userSelect } },
+      include: {
+        employees: true,
+      },
     });
+    if (store) storeCache.setStoreByIdWithEmployee(store);
+
+    return store;
   }
 
   static async getStoresWithProducts() {
     const storesWithProducts = await prisma.store.findMany({
-      select: {
-        ...storeSelect,
+      include: {
         productStores: {
-          select: {
-            quantity: true,
+          include: {
             product: {
               include: {
                 productImages: true,
@@ -66,9 +90,9 @@ export class StoreRepository {
             },
           },
         },
+        orderBy: { isDefault: "desc" },
+        where: { isSoftDeleted: false },
       },
-      orderBy: { isDefault: "desc" },
-      where: { isSoftDeleted: false },
     });
 
     const formattedStores = storesWithProducts.map(
@@ -107,15 +131,23 @@ export class StoreRepository {
   }
 
   static async updateStore({ id, ...data }: UpdateStoreRepo) {
-    return await prisma.store.update({
+    const store = await prisma.store.update({
       where: { id, isSoftDeleted: false },
       data,
-      select: storeSelect,
     });
+
+    storeCache.clearAllStores();
+    storeCache.clearAllStoresWithEmployeeCount();
+    storeCache.clearStoreIdWithEmployee(id);
+    storeCache.clearStoreId(id);
+    if (data.isDefault) storeCache.clearDefaultStore();
+
+    storeCache.setStoreById(store);
+    if (data.isDefault) storeCache.setDefaultStore(store);
   }
 
   static async addEmployeeToStore({ id, userId }: AddEmployeeInput) {
-    return await prisma.user.update({
+    await prisma.user.update({
       where: { id: userId },
       data: {
         role: "ADMIN",
@@ -123,13 +155,16 @@ export class StoreRepository {
         storeId: id,
       },
     });
+
+    storeCache.clearStoreIdWithEmployee(id);
+    storeCache.clearAllStoresWithEmployeeCount();
   }
 
   static async removeEmployeeFromStore({
     employeeId,
     id,
   }: RemoveEmployeeInput) {
-    return await prisma.user.update({
+    await prisma.user.update({
       where: { id: employeeId, storeId: id },
       data: {
         role: "USER",
@@ -137,25 +172,46 @@ export class StoreRepository {
         storeId: null,
       },
     });
+
+    storeCache.clearStoreIdWithEmployee(id);
+    storeCache.clearAllStoresWithEmployeeCount();
   }
 
   static async deleteStoreById({ id }: { id: string }) {
-    return await prisma.store.update({
+    const store = await prisma.store.update({
       where: { id, isSoftDeleted: false },
-      select: storeSelect,
       data: { isSoftDeleted: true },
     });
+
+    storeCache.clearStoreId(id);
+    storeCache.clearAllStoresWithEmployeeCount();
+    storeCache.clearStoreIdWithEmployee(id);
+    storeCache.clearAllStores();
+
+    if (store.isDefault) storeCache.clearDefaultStore();
   }
 
   static async getStoresWithEmployeeCount() {
+    const cached = storeCache.getAllStoresWithEmployeeCount();
+    if (cached) return cached;
+
     const stores = await prisma.store.findMany({
-      select: { ...storeSelect, _count: { select: { employees: true } } },
       where: { isSoftDeleted: false },
+      include: {
+        _count: {
+          select: {
+            employees: true,
+          },
+        },
+      },
     });
 
-    return stores.map(({ _count, ...store }) => ({
+    const storeWithEmployeeCountMapped = stores.map(({ _count, ...store }) => ({
       ...store,
       employeeCount: _count.employees,
     }));
+    if (storeWithEmployeeCountMapped.length === 0) return [];
+    storeCache.setAllStoresWithEmployeeCount(storeWithEmployeeCountMapped);
+    return storeWithEmployeeCountMapped;
   }
 }
