@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,117 +12,31 @@ import {
   ArrowRight,
   ShoppingBag,
 } from "lucide-react";
-import { apiFetch } from "@/lib/apiFetch";
-import { toast } from "sonner";
-import { CartItem, CartResponse } from "@/types/cart";
+import { useCart } from "@/hooks/useCart";
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    cartItems,
+    loading,
+    updateQuantity,
+    removeItem,
+    applyPromo,
+    subtotal,
+    deliveryFee,
+    formatPrice,
+  } = useCart();
+
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
 
-  // Fetch cart items on mount
-  useEffect(() => {
-    const fetchCart = async () => {
-      try {
-        setLoading(true);
-        const response = await apiFetch<CartResponse>("/cart", {
-          method: "GET",
-        });
-        setCartItems(response.data || []);
-      } catch (error) {
-        console.error("Failed to fetch cart:", error);
-        toast.error("Failed to load cart");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCart();
-  }, []);
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
-
-  const updateQuantity = async (id: number | string, delta: number) => {
-    try {
-      const item = cartItems.find((item) => item.id === id);
-      if (!item) return;
-
-      const newQuantity = Math.max(
-        1,
-        Math.min(item.stock, item.quantity + delta)
-      );
-
-      // Update optimistically
-      setCartItems((items) =>
-        items.map((item) =>
-          item.id === id ? { ...item, quantity: newQuantity } : item
-        )
-      );
-
-      // Sync with backend
-      await apiFetch("/cart", {
-        method: "PUT",
-        body: { productId: id, quantity: newQuantity },
-      });
-    } catch (error) {
-      console.error("Failed to update quantity:", error);
-      toast.error("Failed to update item");
-      // Refetch cart on error
-      const response = await apiFetch<CartResponse>("/cart", {
-        method: "GET",
-      });
-      setCartItems(response.data || []);
-    }
-  };
-
-  const removeItem = async (id: number | string) => {
-    try {
-      // Update optimistically
-      setCartItems((items) => items.filter((item) => item.id !== id));
-
-      // Sync with backend
-      await apiFetch(`/cart/${id}`, {
-        method: "DELETE",
-      });
-      toast.success("Item removed from cart");
-    } catch (error) {
-      console.error("Failed to remove item:", error);
-      toast.error("Failed to remove item");
-      // Refetch cart on error
-      const response = await apiFetch<CartResponse>("/cart", {
-        method: "GET",
-      });
-      setCartItems(response.data || []);
-    }
-  };
-
-  const applyPromo = async () => {
-    try {
-      await apiFetch("/promo/validate", {
-        method: "POST",
-        body: { code: promoCode },
-      });
+  const handleApplyPromo = async () => {
+    const success = await applyPromo(promoCode);
+    if (success) {
       setAppliedPromo(promoCode.toUpperCase());
-      toast.success("Promo code applied successfully");
-    } catch (error) {
-      console.error("Failed to apply promo:", error);
-      toast.error("Invalid promo code");
+      setPromoCode("");
     }
   };
 
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const deliveryFee = subtotal >= 200000 ? 0 : 15000;
   const discount = appliedPromo ? Math.round(subtotal * 0.1) : 0;
   const total = subtotal + deliveryFee - discount;
 
@@ -271,7 +185,7 @@ const Cart = () => {
                   <Button
                     variant="outline"
                     className="rounded-full"
-                    onClick={applyPromo}
+                    onClick={handleApplyPromo}
                     disabled={!promoCode || !!appliedPromo}
                   >
                     Apply

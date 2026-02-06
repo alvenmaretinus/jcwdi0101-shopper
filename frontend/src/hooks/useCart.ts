@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/apiFetch";
 import { toast } from "sonner";
+import { formatPrice } from "@/lib/formatPrice";
 import { CartItem, CartResponse } from "@/types/cart";
 
 export function useCart() {
@@ -106,5 +107,6 @@ export function useCart() {
     subtotal,
     deliveryFee,
     refetch: fetchCart,
+    formatPrice,
   };
 }
