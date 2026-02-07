@@ -7,8 +7,9 @@ import { AppError } from "../error/AppError";
 import { BadRequestError } from "../error/BadRequestError";
 
 const rateLimit = new LRUCache<string, { email: string; lastRequest: Date }>({
-  max: 5000, // max 5000 IPs tracked
-  ttl: 1000 * 60, // reset counts every 60 sec
+  ttl: 1000 * 60, // reset limit every 60 sec
+  sizeCalculation: () => 1,
+  maxSize: 5000,
 });
 
 /**
