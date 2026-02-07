@@ -37,6 +37,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    minPasswordLength: 8,
+    maxPasswordLength: 100,
     sendResetPassword: async ({ user, token }) => {
       // Check if user is OAuth user - prevent password reset for OAuth users
       const hasOAuthAccount = await isOAuthUser(user.id);
