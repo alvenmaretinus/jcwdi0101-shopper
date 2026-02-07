@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -16,7 +15,7 @@ import { authClient } from "@/lib/authClient";
 import { compareTimeFromNow } from "@/lib/compareTime";
 
 export function ReferralCodeModal() {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
 
   const { data } = authClient.useSession();
@@ -89,8 +88,8 @@ export function ReferralCodeModal() {
         </form>
 
         <p className="text-xs text-muted-foreground text-center">
-          You can still add a referral code within <strong>30 days</strong> after signup from
-          your profile settings.
+          You can still add a referral code within <strong>30 days</strong>{" "}
+          after signup from your profile settings.
         </p>
       </DialogContent>
     </Dialog>
