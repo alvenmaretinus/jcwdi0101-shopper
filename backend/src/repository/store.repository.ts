@@ -21,7 +21,6 @@ export class StoreRepository {
   static async createStore(data: CreateStoreRepo) {
     await prisma.store.create({ data });
 
-    storeCache.clearAllStoresWithEmployeeCount();
     storeCache.clearAllStores();
   }
 
@@ -90,9 +89,9 @@ export class StoreRepository {
             },
           },
         },
-        orderBy: { isDefault: "desc" },
-        where: { isSoftDeleted: false },
       },
+      orderBy: { isDefault: "desc" },
+      where: { isSoftDeleted: false },
     });
 
     const formattedStores = storesWithProducts.map(
@@ -137,7 +136,6 @@ export class StoreRepository {
     });
 
     storeCache.clearAllStores();
-    storeCache.clearAllStoresWithEmployeeCount();
     storeCache.clearStoreIdWithEmployee(id);
     storeCache.clearStoreId(id);
     if (data.isDefault) storeCache.clearDefaultStore();
@@ -157,7 +155,6 @@ export class StoreRepository {
     });
 
     storeCache.clearStoreIdWithEmployee(id);
-    storeCache.clearAllStoresWithEmployeeCount();
   }
 
   static async removeEmployeeFromStore({
@@ -174,7 +171,6 @@ export class StoreRepository {
     });
 
     storeCache.clearStoreIdWithEmployee(id);
-    storeCache.clearAllStoresWithEmployeeCount();
   }
 
   static async deleteStoreById({ id }: { id: string }) {
@@ -184,7 +180,7 @@ export class StoreRepository {
     });
 
     storeCache.clearStoreId(id);
-    storeCache.clearAllStoresWithEmployeeCount();
+
     storeCache.clearStoreIdWithEmployee(id);
     storeCache.clearAllStores();
 
@@ -192,9 +188,6 @@ export class StoreRepository {
   }
 
   static async getStoresWithEmployeeCount() {
-    const cached = storeCache.getAllStoresWithEmployeeCount();
-    if (cached) return cached;
-
     const stores = await prisma.store.findMany({
       where: { isSoftDeleted: false },
       include: {
@@ -210,8 +203,7 @@ export class StoreRepository {
       ...store,
       employeeCount: _count.employees,
     }));
-    if (storeWithEmployeeCountMapped.length === 0) return [];
-    storeCache.setAllStoresWithEmployeeCount(storeWithEmployeeCountMapped);
+
     return storeWithEmployeeCountMapped;
   }
 }

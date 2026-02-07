@@ -8,7 +8,6 @@ const storeCacheKeys = {
   byId: (id: string) => `store:id:${id}`,
   withEmployees: (id: string) => `store:emp:${id}`,
   default: () => "store:default",
-  allWithEmployeeCount: () => `store:empCount`,
 };
 
 export const storeCache = {
@@ -33,11 +32,4 @@ export const storeCache = {
     cacheClient.set(storeCacheKeys.withEmployees(store.id), store),
   clearStoreIdWithEmployee: (id: string) =>
     cacheClient.del(storeCacheKeys.withEmployees(id)),
-
-  getAllStoresWithEmployeeCount: (): StoresWithEmployeeCount[] =>
-    cacheClient.get(storeCacheKeys.allWithEmployeeCount()),
-  setAllStoresWithEmployeeCount: (stores: StoresWithEmployeeCount[]) =>
-    cacheClient.set(storeCacheKeys.allWithEmployeeCount(), stores),
-  clearAllStoresWithEmployeeCount: () =>
-    cacheClient.del(storeCacheKeys.allWithEmployeeCount()),
 };
