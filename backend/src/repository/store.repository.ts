@@ -3,6 +3,7 @@ import { Prisma } from "../../prisma/generated/client";
 import { RemoveEmployeeInput } from "../schema/store/RemoveEmployeeSchema";
 import { AddEmployeeInput } from "../schema/store/AddEmployeeSchema";
 import { storeCache } from "../lib/cache/store/storeCache";
+import { GetStoresWithEmployeeCountInput } from "../schema/store/GetStoresWithEmployeeCountSchema";
 
 type BaseOmit =
   | "employees"
@@ -16,6 +17,8 @@ type BaseOmit =
 type CreateStoreRepo = Omit<Prisma.StoreUncheckedCreateInput, BaseOmit>;
 
 type UpdateStoreRepo = Partial<CreateStoreRepo> & { id: string };
+
+const STORE_LIMIT = 10;
 
 export class StoreRepository {
   static async createStore(data: CreateStoreRepo) {
@@ -187,15 +190,38 @@ export class StoreRepository {
     if (store.isDefault) storeCache.clearDefaultStore();
   }
 
-  static async getStoresWithEmployeeCount() {
+  static async getStoresWithEmployeeCount(
+    query: GetStoresWithEmployeeCountInput,
+  ) {
+    const { page, search, sortBy, sortOrder } = query;
+    const limit = STORE_LIMIT;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.StoreWhereInput = {
+      isSoftDeleted: false,
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { addressName: { contains: search, mode: "insensitive" } },
+        ],
+      }),
+    };
+
     const stores = await prisma.store.findMany({
-      where: { isSoftDeleted: false },
+      where,
       include: {
         _count: {
           select: {
             employees: true,
           },
         },
+      },
+      skip,
+      take: limit,
+      orderBy: {
+        ...(sortBy === "employeeCount"
+          ? { employees: { _count: sortOrder } }
+          : { [sortBy]: sortOrder }),
       },
     });
 
@@ -204,6 +230,20 @@ export class StoreRepository {
       employeeCount: _count.employees,
     }));
 
-    return storeWithEmployeeCountMapped;
+    const total = await prisma.store.count({
+      where,
+    });
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: storeWithEmployeeCountMapped,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    };
   }
 }

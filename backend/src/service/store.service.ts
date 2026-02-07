@@ -13,6 +13,7 @@ import { getDistance } from "geolib";
 import { GetNearestProductsInput } from "../schema/store/GetNearestProductsSchema";
 import { prisma } from "../lib/db/prisma";
 import { AppError } from "../error/AppError";
+import { GetStoresWithEmployeeCountInput } from "../schema/store/GetStoresWithEmployeeCountSchema";
 
 type StoreProduct = {
   id: string;
@@ -53,8 +54,10 @@ export class StoreService {
     return await StoreRepository.getStoreByIdWithEmployee({ id });
   }
 
-  static async getStoresWithEmployeeCount() {
-    return await StoreRepository.getStoresWithEmployeeCount();
+  static async getStoresWithEmployeeCount(
+    data: GetStoresWithEmployeeCountInput,
+  ) {
+    return await StoreRepository.getStoresWithEmployeeCount(data);
   }
 
   static async getNearestProducts(data?: GetNearestProductsInput) {
@@ -113,16 +116,8 @@ export class StoreService {
   }
 
   static async updateStore(data: UpdateStoreInput) {
-    const {
-      id,
-      name,
-      lng,
-      lat,
-      description,
-      addressName,
-      phone,
-      postCode,
-    } = data;
+    const { id, name, lng, lat, description, addressName, phone, postCode } =
+      data;
     const store = await StoreRepository.getStoreById({ id });
     if (!store) throw new NotFoundError("Store Not Found");
 

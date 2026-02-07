@@ -10,6 +10,7 @@ import { GetNearestProductsSchema } from "../schema/store/GetNearestProductsSche
 import { SetDefaultStoreSchema } from "../schema/store/SetDefaultStoreSchema";
 import { isAuth } from "../middleware/isAuth";
 import { isSuperAdmin } from "../middleware/isSuperAdmin";
+import { GetStoresWithEmployeeCountSchema } from "../schema/store/GetStoresWithEmployeeCountSchema";
 
 const router = Router();
 
@@ -22,7 +23,8 @@ router.get("/nearest-products", async (req, res) => {
 router.use(isAuth, isSuperAdmin);
 
 router.get("/", async (req, res) => {
-  const result = await StoreService.getStoresWithEmployeeCount();
+  const query = GetStoresWithEmployeeCountSchema.parse(req.query);
+  const result = await StoreService.getStoresWithEmployeeCount(query);
   return res.json(result);
 });
 
