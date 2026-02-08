@@ -1,17 +1,48 @@
-import {z} from "zod";
+import { z } from "zod";
 
-const FilterSchema = z.strictObject({
-  id: z.uuid("Invalid product ID").optional(),
-  name: z.string().max(255, "Product name must be at most 255 characters").optional(),
-  categoryId: z.uuid("Invalid category ID").optional(),
-  storeId: z.uuid("Invalid store ID").optional(),
+// Individual filter fields accept raw query values and are coerced/validated.
+const idField = z.preprocess((v) => (typeof v === "string" && v.trim() !== "" ? v : undefined), z.string().uuid("Invalid product ID").optional());
+const nameField = z.preprocess((v) => (typeof v === "string" && v.trim() !== "" ? v : undefined), z.string().max(255, "Product name must be at most 255 characters").optional());
+const categoryIdField = z.preprocess((v) => (typeof v === "string" && v.trim() !== "" ? v : undefined), z.string().uuid("Invalid category ID").optional());
+const storeIdField = z.preprocess((v) => (typeof v === "string" && v.trim() !== "" ? v : undefined), z.string().uuid("Invalid store ID").optional());
+
+export const FilterSchema = z.object({
+  id: idField,
+  name: nameField,
+  categoryId: categoryIdField,
+  storeId: storeIdField,
 });
 
 export type FilterInput = z.infer<typeof FilterSchema>;
 
-export const GetProductsByFilterSchema = z.strictObject({
-  filter: FilterSchema,
-  withStock: z.boolean().optional().default(false),
-});
+// Accept flat query params (as produced by req.query) and coerce them,
+// then transform into the expected { filter, withStock } shape.
+export const GetProductsByFilterSchema = z
+  .object({
+    id: idField,
+    name: nameField,
+    categoryId: categoryIdField,
+    storeId: storeIdField,
+    withStock: z
+      .preprocess((v) => {
+        if (v === undefined) return false;
+        if (typeof v === "boolean") return v;
+        const s = String(v).toLowerCase();
+        if (s === "true" || s === "1") return true;
+        if (s === "false" || s === "0") return false;
+        return false;
+      }, z.boolean())
+      .optional()
+      .default(false),
+  })
+  .transform((raw) => ({
+    filter: {
+      id: raw.id,
+      name: raw.name,
+      categoryId: raw.categoryId,
+      storeId: raw.storeId,
+    },
+    withStock: raw.withStock ?? false,
+  }));
 
 export type GetProductsByFilterInput = z.infer<typeof GetProductsByFilterSchema>;

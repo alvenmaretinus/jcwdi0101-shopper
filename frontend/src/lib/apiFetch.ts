@@ -1,9 +1,15 @@
 import { ReadonlyHeaders } from "next/dist/server/web/spec-extension/adapters/headers";
 import { toast } from "sonner";
 
-type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export enum HttpMethod {
+  GET = "GET",
+  POST = "POST",
+  PUT = "PUT",
+  PATCH = "PATCH",
+  DELETE = "DELETE",
+}
 
-type ApiInit = {
+export type ApiInit = {
   method: HttpMethod;
   body?: any | undefined;
   headers?: ReadonlyHeaders;
