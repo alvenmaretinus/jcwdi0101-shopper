@@ -16,19 +16,21 @@ const InfoItem = ({
   buttonText,
   icon,
   onClick,
+  disabled,
 }: {
   label: string;
   value: string;
   buttonText?: string;
   icon?: React.ReactNode;
   onClick: () => void;
+  disabled?: boolean;
 }) => (
   <div className="flex items-center justify-between p-4 rounded-xl border border-border flex-col md:flex-row">
     <div>
       <Label className="text-muted-foreground text-sm sm:text-base md:text-sm lg:text-base">{label}</Label>
       <p className="font-medium mt-1 text-base sm:text-lg md:text-base lg:text-lg">{value}</p>
     </div>
-    {buttonText && (
+    {buttonText && !disabled && (
       <Button onClick={onClick} variant="outline" size="sm">
         {icon && <span className="mr-2">{icon}</span>}
         {buttonText}
@@ -37,13 +39,13 @@ const InfoItem = ({
   </div>
 );
 
-export const UserCard = (props: {user: User}) => {
+export const UserCard = ({ user, isOAuth }: { user: User; isOAuth: boolean }) => {
   const [isChangeNameOpen, setIsChangeNameOpen] = useState(false);
   const [isChangeEmailOpen, setIsChangeEmailOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const { data } = authClient.useSession();
-  const user = data?.user;
+  const sessionUser = data?.user;
 
   return (
     <div className="bg-card rounded-2xl p-6 border">
@@ -52,7 +54,7 @@ export const UserCard = (props: {user: User}) => {
       <div className="space-y-4">
         <InfoItem
           label="Name"
-          value={user?.name || props.user.name}
+          value={sessionUser?.name || user.name}
           buttonText="Change Name"
           icon={<Edit2 className="h-4 w-4" />}
           onClick={() => setIsChangeNameOpen(true)}
@@ -61,16 +63,17 @@ export const UserCard = (props: {user: User}) => {
           <ChangeNameDialog
             open={isChangeNameOpen}
             onOpenChange={setIsChangeNameOpen}
-            currentName={user?.name}
+            currentName={sessionUser?.name}
           />
         )}
 
         <InfoItem
           label="Email"
-          value={user?.email || props.user.email}
+          value={sessionUser?.email || user.email}
           buttonText="Change Email"
           icon={<Mail className="h-4 w-4" />}
           onClick={() => setIsChangeEmailOpen(true)}
+          disabled={isOAuth}
         />
         {isChangeEmailOpen && (
           <ChangeEmailDialog
@@ -81,10 +84,11 @@ export const UserCard = (props: {user: User}) => {
 
         <InfoItem
           label="Password"
-          value="••••••••" 
+          value="••••••••"
           buttonText="Change Password"
           icon={<KeyRound className="h-4 w-4" />}
           onClick={() => setIsChangePasswordOpen(true)}
+          disabled={isOAuth}
         />
         {isChangePasswordOpen && (
           <ChangePasswordDialog

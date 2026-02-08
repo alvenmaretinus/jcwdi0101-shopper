@@ -1,10 +1,9 @@
 import { prisma } from "../lib/db/prisma";
 import { Prisma } from "../../prisma/generated/client";
-import { storeSelect } from "../select/StoreSelect";
-import { userSelect } from "../select/UserSelect";
-import { DeleteStoreByIdInput } from "../schema/store/DeleteStoreByIdSchema";
 import { RemoveEmployeeInput } from "../schema/store/RemoveEmployeeSchema";
 import { AddEmployeeInput } from "../schema/store/AddEmployeeSchema";
+import { storeCache } from "../lib/cache/store/storeCache";
+import { GetStoresWithEmployeeCountInput } from "../schema/store/GetStoresWithEmployeeCountSchema";
 
 type BaseOmit =
   | "employees"
@@ -19,47 +18,72 @@ type CreateStoreRepo = Omit<Prisma.StoreUncheckedCreateInput, BaseOmit>;
 
 type UpdateStoreRepo = Partial<CreateStoreRepo> & { id: string };
 
+const STORE_LIMIT = 10;
+
 export class StoreRepository {
   static async createStore(data: CreateStoreRepo) {
-    return await prisma.store.create({ data, select: storeSelect });
+    await prisma.store.create({ data });
+
+    storeCache.clearAllStores();
   }
 
   static async getAllStores() {
-    return await prisma.store.findMany({
-      select: storeSelect,
+    const cached = storeCache.getAllStores();
+    if (cached) return cached;
+
+    const stores = await prisma.store.findMany({
       where: { isSoftDeleted: false },
     });
+    if (stores.length === 0) return [];
+    storeCache.setAllStores(stores);
+
+    return stores;
   }
 
   static async getDefaultStore() {
-    return await prisma.store.findFirst({
+    const cached = storeCache.getDefaultStore();
+    if (cached) return cached;
+
+    const store = await prisma.store.findFirst({
       where: { isDefault: true, isSoftDeleted: false },
-      select: storeSelect,
     });
+    if (store) storeCache.setDefaultStore(store);
+
+    return store;
   }
 
   static async getStoreById({ id }: { id: string }) {
-    return await prisma.store.findUnique({
+    const cached = storeCache.getStoreById(id);
+    if (cached) return cached;
+
+    const store = await prisma.store.findUnique({
       where: { id, isSoftDeleted: false },
-      select: storeSelect,
     });
+    if (store) storeCache.setStoreById(store);
+
+    return store;
   }
 
   static async getStoreByIdWithEmployee({ id }: { id: string }) {
-    return await prisma.store.findUnique({
+    const cached = storeCache.getStoreByIdWithEmployee(id);
+    if (cached) return cached;
+
+    const store = await prisma.store.findUnique({
       where: { id, isSoftDeleted: false },
-      select: { ...storeSelect, employees: { select: userSelect } },
+      include: {
+        employees: true,
+      },
     });
+    if (store) storeCache.setStoreByIdWithEmployee(store);
+
+    return store;
   }
 
   static async getStoresWithProducts() {
     const storesWithProducts = await prisma.store.findMany({
-      select: {
-        ...storeSelect,
-        isSoftDeleted: false,
+      include: {
         productStores: {
-          select: {
-            quantity: true,
+          include: {
             product: {
               include: {
                 productImages: true,
@@ -82,7 +106,7 @@ export class StoreRepository {
           images: ps.product.productImages.map((pi) => pi.url),
           category: ps.product.category.category,
         })),
-      })
+      }),
     );
 
     return formattedStores;
@@ -109,15 +133,22 @@ export class StoreRepository {
   }
 
   static async updateStore({ id, ...data }: UpdateStoreRepo) {
-    return await prisma.store.update({
+    const store = await prisma.store.update({
       where: { id, isSoftDeleted: false },
       data,
-      select: storeSelect,
     });
+
+    storeCache.clearAllStores();
+    storeCache.clearStoreIdWithEmployee(id);
+    storeCache.clearStoreId(id);
+    if (data.isDefault) storeCache.clearDefaultStore();
+
+    storeCache.setStoreById(store);
+    if (data.isDefault) storeCache.setDefaultStore(store);
   }
 
   static async addEmployeeToStore({ id, userId }: AddEmployeeInput) {
-    return await prisma.user.update({
+    await prisma.user.update({
       where: { id: userId },
       data: {
         role: "ADMIN",
@@ -125,13 +156,15 @@ export class StoreRepository {
         storeId: id,
       },
     });
+
+    storeCache.clearStoreIdWithEmployee(id);
   }
 
   static async removeEmployeeFromStore({
     employeeId,
     id,
   }: RemoveEmployeeInput) {
-    return await prisma.user.update({
+    await prisma.user.update({
       where: { id: employeeId, storeId: id },
       data: {
         role: "USER",
@@ -139,25 +172,78 @@ export class StoreRepository {
         storeId: null,
       },
     });
+
+    storeCache.clearStoreIdWithEmployee(id);
   }
 
   static async deleteStoreById({ id }: { id: string }) {
-    return await prisma.store.update({
+    const store = await prisma.store.update({
       where: { id, isSoftDeleted: false },
-      select: storeSelect,
       data: { isSoftDeleted: true },
     });
+
+    storeCache.clearStoreId(id);
+
+    storeCache.clearStoreIdWithEmployee(id);
+    storeCache.clearAllStores();
+
+    if (store.isDefault) storeCache.clearDefaultStore();
   }
 
-  static async getStoresWithEmployeeCount() {
+  static async getStoresWithEmployeeCount(
+    query: GetStoresWithEmployeeCountInput,
+  ) {
+    const { page, search, sortBy, sortOrder } = query;
+    const limit = STORE_LIMIT;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.StoreWhereInput = {
+      isSoftDeleted: false,
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { addressName: { contains: search, mode: "insensitive" } },
+        ],
+      }),
+    };
+
     const stores = await prisma.store.findMany({
-      select: { ...storeSelect, _count: { select: { employees: true } } },
-      where: { isSoftDeleted: false },
+      where,
+      include: {
+        _count: {
+          select: {
+            employees: true,
+          },
+        },
+      },
+      skip,
+      take: limit,
+      orderBy: {
+        ...(sortBy === "employeeCount"
+          ? { employees: { _count: sortOrder } }
+          : { [sortBy]: sortOrder }),
+      },
     });
 
-    return stores.map(({ _count, ...store }) => ({
+    const storeWithEmployeeCountMapped = stores.map(({ _count, ...store }) => ({
       ...store,
       employeeCount: _count.employees,
     }));
+
+    const total = await prisma.store.count({
+      where,
+    });
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: storeWithEmployeeCountMapped,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    };
   }
 }

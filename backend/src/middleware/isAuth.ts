@@ -21,7 +21,7 @@ declare global {
 export const isAuth = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const session = await auth.api.getSession({
     headers: fromNodeHeaders(req.headers),
@@ -29,15 +29,18 @@ export const isAuth = async (
   if (!session || !session.user) {
     throw new InvalidTokenError();
   }
-
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
   });
-
   if (!user) {
     throw new InvalidTokenError();
   }
 
-  req.user = { id: user.id, email: user.email, role: user.role, storeId: user.storeId };
+  req.user = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    storeId: user.storeId,
+  };
   next();
 };

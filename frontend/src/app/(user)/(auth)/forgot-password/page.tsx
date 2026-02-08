@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { toast } from "sonner";
 import { authClient } from "@/lib/authClient";
@@ -14,6 +14,14 @@ export default function RequestPasswordForm() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
+  const search = useSearchParams();
+  const emailQueryParam = search.get("email") || null;
+
+  useEffect(() => {
+    if (emailQueryParam) {
+      setEmail(emailQueryParam);
+    }
+  }, [emailQueryParam]);
 
   const onSubmit = async () => {
     const result = z.email().safeParse(email);
