@@ -8,7 +8,6 @@ import { getReverseGeoIdn } from "../geolocation/getReverseGeoIdn";
 
 export const createUserAddress = async (inputData: CreateUserAddressInput) => {
   const parseResult = CreateUserAddressSchema.safeParse(inputData);
-
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0].message;
     if (typeof window !== "undefined") {

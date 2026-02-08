@@ -90,7 +90,7 @@ const generateStores = () => {
       longitude: location.lng + (Math.random() - 0.5) * 0.01,
       addressName: `${location.address} ${storeNumber > 10 ? "Blok " + String.fromCharCode(65 + (i % 26)) : ""}`,
       postCode: location.postCode,
-      isDefault: i === 0, // First store is default
+      isDefault: i === 0,
     });
   }
 

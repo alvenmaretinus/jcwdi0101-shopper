@@ -17,28 +17,31 @@ export async function apiFetch<T>(url: string, input: ApiInit): Promise<T> {
   const nextHeaders = input.headers ? Object.fromEntries(input.headers) : {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const headers = { ...jsonHeader, ...nextHeaders } as any;
+  try {
+    const res = await fetch(`${apiUrl}/api${url}`, {
+      method: input.method,
+      headers,
+      body: input.body ? JSON.stringify(input.body) : undefined,
+      credentials: "include",
+    });
 
-  const res = await fetch(`${apiUrl}/api${url}`, {
-    method: input.method,
-    headers,
-    body: input.body ? JSON.stringify(input.body) : undefined,
-    credentials: "include",
-  });
+    const contentType = res.headers.get("content-type") || "";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let data: any;
+    if (contentType.includes("application/json")) {
+      data = await res.json().catch(() => ({}));
+    } else {
+      data = await res.text();
+    }
 
-  const contentType = res.headers.get("content-type") || "";
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let data: any;
-  if (contentType.includes("application/json")) {
-    data = await res.json().catch(() => ({}));
-  } else {
-    data = await res.text();
+    if (res.ok) return data as T;
+
+    if (typeof window !== "undefined") {
+      toast.error(data?.error || "Internal Server Error");
+    }
+
+    throw new Error(data?.error || "Request failed");
+  } catch (error) {
+    throw error;
   }
-
-  if (res.ok) return data as T;
-
-  if (typeof window !== "undefined") {
-    toast.error(data?.error || "Internal Server Error");
-  }
-
-  throw new Error(data?.error || "Request failed");
 }
