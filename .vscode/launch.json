@@ -14,5 +14,15 @@
       },
       "console": "integratedTerminal"
     }
+    ,
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch Frontend",
+      "cwd": "${workspaceFolder}/frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "console": "integratedTerminal"
+    }
   ]
 }
