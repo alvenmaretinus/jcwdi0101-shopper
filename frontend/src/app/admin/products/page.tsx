@@ -17,9 +17,30 @@ export default function Products() {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const mockCategories = []; // Replace with actual categories
+
+  
+
+
+  const [categories, setCategories] = useState<any[]>([]);
+  useEffect(() => {
+    const apiInit: ApiInit = {
+      method: HttpMethod.GET,
+    };
+    const fetchCategories = async () => {
+      try {
+        const data = await apiFetch<any[]>(`/product-category`, apiInit);
+        console.log('Fetched categories:', data);
+        setCategories(data);
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+        setCategories([]);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const fetchProducts = useCallback(async () => {
+    console.log('Fetching products with', { categoryFilter, searchQuery, currentPage });
     setLoading(true);
     try {
       const apiInit: ApiInit = {
@@ -32,9 +53,9 @@ export default function Products() {
       if (searchQuery !== undefined && searchQuery.trim() !== '') {
         filterStrings.push(`name=${searchQuery}`);
       }
-      //filterStrings.push(`page=${currentPage}`);
       const filterQuery = filterStrings.length > 0 ? `?${filterStrings.join('&')}` : '';
       const data = await apiFetch<any[]>(`/products${filterQuery}`, apiInit);
+      console.log('Fetched products:', data);
       setProducts(data);
     } catch (error) {
       console.error('Failed to fetch products:', error);
@@ -48,14 +69,56 @@ export default function Products() {
     fetchProducts();
   }, [fetchProducts]);
 
+  // Fetch when user sets a non-empty search query
+  useEffect(() => {
+    if (searchQuery !== undefined && searchQuery.trim() !== '') {
+      fetchProducts();
+    }
+  }, [searchQuery, fetchProducts]);
+
   const handleEdit = (product: any) => {
     setEditingProduct(product);
     setIsDialogOpen(true);
   };
 
-  const handleCreate = () => {
-    setEditingProduct(null);
-    setIsDialogOpen(true);
+  const handleDelete = async (id: string) => {
+    try {
+      const apiInit: ApiInit = { method: HttpMethod.DELETE };
+      await apiFetch(`/product/${id}`, apiInit);
+      // refresh list
+      await fetchProducts();
+    } catch (err) {
+      console.error('Failed to delete product', err);
+    }
+  };
+
+  const handleCreate = async () => {
+    // If we have at least one category, create a minimal product on the server
+    // so the dialog can open in "edit" mode for that product. Otherwise just open dialog.
+    if (categories && categories.length > 0) {
+      try {
+        const body = {
+          name: 'New Product',
+          description: '',
+          price: 0,
+          categoryId: categories[0].id,
+        };
+        const apiInit: ApiInit = { method: HttpMethod.POST, body };
+        const created = await apiFetch<any>(`/product`, apiInit);
+        setEditingProduct(created);
+        // refresh list and open dialog for editing
+        await fetchProducts();
+        setIsDialogOpen(true);
+      } catch (err) {
+        console.error('Failed to create product draft', err);
+        // fallback to opening empty dialog
+        setEditingProduct(null);
+        setIsDialogOpen(true);
+      }
+    } else {
+      setEditingProduct(null);
+      setIsDialogOpen(true);
+    }
   };
 
   const handlePageChange = (page: number) => {
@@ -72,7 +135,14 @@ export default function Products() {
           </p>
         </div>
         {isSuperAdmin && (
-          <ProductForm />
+          <ProductForm
+            isDialogOpen={isDialogOpen}
+            setIsDialogOpen={setIsDialogOpen}
+            editingProduct={editingProduct}
+            handleCreate={handleCreate}
+            onCreated={() => fetchProducts()}
+            categories={categories}
+          />
         )}
       </div>
       <ProductsCard 
@@ -82,9 +152,10 @@ export default function Products() {
         setSearchQuery={setSearchQuery}
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}
-        mockCategories={mockCategories}
+        categories={categories}
         isSuperAdmin={isSuperAdmin}
         handleEdit={handleEdit}
+        handleDelete={handleDelete}
         currentPage={currentPage}
         onPageChange={handlePageChange}
       />

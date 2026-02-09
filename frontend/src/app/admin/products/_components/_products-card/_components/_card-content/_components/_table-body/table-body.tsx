@@ -4,7 +4,7 @@ import TableCellStock from "./_components/table-cell-stock";
 import TableCellModifyButtons from "./_components/table-cell-modify-buttons";
 
 export default function ProductTableBody(props: any) {
-    const { products = [], isSuperAdmin, handleEdit } = props;
+    const { products = [], isSuperAdmin, handleEdit, handleDelete } = props;
     
     if (!products || products.length === 0) {
         return (
@@ -26,7 +26,7 @@ export default function ProductTableBody(props: any) {
                 
                 <TableCellStock product={product} />
                 {isSuperAdmin && (
-                    <TableCellModifyButtons product={product} handleEdit={handleEdit} />
+                    <TableCellModifyButtons product={product} handleEdit={handleEdit} handleDelete={props.handleDelete} />
                 )}
             </TableRow>
             ))}

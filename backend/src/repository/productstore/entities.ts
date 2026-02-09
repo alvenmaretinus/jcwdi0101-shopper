@@ -26,6 +26,8 @@ export type ProductStore = {
     createdAt: Date;
     productId: string;
     quantity: number;
+    productName?: string;
+    storeName?: string;
 }
 
 // Legacy type for backward compatibility

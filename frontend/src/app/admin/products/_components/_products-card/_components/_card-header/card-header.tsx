@@ -7,7 +7,7 @@ export default function ProductCardHeader(props: any) {
         <CardHeader>
           <div className="flex items-center gap-4">
             <ProductsSearch searchQuery={props.searchQuery} setSearchQuery={props.setSearchQuery} />
-            <ProductCategorySelect categoryFilter={props.categoryFilter} setCategoryFilter={props.setCategoryFilter} mockCategories={props.mockCategories} />
+            <ProductCategorySelect categoryFilter={props.categoryFilter} setCategoryFilter={props.setCategoryFilter} categories={props.categories} />
           </div>
         </CardHeader>
     );

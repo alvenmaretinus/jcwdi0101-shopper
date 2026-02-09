@@ -9,9 +9,14 @@ export default function TableCellModifyButtons(props: any) {
             <Button variant="ghost" size="icon" onClick={() => props.handleEdit(props.product)}>
                 <Pencil className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                <Trash2 className="h-4 w-4" />
-            </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => props.handleDelete && props.handleDelete(props.product.id)}
+                        >
+                                <Trash2 className="h-4 w-4" />
+                        </Button>
             </div>
         </TableCell>
     );

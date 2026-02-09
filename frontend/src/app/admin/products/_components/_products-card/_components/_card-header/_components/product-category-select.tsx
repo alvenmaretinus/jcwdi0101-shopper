@@ -1,6 +1,15 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export default function ProductCategorySelect(props: any) {
+type Category = { id: string; category: string };
+
+interface Props {
+  categories: Category[];
+  categoryFilter: string;
+  setCategoryFilter: (value: string) => void;
+}
+
+
+export default function ProductCategorySelect(props: Props) {
     return (
         <Select value={props.categoryFilter} onValueChange={props.setCategoryFilter}>
             <SelectTrigger className="w-48">
@@ -8,7 +17,7 @@ export default function ProductCategorySelect(props: any) {
             </SelectTrigger>
             <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {props.mockCategories ? props.mockCategories.map(cat => (
+            {props.categories ? props.categories.map(cat => (
                 <SelectItem key={cat.id} value={cat.id}>
                 {cat.category}
                 </SelectItem>

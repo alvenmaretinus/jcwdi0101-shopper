@@ -9,7 +9,7 @@ export default function CustomCardContent(props: any) {
         <CardContent>
           <Table>
            <ProductTableHeader isSuperAdmin={props.isSuperAdmin} />
-            <ProductTableBody products={props.products} isSuperAdmin={props.isSuperAdmin} />
+            <ProductTableBody products={props.products} isSuperAdmin={props.isSuperAdmin} handleEdit={props.handleEdit} handleDelete={props.handleDelete} />
           </Table>
         </CardContent>
     );
