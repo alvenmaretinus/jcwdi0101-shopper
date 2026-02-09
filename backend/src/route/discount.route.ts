@@ -1,6 +1,6 @@
-import discountRouter from "../controller/discount.controller";
-import { Router } from "express";
+// import discountRouter from "../controller/discount.controller";
+// import { Router } from "express";
 
-const router = Router().use("/discounts", discountRouter);
-export default router;
+// const router = Router().use("/discounts", discountRouter);
+// export default router;
 
