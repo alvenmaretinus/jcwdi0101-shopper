@@ -43,8 +43,8 @@ export default function CreateAddress() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 pb-32">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-slate-50/50 p-4 pb-20">
+      <div className="max-w-2xl mx-auto px-0 sm:px-0">
         <Card className="border-none shadow-xl bg-emerald-600 overflow-hidden rounded-2xl">
           <AddressFormHeader
             title="Add New Address"
@@ -73,14 +73,14 @@ export default function CreateAddress() {
             <Button
               variant="outline"
               onClick={() => router.push(redirectTo || "/profile/address")}
-              className="h-14 px-6 border-white/20 bg-white hover:bg-gray-100 text-gray-600 font-bold rounded-2xl transition-all text-lg"
+              className="h-12 sm:h-14 px-4 sm:px-6 border-white/20 bg-white hover:bg-gray-100 text-gray-600 font-bold rounded-2xl transition-all text-base sm:text-lg"
             >
               Back
             </Button>
             <Button
               onClick={handleSave}
               disabled={isLoading}
-              className="flex-1 h-14 bg-white hover:bg-gray-100 text-emerald-600 font-bold rounded-2xl transition-all text-lg flex gap-2"
+              className="flex-1 h-12 sm:h-14 bg-white hover:bg-gray-100 text-emerald-600 font-bold rounded-2xl transition-all text-base sm:text-lg flex gap-2"
             >
               {isLoading ? "Confirming..." : "Confirm Delivery Address"}
             </Button>

@@ -75,7 +75,7 @@ export function HeroSection() {
     <section className="relative overflow-hidden">
       {/* Hero Carousel */}
       <div
-        className={`bg-gradient-to-br h-[calc(100vh-84px)] px-10 flex items-center from-primary via-primary to-fresh-green-dark text-primary-foreground`}
+        className={`bg-gradient-to-br min-h-[500px] h-auto sm:h-[calc(100vh-84px)] px-4 sm:px-6 lg:px-10 py-12 sm:py-0 flex items-center from-primary via-primary to-fresh-green-dark text-primary-foreground`}
       >
         <Carousel
           opts={{
@@ -87,7 +87,7 @@ export function HeroSection() {
           <CarouselContent>
             {heroSlides.map((slide) => (
               <CarouselItem key={slide.id}>
-                <div className=" py-12 md:py-20 lg:py-24">
+                <div className="py-8 sm:py-12 md:py-20 lg:py-24">
                   <div className="container mx-auto grid lg:grid-cols-2 bg-amber- items-center">
                     {/* Content */}
                     <div className="text-center lg:text-left">
@@ -96,7 +96,7 @@ export function HeroSection() {
                           🎉 {slide.badge}
                         </span>
                       )}
-                      <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-6 whitespace-pre-line">
+                      <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-6 whitespace-pre-line">
                         {slide.title}
                       </h1>
                       <p className="text-lg md:text-xl text-primary-foreground/80 mb-8 max-w-lg mx-auto lg:mx-0">

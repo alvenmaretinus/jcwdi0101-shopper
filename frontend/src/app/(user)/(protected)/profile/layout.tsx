@@ -28,9 +28,9 @@ userFull.name=user.name;
 
   return (
     <div
-      className={`grid lg:grid-cols-4 max-w-6xl mb-10 min-h-[calc(100vh-84px)] lg:mb-0 px-10 py-16 lg:mx-auto gap-8`}
+      className={`grid lg:grid-cols-4 max-w-6xl mb-10 min-h-[calc(100vh-84px)] lg:mb-0 px-4 sm:px-6 lg:px-10 py-8 sm:py-12 lg:py-16 lg:mx-auto gap-6 lg:gap-8`}
     >
-      <div className="lg:col-span-1">
+      <div className="lg:col-span-1 mb-8 lg:mb-0">
         <ProfileSidebar  user={userFull}/>
       </div>
       <div className="lg:col-span-3">{children}</div>
