@@ -5,7 +5,8 @@ import { StoreProduct } from "@/types/StoreProduct";
 import { authClient } from "@/lib/authClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart } from "lucide-react";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
 
 interface ProductCardProps {
   product: StoreProduct;
@@ -30,31 +31,46 @@ export function ProductCard({ product }: ProductCardProps) {
     ? Math.round((1 - product.price / product.originalPrice!) * 100)
     : 0;
 
-  const getButtonText = () => {
-    if (isOutOfStock) return "Out of Stock";
-    if (!isLoggedIn) return "Login to Buy";
-    return "Add to Cart";
+  // Format weight display from product data
+  const weightDisplay = product.weight 
+    ? `${product.weight}g/pcs` 
+    : null;
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isLoggedIn) {
+      toast.info("Please login to add items to cart");
+      return;
+    }
+    
+    if (isOutOfStock) return;
+    
+    // TODO: Add to cart logic
+    toast.success(`Added ${product.name} to cart`);
+    console.log("Add to cart:", product.id);
   };
 
   return (
-    <div className="card-product group relative flex flex-col">
+    <div className="card-product group relative flex flex-col bg-card rounded-xl border border-border/50 overflow-hidden hover:shadow-medium transition-all duration-300">
       {/* Badges */}
       <Link href={`/products/${product.id}`} className="flex-1">
         {/* Image with discount badge */}
-        <div className="relative aspect-square bg-muted/30 flex items-center justify-center p-6 overflow-hidden">
+        <div className="relative aspect-square bg-muted/30 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
           {hasDiscount && (
-            <Badge className="absolute top-2 right-2 bg-red-500 text-white border-0">
+            <Badge className="absolute top-2 right-2 bg-red-500 text-white border-0 text-xs">
               -{discountPercentage}%
             </Badge>
           )}
-          <span className="text-6xl sm:text-7xl group-hover:scale-110 transition-transform duration-300">
+          <span className="text-4xl sm:text-5xl md:text-6xl group-hover:scale-110 transition-transform duration-300">
             {product.images[0]}
           </span>
         </div>
 
         {/* Content */}
-        <div className="p-4">
-          <span className="text-xs text-muted-foreground uppercase tracking-wide">
+        <div className="p-3 sm:p-4">
+          <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">
             {product.category}
           </span>
 
@@ -62,13 +78,20 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
 
+          {/* Weight info */}
+          {weightDisplay && (
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
+              {weightDisplay}
+            </p>
+          )}
+
           {/* Price */}
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-base sm:text-lg font-bold text-foreground">
+          <div className="flex items-center gap-1.5 sm:gap-2 mt-2 flex-wrap">
+            <span className="text-sm sm:text-base font-bold text-primary">
               {formatPrice(product.price)}
             </span>
             {hasDiscount && (
-              <span className="text-xs sm:text-sm text-muted-foreground line-through">
+              <span className="text-[10px] sm:text-xs text-muted-foreground line-through">
                 {formatPrice(product.originalPrice!)}
               </span>
             )}
@@ -76,33 +99,28 @@ export function ProductCard({ product }: ProductCardProps) {
 
           {/* Stock status */}
           {isOutOfStock && (
-            <p className="text-xs sm:text-sm text-red-500 font-medium mt-1">
+            <p className="text-[10px] sm:text-xs text-red-500 font-medium mt-1">
               Out of Stock
             </p>
           )}
           {!isOutOfStock && product.quantity <= 5 && (
-            <p className="text-xs sm:text-sm text-amber-600 font-medium mt-1">
+            <p className="text-[10px] sm:text-xs text-amber-600 font-medium mt-1">
               Only {product.quantity} left
             </p>
           )}
         </div>
       </Link>
 
-      {/* Add to Cart Button */}
-      <div className="px-4 pb-4">
+      {/* Quick Add Button */}
+      <div className="px-3 sm:px-4 pb-3 sm:pb-4">
         <Button
-          disabled={isOutOfStock || !isLoggedIn}
+          disabled={isOutOfStock}
           size="sm"
-          className="w-full h-10"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            // TODO: Add to cart logic
-            console.log("Add to cart:", product.id);
-          }}
+          className="w-full h-9 sm:h-10 rounded-full"
+          onClick={handleAddToCart}
         >
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          {getButtonText()}
+          <Plus className="h-4 w-4 mr-1.5" />
+          Add
         </Button>
       </div>
     </div>

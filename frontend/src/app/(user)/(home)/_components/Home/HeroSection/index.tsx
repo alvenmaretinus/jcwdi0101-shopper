@@ -36,7 +36,7 @@ export function HeroSection() {
 
   return (
     <section className="relative overflow-hidden">
-      <div className="bg-gradient-to-br min-h-[500px] h-auto sm:h-[calc(100vh-84px)] px-4 sm:px-6 lg:px-10 py-12 sm:py-0 flex items-center from-primary via-primary to-fresh-green-dark text-primary-foreground">
+      <div className="bg-gradient-to-br from-primary via-primary to-fresh-green-dark text-white h-screen min-h-[600px] max-h-[900px] flex items-center">
         <Carousel
           setApi={setCarouselApi}
           opts={{ align: "start", loop: true }}
