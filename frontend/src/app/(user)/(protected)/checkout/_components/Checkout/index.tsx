@@ -49,7 +49,7 @@ export default function Checkout({
         </div>
         <h1 className="text-3xl font-semibold mb-4">Your cart is empty</h1>
         <p className="text-muted-foreground mb-10 max-w-sm">
-          Looks like you haven't added anything to your cart yet. Please shop
+          Looks like you have not added anything to your cart yet. Please shop
           first to continue to checkout.
         </p>
         <Button
