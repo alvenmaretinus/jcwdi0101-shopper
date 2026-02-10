@@ -261,7 +261,7 @@ model Product {
   name        String
   description String?
   price       Int
-  weight      Int @default(1) 
+  weight      Int @default(1)
 
   createAt  DateTime @default(now())
   updatedAt DateTime @updatedAt
