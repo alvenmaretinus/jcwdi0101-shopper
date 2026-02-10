@@ -20,8 +20,7 @@ export class ProductStoreService implements Service {
         this.prisma = prisma;
     }
     async createProductStore(data: CreateProductStoreInput): Promise<ProductStore> {
-        return await this.prisma.$transaction(async (
-            tx: Prisma.TransactionClient) => {
+        return await this.prisma.$transaction(async (tx) => {
             const productStore = await this.productStoreRepo.createProductStore(data, tx);
             
             // Create initial stock movement if quantity > 0
@@ -53,8 +52,7 @@ export class ProductStoreService implements Service {
     async updateProductStore(data: UpdateProductStoreInput): Promise<ProductStore> {
         const {id, fromStoreId, toStoreId, transferQuantity, ...rest} = data;
         
-        return await this.prisma.$transaction(async (
-            tx: Prisma.TransactionClient) => {
+        return await this.prisma.$transaction(async (tx) => {
             
             // Handle store-to-store transfer
             if (fromStoreId && toStoreId && transferQuantity) {

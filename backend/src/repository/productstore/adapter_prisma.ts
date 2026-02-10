@@ -12,7 +12,7 @@ export class PrismaRepository implements ProductStoreRepo {
         this.prisma = prisma;
     }
 
-    async createProductStore(data: ProductStoreCreateInput, tx?: Prisma.TransactionClient): Promise<ProductStore> {
+    async createProductStore(data: ProductStoreCreateInput, tx?: PrismaClient | Prisma.TransactionClient): Promise<ProductStore> {
         const client = tx ?? this.prisma;
         const now: Date = new Date();
         const productStoreData: PrismaProductStoreCreateInput = {
@@ -35,7 +35,7 @@ export class PrismaRepository implements ProductStoreRepo {
             storeName: createdProductStore.store.name
         };
     }
-    async getProductStoreByID(id: string, tx?: Prisma.TransactionClient): Promise<ProductStore | null> {
+    async getProductStoreByID(id: string, tx?: PrismaClient | Prisma.TransactionClient): Promise<ProductStore | null> {
         const client = tx ?? this.prisma;
         const productStore = await client.productStore.findUnique({
             where: { id: id },
@@ -51,7 +51,7 @@ export class PrismaRepository implements ProductStoreRepo {
             storeName: productStore.store.name
         };
     }  
-    async getProductStoresByFilter(filter: Partial<ProductStoreGetInput>, tx?: Prisma.TransactionClient): Promise<ProductStore[]> {
+    async getProductStoresByFilter(filter: Partial<ProductStoreGetInput>, tx?: PrismaClient | Prisma.TransactionClient): Promise<ProductStore[]> {
         const client = tx ?? this.prisma;
         const productStores = await client.productStore.findMany({
             where: filter,
@@ -66,7 +66,7 @@ export class PrismaRepository implements ProductStoreRepo {
             storeName: ps.store.name
         }));
     }
-    async updateProductStore(id: string, data: ProductStoreUpdateInput, tx?: Prisma.TransactionClient): Promise<ProductStore> {
+    async updateProductStore(id: string, data: ProductStoreUpdateInput, tx?: PrismaClient | Prisma.TransactionClient): Promise<ProductStore> {
         const client = tx ?? this.prisma;
         const productStoreData: Partial<PrismaProductStoreUpdateInput> = {
             ...(data.quantity !== undefined ? { quantity: data.quantity } : {}),
@@ -87,7 +87,7 @@ export class PrismaRepository implements ProductStoreRepo {
         };
     }
 
-    async deleteProductStore(id: string, tx?: Prisma.TransactionClient): Promise<ProductStore> {
+    async deleteProductStore(id: string, tx?: PrismaClient | Prisma.TransactionClient): Promise<ProductStore> {
         const client = tx ?? this.prisma;
         const data = await client.productStore.findUnique({
             where: { id: id },

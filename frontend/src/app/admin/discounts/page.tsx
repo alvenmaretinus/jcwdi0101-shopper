@@ -38,6 +38,7 @@ export default function Discounts() {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWithMinimumChecked, setIsWithMinimumChecked] = useState<boolean>(editingDiscount?.isWithMinimum ?? false);
 
   // Fetch discounts on mount and when filters change
   useEffect(() => {
@@ -71,6 +72,10 @@ export default function Discounts() {
     setEditingDiscount(discount);
     setIsDialogOpen(true);
   };
+
+  useEffect(() => {
+    setIsWithMinimumChecked(editingDiscount?.isWithMinimum ?? false);
+  }, [editingDiscount]);
 
   const handleCreate = () => {
     setEditingDiscount(null);
@@ -246,8 +251,8 @@ export default function Discounts() {
                     type="checkbox" 
                     id="isWithMinimum" 
                     name="isWithMinimum" 
-                    value="true"
-                    defaultChecked={editingDiscount?.isWithMinimum}
+                    checked={isWithMinimumChecked}
+                    onChange={(e) => setIsWithMinimumChecked(e.target.checked)}
                     className="rounded"
                   />
                   <Label htmlFor="isWithMinimum" className="cursor-pointer">Set minimum purchase</Label>
@@ -261,7 +266,8 @@ export default function Discounts() {
                   name="minimumPrice" 
                   type="number" 
                   placeholder="50000" 
-                  defaultValue={editingDiscount?.minimumPrice} 
+                  defaultValue={editingDiscount?.minimumPrice}
+                  disabled={!isWithMinimumChecked}
                 />
               </div>
 
