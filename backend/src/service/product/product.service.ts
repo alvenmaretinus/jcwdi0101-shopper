@@ -2,7 +2,7 @@ import {Service} from './interface';
 import {ProductsRepo} from '../../repository/product/interface';
 import { FilterInput } from '../../schema/product/GetProductsByFilterSchema';
 import { CreateProductInput, UpdateProductInput } from '../../schema/product';
-import { Product, ProductWithStock } from '../../repository/product/entities';
+import { Product} from '../../repository/product/entities';
 
 export class ProductService implements Service {
     private productRepo: ProductsRepo;
@@ -15,7 +15,6 @@ export class ProductService implements Service {
         filter: Partial<FilterInput>,
         withStock: boolean
     ): Promise<
-        ProductWithStock[]
         |Product[]>
     {
         if (withStock) {

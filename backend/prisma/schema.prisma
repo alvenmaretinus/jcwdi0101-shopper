@@ -261,6 +261,7 @@ model Product {
   name        String
   description String?
   price       Int
+  weight      Int
 
   createAt  DateTime @default(now())
   updatedAt DateTime @updatedAt

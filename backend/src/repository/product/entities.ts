@@ -13,6 +13,7 @@ export type CreateProductReq = {
     createAt?: Date | string //TODO: Have this be changed to createdAt in future refactors
     updatedAt?: Date | string
     categoryId: string
+    weight: number
 }
 
 export type UpdateProductReq = {
@@ -45,7 +46,17 @@ export type Product = {
     updatedAt: Date;
     price: number;
     createAt: Date; //TODO: Have this be changed to createdAt in future refactors
+    weight?: number | null;
     categoryId: string;
+    productStores?: {
+        storeId: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        quantity: number;
+        productId: string;
+        store: Store;
+    }[];
 }
 
 
@@ -60,23 +71,3 @@ export type Store = {
     createdAt: Date;
     updatedAt: Date;
 }
-
-export type ProductWithStock = ({
-    productStores: {
-        storeId: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        quantity: number;
-        productId: string;
-        store: Store;
-    }[];
-} & {
-    id: string;
-    name: string;
-    description: string | null;
-    updatedAt: Date;
-    price: number;
-    createAt: Date; //TODO: Have this be changed to createdAt in future refactors
-    categoryId: string;
-});

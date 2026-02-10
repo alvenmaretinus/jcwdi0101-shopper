@@ -1,6 +1,6 @@
 import { ProductsRepo } from './interface';
 import { PrismaClient } from '../../../prisma/generated/client';
-import { Product, CreateProductReq, GetProductReq, ProductWithStock, ProductWhereClause, UpdateProductReq } from './entities';
+import { Product, CreateProductReq, GetProductReq, ProductWhereClause, UpdateProductReq } from './entities';
 import { ProductCreateInput} from '../../../prisma/generated/models';
 import { toDomainModel, toDomainModels } from './mapper';
 import { QueryMode } from '../../../prisma/generated/internal/prismaNamespaceBrowser';
@@ -21,9 +21,9 @@ export class PrismaRepository implements ProductsRepo {
         return toDomainModels(products);
     }
 
-    async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<ProductWithStock[]> {
+    async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<Product[]> {
         const where = this.buildWhereClause(filter);
-        const products: ProductWithStock[] = await this.prisma.product.findMany({
+        const products: Product[] = await this.prisma.product.findMany({
             where,
             include: {
                 productStores: {
@@ -68,6 +68,7 @@ export class PrismaRepository implements ProductsRepo {
             price: data.price,
             createAt: now,
             updatedAt: now,
+            weight: data.weight,
             category: { connect: { id: data.categoryId } }, 
         };
 
