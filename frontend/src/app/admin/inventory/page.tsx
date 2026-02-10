@@ -166,7 +166,7 @@ export default function Inventory() {
                   <SelectValue placeholder="Select a store" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Stores</SelectItem>
+                  <SelectItem key="all" value="all">All Stores</SelectItem>
                   {stores.map(store => (
                     <SelectItem key={store.id} value={store.id}>
                       {store.name}
