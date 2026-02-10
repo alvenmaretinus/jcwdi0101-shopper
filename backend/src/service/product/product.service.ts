@@ -2,7 +2,7 @@ import {Service} from './interface';
 import {ProductsRepo} from '../../repository/product/interface';
 import { FilterInput } from '../../schema/product/GetProductsByFilterSchema';
 import { CreateProductInput, UpdateProductInput } from '../../schema/product';
-import { Product} from '../../repository/product/entities';
+import { Product } from '../../repository/product/entities';
 
 export class ProductService implements Service {
     private productRepo: ProductsRepo;

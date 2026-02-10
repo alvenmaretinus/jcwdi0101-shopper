@@ -5,7 +5,7 @@ export const CreateProductSchema = z.strictObject({
     description: z.string().max(1000, "Description must be at most 1000 characters").optional().nullable(),
     price: z.number().nonnegative("Price must be a non-negative number"),
     categoryId: z.string().min(1, "Category ID is required"), //Intentionally not using UUID to allow for different ID types
-    weight: z.number().nonnegative("Weight must be a non-negative number"),
+    weight: z.number().int().nonnegative("Weight must be a non-negative number"),
 });
 
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
