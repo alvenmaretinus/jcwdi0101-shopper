@@ -1,5 +1,5 @@
 import { Prisma } from '../../../prisma/generated/client';
-import { ProductModel, ProductStoreModel, StoreModel } from '../../../prisma/generated/models';
+import { ProductModel } from '../../../prisma/generated/models';
 import { Product, ProductWithStock } from './entities';
 
 export function toDomainModel (prismaModel: ProductModel): Product {
