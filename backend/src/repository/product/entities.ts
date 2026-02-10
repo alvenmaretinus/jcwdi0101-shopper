@@ -49,18 +49,8 @@ export type Product = {
     createAt: Date; //TODO: Have this be changed to createdAt in future refactors
     weight: number;
     categoryId: string;
-    productStores?: {
-        storeId: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        quantity: number;
-        productId: string;
-        store: Store;
-    }[];
+    // productStores removed from base Product type; use ProductWithStock when store-level data is needed
 }
-
-export type ProductWithStock = Product;
 
 export type Store = {
     id: string;
@@ -89,6 +79,14 @@ export type ProductWithType = Product & {
 export type ProductWithStock = Product & {
     // total stock across stores, optional when not computed
     totalStock?: number;
-    // keep productStores as-is (per-store stock records)
-    productStores?: Product['productStores'];
+    // per-store stock records
+    productStores?: {
+        storeId: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        quantity: number;
+        productId: string;
+        store: Store;
+    }[];
 };
