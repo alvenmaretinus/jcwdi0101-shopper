@@ -1,6 +1,6 @@
 import { ProductsRepo } from './interface';
 import { PrismaClient } from '../../../prisma/generated/client';
-import { Product, CreateProductReq, GetProductReq, ProductWhereClause, UpdateProductReq } from './entities';
+import { Product, CreateProductReq, GetProductReq, ProductWhereClause, UpdateProductReq, ProductWithStock } from './entities';
 import { ProductCreateInput} from '../../../prisma/generated/models';
 import { toDomainModel, toDomainModels } from './mapper';
 import { QueryMode } from '../../../prisma/generated/internal/prismaNamespaceBrowser';
@@ -21,7 +21,7 @@ export class PrismaRepository implements ProductsRepo {
         return toDomainModels(products);
     }
 
-    async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<Product[]> {
+    async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<ProductWithStock[]> {
         const where = this.buildWhereClause(filter);
         const products: Product[] = await this.prisma.product.findMany({
             where,
@@ -33,7 +33,12 @@ export class PrismaRepository implements ProductsRepo {
                 },
             },
         });
-        return products;
+        // augment with totalStock computed from productStores
+        const withStock: ProductWithStock[] = products.map(p => ({
+            ...p,
+            totalStock: p.productStores ? p.productStores.reduce((sum, ps) => sum + ps.quantity, 0) : 0,
+        }));
+        return withStock;
     }
 
     private buildWhereClause(filter: Partial<GetProductReq>): ProductWhereClause {

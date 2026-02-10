@@ -72,3 +72,22 @@ export type Store = {
     createdAt: Date;
     updatedAt: Date;
 }
+
+// Composition types
+// Product with its category relation populated
+export type ProductWithType = Product & {
+    category: {
+        id: string;
+        category: string;
+        createdAt: Date;
+        updatedAt: Date;
+    };
+};
+
+// Product augmented with computed stock information
+export type ProductWithStock = Product & {
+    // total stock across stores, optional when not computed
+    totalStock?: number;
+    // keep productStores as-is (per-store stock records)
+    productStores?: Product['productStores'];
+};
