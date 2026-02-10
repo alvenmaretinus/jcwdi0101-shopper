@@ -64,16 +64,6 @@ export type Store = {
     updatedAt: Date;
 }
 
-// Composition types
-// Product with its category relation populated
-export type ProductWithType = Product & {
-    category: {
-        id: string;
-        category: string;
-        createdAt: Date;
-        updatedAt: Date;
-    };
-};
 
 // Product augmented with computed stock information
 export type ProductWithStock = Product & {
