@@ -6,6 +6,7 @@ export const UpdateProductSchema = z.strictObject({
     description: z.string().max(1000, "Description must be at most 1000 characters").optional().default(""),
     price: z.number().int().nonnegative("Price must be a non-negative number").optional(),
     categoryId: z.uuid("Invalid category ID").optional(),
+    weight: z.number().nonnegative("Weight must be a non-negative number").optional(),
 });
 
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;

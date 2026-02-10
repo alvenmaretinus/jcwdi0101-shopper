@@ -14,8 +14,7 @@ export class ProductService implements Service {
     async getProductsByFilterWithOptionalStock(
         filter: Partial<FilterInput>,
         withStock: boolean
-    ): Promise<
-        |Product[]>
+    ): Promise<Product[]>
     {
         if (withStock) {
             return this.productRepo.getProductsByFilterWithStock(filter);
