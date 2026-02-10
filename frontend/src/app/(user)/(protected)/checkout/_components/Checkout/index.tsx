@@ -68,7 +68,7 @@ export default function Checkout({
   const getCheapestShippingService = () => {
     if (!shippingData) return 0;
 
-    let items: any[] = [];
+    let items: Array<{ shipping_cost: number }> = [];
     if (selectedShippingMethod === "regular")
       items = shippingData.calculate_reguler;
     if (selectedShippingMethod === "cargo")
@@ -101,15 +101,45 @@ export default function Checkout({
         setIsLoading(true);
         try {
           const nearestStore = stores[0];
+          console.log(
+            "[Checkout useEffect] Updating shipping cost for address change:",
+            {
+              originPostCode: selectedAddress.postCode,
+              destinationPostCode: nearestStore.postCode,
+              weight: totalWeight,
+              itemValue: subtotal,
+            }
+          );
+
           const newShippingData = await getShippingCost({
             originPostCode: selectedAddress.postCode,
             destinationPostCode: nearestStore.postCode,
             weight: totalWeight,
             itemValue: subtotal,
           });
+
+          console.log(
+            "[Checkout useEffect] New shipping data:",
+            newShippingData
+          );
           setShippingData(newShippingData);
-        } catch (error) {
-          console.error("Failed to update shipping cost:", error);
+        } catch (error: any) {
+          console.error(
+            "[Checkout useEffect] ❌ SHIPPING COST API FAILED:",
+            error?.message || error
+          );
+
+          if (error?.message?.includes("Invalid Token")) {
+            console.log(
+              "[Checkout useEffect] ❌ AUTH REQUIRED - User must login!"
+            );
+            toast.error("Please login to calculate shipping cost");
+          } else {
+            toast.error(`Shipping cost API error: ${error?.message}`);
+          }
+
+          // DO NOT USE MOCK - LET IT FAIL IF API FAILS
+          setShippingData(null);
         } finally {
           setIsLoading(false);
         }

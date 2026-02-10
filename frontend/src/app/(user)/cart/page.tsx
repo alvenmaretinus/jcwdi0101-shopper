@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import { useState } from "react";
 
 const Cart = () => {
   const {
@@ -55,7 +55,9 @@ const Cart = () => {
     );
   }
 
-  if (cartItems.length === 0) {
+  // Safe check for empty cart
+  const isEmpty = !Array.isArray(cartItems) || cartItems.length === 0;
+  if (isEmpty) {
     return (
       <div className="container-app py-16 text-center">
         <div className="max-w-md mx-auto">

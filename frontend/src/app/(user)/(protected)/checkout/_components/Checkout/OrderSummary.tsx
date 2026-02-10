@@ -95,7 +95,7 @@ export const OrderSummary = ({
       </Button>
 
       <p className="text-[10px] text-center text-muted-foreground mt-4 italic">
-        By clicking "Place Order", you agree to our Terms and Conditions.
+        By clicking Place Order, you agree to our Terms and Conditions.
       </p>
     </div>
   );

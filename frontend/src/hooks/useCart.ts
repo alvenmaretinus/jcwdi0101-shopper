@@ -16,12 +16,27 @@ export function useCart() {
   const fetchCart = async () => {
     try {
       setLoading(true);
+      console.log("[useCart] Fetching cart...");
       const response = await apiFetch<CartResponse>("/cart", {
         method: "GET",
       });
-      setCartItems(response.data || []);
+      console.log("[useCart] Cart response:", response);
+      // Backend returns { cartId, cartItems } — accept that shape or plain array
+      const data = response?.data;
+      let items: any[] = [];
+      if (Array.isArray(data)) {
+        items = data;
+      } else if (data && Array.isArray(data.cartItems)) {
+        items = data.cartItems;
+      } else {
+        items = [];
+      }
+      console.log("[useCart] Setting cart items:", items);
+      setCartItems(items);
     } catch (error) {
-      console.error("Failed to fetch cart:", error);
+      console.error("[useCart] Failed to fetch cart:", error);
+      // on error, clear cart and show toast
+      setCartItems([]);
       toast.error("Failed to load cart");
     } finally {
       setLoading(false);
@@ -47,7 +62,7 @@ export function useCart() {
 
       // Sync with backend
       await apiFetch("/cart", {
-        method: "PUT",
+        method: "PATCH",
         body: { productId: id, quantity: newQuantity },
       });
     } catch (error) {
@@ -60,13 +75,13 @@ export function useCart() {
 
   const removeItem = async (id: number | string) => {
     try {
-      // Update optimistically
-      setCartItems((items) => items.filter((item) => item.id !== id));
-
-      // Sync with backend
-      await apiFetch(`/cart/${id}`, {
+      // Call backend to delete
+      await apiFetch("/cart", {
         method: "DELETE",
+        body: { productId: id },
       });
+      // Refresh cart
+      await fetchCart();
       toast.success("Item removed from cart");
     } catch (error) {
       console.error("Failed to remove item:", error);
@@ -92,10 +107,12 @@ export function useCart() {
     }
   };
 
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const subtotal = Array.isArray(cartItems)
+    ? cartItems.reduce(
+        (sum, item) => sum + (item.price * item.quantity || 0),
+        0
+      )
+    : 0;
 
   const deliveryFee = subtotal >= 200000 ? 0 : 15000;
 

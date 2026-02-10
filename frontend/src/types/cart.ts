@@ -11,7 +11,9 @@ export interface CartItem {
 }
 
 export interface CartResponse {
+  success?: boolean;
   data: CartItem[];
   total?: number;
   subtotal?: number;
+  message?: string;
 }

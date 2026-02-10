@@ -52,8 +52,19 @@ export class CartService {
         const storeEntry = recommendedStoreId ? productStores.find((p) => p.storeId === recommendedStoreId) : undefined;
         const stockQty = storeEntry?.quantity ?? 0;
 
+        const product = item.product as any;
+        const image = product?.productImages && product.productImages.length > 0 ? product.productImages[0].url : null;
+
         return {
-          ...item,
+          id: item.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          // expose product summary fields for frontend
+          name: product?.name ?? null,
+          price: product?.price ?? null,
+          image,
+          unit: "item",
+
           stockQuantity: stockQty,
           productTotal,
           outOfStock: stockQty <= 0,
