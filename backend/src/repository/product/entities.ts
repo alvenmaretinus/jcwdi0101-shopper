@@ -67,10 +67,10 @@ export type Store = {
 
 // Product augmented with computed stock information
 export type ProductWithStock = Product & {
-    // total stock across stores, optional when not computed
-    totalStock?: number;
+    // total stock across stores
+    totalStock: number;
     // per-store stock records
-    productStores?: {
+    productStores: {
         storeId: string;
         id: string;
         createdAt: Date;
