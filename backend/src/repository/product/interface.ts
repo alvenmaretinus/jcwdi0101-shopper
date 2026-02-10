@@ -1,4 +1,4 @@
-import { Product, GetProductReq, ProductWithStock, CreateProductReq, UpdateProductReq } from "./entities";
+import { Product, GetProductReq, CreateProductReq, UpdateProductReq, ProductWithStock } from "./entities";
 
 export interface ProductsRepo {
     getProductsByFilter(filter: Partial<GetProductReq>): Promise<Product[]>;  

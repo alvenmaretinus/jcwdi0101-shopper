@@ -13,6 +13,7 @@ export type CreateProductReq = {
     createAt?: Date | string //TODO: Have this be changed to createdAt in future refactors
     updatedAt?: Date | string
     categoryId: string
+    weight?: number
 }
 
 export type UpdateProductReq = {
@@ -22,6 +23,7 @@ export type UpdateProductReq = {
     createAt?: Date | string //TODO: Have this be changed to createdAt in future refactors
     updatedAt?: Date | string
     categoryId?: string
+    weight?: number
 }
 
 export type ProductWhereClause = {
@@ -45,9 +47,10 @@ export type Product = {
     updatedAt: Date;
     price: number;
     createAt: Date; //TODO: Have this be changed to createdAt in future refactors
+    weight: number;
     categoryId: string;
+    // productStores removed from base Product type; use ProductWithStock when store-level data is needed
 }
-
 
 export type Store = {
     id: string;
@@ -61,7 +64,12 @@ export type Store = {
     updatedAt: Date;
 }
 
-export type ProductWithStock = ({
+
+// Product augmented with computed stock information
+export type ProductWithStock = Product & {
+    // total stock across stores
+    totalStock: number;
+    // per-store stock records
     productStores: {
         storeId: string;
         id: string;
@@ -71,12 +79,4 @@ export type ProductWithStock = ({
         productId: string;
         store: Store;
     }[];
-} & {
-    id: string;
-    name: string;
-    description: string | null;
-    updatedAt: Date;
-    price: number;
-    createAt: Date; //TODO: Have this be changed to createdAt in future refactors
-    categoryId: string;
-});
+};
