@@ -60,6 +60,7 @@ export type Product = {
     }[];
 }
 
+export type ProductWithStock = Product;
 
 export type Store = {
     id: string;
