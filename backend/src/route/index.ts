@@ -2,7 +2,7 @@ import { Router } from "express";
 import storeRouter from "./store";
 import userRouter from "./user";
 
-import productRouter from "./product";
+import productRouter from "./product.route";
 import productStoreRouter from "./productstore";
 import productMovementRouter from "./productmovement";
 import cartRouter from "./cart.route";

@@ -46,8 +46,8 @@ export class ProductStoreService implements Service {
     async getProductStoreByID(id: string): Promise<ProductStore | null> {
         return this.productStoreRepo.getProductStoreByID(id);
     }
-    async getProductStoresByFilter(filter: GetProductStoresByFilterInput): Promise<ProductStore[]> {
-        return this.productStoreRepo.getProductStoresByFilter(filter);
+    async getProductStoresByFilter(filter: GetProductStoresByFilterInput, tx?: Prisma.TransactionClient): Promise<ProductStore[]> {
+        return this.productStoreRepo.getProductStoresByFilter(filter, tx);
     }
 
     async updateProductStore(data: UpdateProductStoreInput): Promise<ProductStore> {

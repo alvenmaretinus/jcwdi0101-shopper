@@ -1,6 +1,6 @@
 import { ProductsRepo } from './interface';
 import { PrismaClient } from '../../../prisma/generated/client';
-import { Product, CreateProductReq, GetProductReq, ProductWithStock, ProductWhereClause, UpdateProductReq } from './entities';
+import { Product, CreateProductReq, GetProductReq, ProductWhereClause, UpdateProductReq } from './entities';
 import { ProductCreateInput} from '../../../prisma/generated/models';
 import { toDomainModel, toDomainModels } from './mapper';
 import { QueryMode } from '../../../prisma/generated/internal/prismaNamespaceBrowser';
@@ -21,9 +21,9 @@ export class PrismaRepository implements ProductsRepo {
         return toDomainModels(products);
     }
 
-    async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<ProductWithStock[]> {
+    async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<Product[]> {
         const where = this.buildWhereClause(filter);
-        const products: ProductWithStock[] = await this.prisma.product.findMany({
+        const productsRaw = await this.prisma.product.findMany({
             where,
             include: {
                 productStores: {
@@ -33,7 +33,32 @@ export class PrismaRepository implements ProductsRepo {
                 },
             },
         });
-        return products;
+
+        return productsRaw.map(prismaProduct => {
+            const base = toDomainModel(prismaProduct as any);
+            return {
+                ...base,
+                productStores: prismaProduct.productStores?.map(ps => ({
+                    storeId: ps.storeId,
+                    id: ps.id,
+                    createdAt: ps.createdAt,
+                    updatedAt: ps.updatedAt,
+                    quantity: ps.quantity,
+                    productId: ps.productId,
+                    store: {
+                        id: ps.store.id,
+                        name: ps.store.name,
+                        description: ps.store.description,
+                        phone: ps.store.phone,
+                        longitude: ps.store.longitude,
+                        latitude: ps.store.latitude,
+                        addressName: ps.store.addressName,
+                        createdAt: ps.store.createdAt,
+                        updatedAt: ps.store.updatedAt,
+                    }
+                }))
+            } as Product;
+        });
     }
 
     private buildWhereClause(filter: Partial<GetProductReq>): ProductWhereClause {

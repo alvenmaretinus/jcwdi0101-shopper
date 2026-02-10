@@ -46,6 +46,15 @@ export type Product = {
     price: number;
     createAt: Date; //TODO: Have this be changed to createdAt in future refactors
     categoryId: string;
+    productStores?: {
+        storeId: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        quantity: number;
+        productId: string;
+        store: Store;
+    }[];
 }
 
 
@@ -61,22 +70,39 @@ export type Store = {
     updatedAt: Date;
 }
 
-export type ProductWithStock = ({
-    productStores: {
-        storeId: string;
+
+
+
+type x = ({
+    productStores: ({
+        store: {
+            name: string;
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            addressName: string;
+            isDefault: boolean;
+            longitude: number;
+            latitude: number;
+            postCode: string;
+            description: string | null;
+            phone: string;
+            isSoftDeleted: boolean;
+        };
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         quantity: number;
         productId: string;
-        store: Store;
-    }[];
+    })[];
 } & {
-    id: string;
     name: string;
-    description: string | null;
+    id: string;
     updatedAt: Date;
+    description: string | null;
     price: number;
-    createAt: Date; //TODO: Have this be changed to createdAt in future refactors
+    createAt: Date;
     categoryId: string;
-});
+})[]

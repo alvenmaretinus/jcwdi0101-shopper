@@ -10,4 +10,3 @@
         category: string;
         images: string[]
     }
-    

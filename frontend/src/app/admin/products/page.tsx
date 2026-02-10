@@ -18,9 +18,6 @@ export default function Products() {
   const [currentPage, setCurrentPage] = useState(1);
 
 
-  
-
-
   const [categories, setCategories] = useState<any[]>([]);
   useEffect(() => {
     const apiInit: ApiInit = {

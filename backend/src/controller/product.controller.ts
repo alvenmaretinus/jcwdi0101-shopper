@@ -14,7 +14,7 @@ const productService = new ProductService(productsRepo);
 const router = Router();
 
 // Non-logged in users can view products
-router.get("/products",  async (req, res) => {
+router.get("/",  async (req, res) => {
     const inputData: GetProductsByFilterInput = GetProductsByFilterSchema.parse(req.query);
     const filter: FilterInput = inputData.filter;
     const result = await productService.getProductsByFilterWithOptionalStock(filter, inputData.withStock);
@@ -22,25 +22,25 @@ router.get("/products",  async (req, res) => {
 });
 
 // Non-logged in users can view products by id
-router.get("/product/:id", async (req, res) => {
+router.get("/:id", async (req, res) => {
     const inputData: GetProductByIdInput = GetProductByIdSchema.parse(req.params);
     const result = await productService.getProductsByFilterWithOptionalStock({ id: inputData.id }, false);
     return res.json(result);
 });
 
-router.post("/product", isAuth, isSuperAdmin, async (req, res) => {
+router.post("/", isAuth, isSuperAdmin, async (req, res) => {
     const inputData: CreateProductInput = CreateProductSchema.parse(req.body);
     const createdProduct = await productService.createProduct(inputData);
     return res.status(201).json(createdProduct);
 });
 
-router.patch("/product/:id", isAuth, isSuperAdmin, async (req, res) => {
+router.patch("/:id", isAuth, isSuperAdmin, async (req, res) => {
     const inputData = UpdateProductSchema.parse({ id: req.params.id, ...req.body });
     const updatedProduct = await productService.updateProduct(inputData);
     return res.json(updatedProduct);
 });
 
-router.delete("/product/:id", isAuth, isSuperAdmin, async (req, res) => {
+router.delete("/:id", isAuth, isSuperAdmin, async (req, res) => {
     const inputData: DeleteProductByIdInput = DeleteProductByIdSchema.parse(req.params);
     await productService.deleteProduct(inputData.id);
     return res.status(204).send();
