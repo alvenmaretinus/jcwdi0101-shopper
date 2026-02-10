@@ -1,6 +1,7 @@
 import Decimal from "decimal.js";
 
 export type DiscountCreateReq = {
+    name: string;
     percentage?: Decimal;
     amount?: number;
     type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
