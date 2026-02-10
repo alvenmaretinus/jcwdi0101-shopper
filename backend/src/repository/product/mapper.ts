@@ -10,7 +10,7 @@ export function toDomainModel (prismaModel: ProductModel): Product {
         price: prismaModel.price,
         createAt: prismaModel.createAt,
         updatedAt: prismaModel.updatedAt,
-        weight: (prismaModel as any).weight ?? 0,
+        weight: prismaModel.weight,
     };
 }
 
