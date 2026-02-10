@@ -23,7 +23,7 @@ export class PrismaRepository implements ProductsRepo {
 
     async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<ProductWithStock[]> {
         const where = this.buildWhereClause(filter);
-            const products = await this.prisma.product.findMany({
+        const products = await this.prisma.product.findMany({
             where,
             include: {
                 productStores: {
@@ -34,7 +34,7 @@ export class PrismaRepository implements ProductsRepo {
             },
         });
         
-        return toDomainModelsWithStock(products as any);
+        return toDomainModelsWithStock(products);
     }
 
     private buildWhereClause(filter: Partial<GetProductReq>): ProductWhereClause {
