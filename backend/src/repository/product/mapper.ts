@@ -1,3 +1,4 @@
+import { Prisma } from '../../../prisma/generated/client';
 import { ProductModel, ProductStoreModel, StoreModel } from '../../../prisma/generated/models';
 import { Product, ProductWithStock } from './entities';
 
@@ -19,7 +20,15 @@ export function toDomainModels (prismaModels: ProductModel[]): Product[] {
 }
 
 // Mapper for Prisma results that include productStores -> ProductWithStock
-type PrismaProductWithStores = ProductModel & { productStores: (ProductStoreModel & { store: StoreModel })[] };
+type PrismaProductWithStores = Prisma.ProductGetPayload<{
+    include: {
+        productStores: {
+            include: {
+                store: true;
+            };
+        };
+    };
+}>;
 
 export function toDomainModelsWithStock(prismaModels: PrismaProductWithStores[]): ProductWithStock[] {
     return prismaModels.map(pm => {
