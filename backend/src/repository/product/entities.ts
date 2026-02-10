@@ -23,7 +23,7 @@ export type UpdateProductReq = {
     createAt?: Date | string //TODO: Have this be changed to createdAt in future refactors
     updatedAt?: Date | string
     categoryId?: string
-    weight?: number | undefined
+    weight?: number
 }
 
 export type ProductWhereClause = {
@@ -47,7 +47,7 @@ export type Product = {
     updatedAt: Date;
     price: number;
     createAt: Date; //TODO: Have this be changed to createdAt in future refactors
-    weight?: number | null;
+    weight: number;
     categoryId: string;
     productStores?: {
         storeId: string;
