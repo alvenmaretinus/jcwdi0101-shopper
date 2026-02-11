@@ -64,10 +64,25 @@ export class PrismaRepository implements StockReportRepository {
       description: true,
       updatedAt: true,
       productId: true,
+      product: {
+        select: {
+          name: true,
+        },
+      },
       orderId: true,
       movementType: true,
       fromStoreId: true,
+      fromStore: {
+        select: {
+          name: true,
+        },
+      },
       toStoreId: true,
+      toStore: {
+        select: {
+          name: true,
+        },
+      },
       quantityChange: true,
       createdAt: true,
     } as const;
