@@ -29,11 +29,17 @@ export interface CreateOrderResponse {
   paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY";
   status:
     | "PAYMENT_PENDING"
+    | "PAYMENT_WAITING_CONFIRMATION"
     | "PAYMENT_VERIFIED"
+    | "PAYMENT_EXPIRED"
     | "PROCESSING"
     | "SHIPPED"
-    | "DELIVERED";
+    | "DELIVERED"
+    | "CANCELLED"
+    | "PAID";
   paymentDueAt: string;
+  paymentProofUrl?: string | null;
+  trackingNumber?: string | null;
   orderItems: OrderItem[];
   createdAt: string;
   updatedAt: string;
@@ -52,15 +58,27 @@ export interface CreateOrderResponse {
  * @returns Created order response with actual shipping cost
  * @throws Error if address invalid, cart empty, or no store within 5km
  */
+type ApiWrapper<T> = { success?: boolean; data?: T };
+
+function isApiWrapper<T>(v: unknown): v is ApiWrapper<T> {
+  return typeof v === "object" && v !== null && "data" in (v as object);
+}
+
 export const createOrder = async (
   data: CreateOrderRequest,
   headers?: ReadonlyHeaders | Headers
-) => {
-  const response = await apiFetch<CreateOrderResponse>("/order/checkout", {
+): Promise<CreateOrderResponse | null> => {
+  const response = await apiFetch<
+    ApiWrapper<CreateOrderResponse> | CreateOrderResponse
+  >("/order/checkout", {
     method: "POST",
     headers,
     body: data,
   });
 
-  return response;
+  if (isApiWrapper<CreateOrderResponse>(response)) {
+    return response.data ?? null;
+  }
+
+  return response as CreateOrderResponse;
 };

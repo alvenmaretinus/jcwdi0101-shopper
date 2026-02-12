@@ -96,6 +96,11 @@ const Checkout = () => {
       });
 
       console.log("[Checkout] Order created successfully:", order);
+      if (!order) {
+        toast.error("Gagal membuat pesanan");
+        return;
+      }
+
       toast.success("Pesanan berhasil dibuat! Lanjut ke pembayaran...");
 
       // Redirect to payment page with order ID
