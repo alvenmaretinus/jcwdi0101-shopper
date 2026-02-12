@@ -17,11 +17,13 @@ export class OrderService {
    * @param userId User ID
    * @param addressId Shipping address ID
    * @param paymentType Payment method (BANK_TRANSFER or PAYMENT_GATEWAY)
+   * @param voucherIds Optional array of voucher IDs to apply discounts
    * @returns Created order
    * @throws BadRequestError if address invalid, cart empty, or no store within 5km can fulfill
    * @note Sets payment deadline based on PAYMENT_DUE_HOURS env variable (default: 1 hour)
+   * @note Vouchers are ranked by highest amount first for discount calculation
    */
-  static async createPendingOrder(userId: string, addressId: string, paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY" = "BANK_TRANSFER") {
+  static async createPendingOrder(userId: string, addressId: string, paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY" = "BANK_TRANSFER", voucherIds?: string[]) {
     const address = await prisma.userAddress.findUnique({ where: { id: addressId } });
     if (!address || address.userId !== userId) {
       throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
@@ -115,7 +117,17 @@ export class OrderService {
       console.warn(`[OrderService] Shipping cost service failed for pending order, using fallback: ${e instanceof Error ? e.message : "unknown error"}`);
       shippingCost = Math.ceil(distanceKm * costPerKm);
     }
-    const totalDiscount = 0;
+
+    // Calculate voucher discount using VoucherService (ranked by highest amount first)
+    let totalDiscount = 0;
+    if (voucherIds && voucherIds.length > 0) {
+      const { VoucherService } = await import("./voucher/voucher.service");
+      const { PrismaVoucherRepository } = await import("../repository/voucher/adapter_prisma");
+      const voucherRepo = new PrismaVoucherRepository(db);
+      const voucherService = new VoucherService(voucherRepo);
+      totalDiscount = await voucherService.calculateVoucherDiscount(voucherIds, subtotal);
+    }
+
     const grandTotal = subtotal + shippingCost - totalDiscount;
 
     // create pending order snapshot; do NOT decrement stock here
