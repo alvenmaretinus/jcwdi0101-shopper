@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/apiFetch";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/formatPrice";
-import { CartItem, CartResponse } from "@/types/cart";
+import { CartItem, CartResponse, RawBackendCartItem } from "@/types/cart";
 
 export function useCart() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -21,13 +21,35 @@ export function useCart() {
         method: "GET",
       });
       console.log("[useCart] Cart response:", response);
-      // Backend returns { cartId, cartItems } — accept that shape or plain array
+      // Backend returns { cartId, cartItems } — normalize to frontend CartItem shape
       const data = response?.data;
-      let items: any[] = [];
+      let items: CartItem[] = [];
       if (Array.isArray(data)) {
-        items = data;
-      } else if (data && Array.isArray(data.cartItems)) {
-        items = data.cartItems;
+        items = data as CartItem[];
+      } else if (
+        data &&
+        Array.isArray((data as { cartItems?: unknown }).cartItems)
+      ) {
+        const raw = (data as { cartItems: RawBackendCartItem[] }).cartItems;
+        // Normalize backend fields: productId -> id, stockQuantity -> stock
+        items = raw.map((it) => ({
+          id: it.productId ?? it.id ?? 0,
+          productId: it.productId ?? it.id,
+          name: it.name ?? "",
+          price:
+            typeof it.price === "number" ? it.price : Number(it.price) || 0,
+          image: it.image,
+          quantity:
+            typeof it.quantity === "number"
+              ? it.quantity
+              : Number(it.quantity) || 0,
+          unit: it.unit,
+          stock:
+            typeof it.stockQuantity === "number"
+              ? it.stockQuantity
+              : Number(it.productTotal) || 0,
+          outOfStock: it.outOfStock ?? false,
+        }));
       } else {
         items = [];
       }
@@ -48,22 +70,24 @@ export function useCart() {
       const item = cartItems.find((item) => item.id === id);
       if (!item) return;
 
+      const maxStock =
+        typeof item.stock === "number" ? item.stock : Number(item.stock) || 0;
       const newQuantity = Math.max(
         1,
-        Math.min(item.stock, item.quantity + delta)
+        Math.min(maxStock, item.quantity + delta)
       );
 
       // Update optimistically
       setCartItems((items) =>
-        items.map((item) =>
-          item.id === id ? { ...item, quantity: newQuantity } : item
+        items.map((it) =>
+          it.id === id ? { ...it, quantity: newQuantity } : it
         )
       );
 
-      // Sync with backend
+      // Sync with backend - send productId (backend expects productId)
       await apiFetch("/cart", {
         method: "PATCH",
-        body: { productId: id, quantity: newQuantity },
+        body: { productId: item.productId ?? id, quantity: newQuantity },
       });
     } catch (error) {
       console.error("Failed to update quantity:", error);
@@ -75,11 +99,15 @@ export function useCart() {
 
   const removeItem = async (id: number | string) => {
     try {
-      // Call backend to delete
+      // Find item and call backend to delete by productId
+      const item = cartItems.find((it) => it.id === id);
+      if (!item) return;
+
       await apiFetch("/cart", {
         method: "DELETE",
-        body: { productId: id },
+        body: { productId: item.productId ?? id },
       });
+
       // Refresh cart
       await fetchCart();
       toast.success("Item removed from cart");

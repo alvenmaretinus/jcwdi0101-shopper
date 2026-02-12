@@ -31,12 +31,8 @@ if (!komerceBaseUrl || !komerceKey) {
 }
 export class ShippingCostService {
   static async getShippingCost(inputData: GetShippingCostInput) {
-    const originDistrictId = await this.getDistrictIdByPostCode(
-      inputData.originPostCode,
-    );
-    const destinationDistrictId = await this.getDistrictIdByPostCode(
-      inputData.destinationPostCode,
-    );
+    const originDistrictId = await this.getDistrictIdByPostCode(inputData.originPostCode);
+    const destinationDistrictId = await this.getDistrictIdByPostCode(inputData.destinationPostCode);
 
     if (!originDistrictId || !destinationDistrictId) {
       throw new BadRequestError("Invalid post code");
@@ -54,13 +50,23 @@ export class ShippingCostService {
       },
     });
     if (!res.ok) {
-      console.error("Failed to calculate shipping cost");
+      const body = await res.text().catch(() => "<no-body>");
+      console.error("Failed to calculate shipping cost", {
+        status: res.status,
+        statusText: res.statusText,
+        body,
+        url: `${komerceBaseUrl}/calculate?${queryParams}`,
+      });
       throw new AppError({
         message: "Internal server error",
         statusCode: 500,
       });
     }
-    const data = await res.json();
+
+    const data = await res.json().catch((e) => {
+      console.error("Failed to parse shipping cost response as JSON", e);
+      throw new AppError({ message: "Internal server error", statusCode: 500 });
+    });
     return data.data as ShippingCostData;
   }
 
@@ -68,23 +74,32 @@ export class ShippingCostService {
     const queryParam = new URLSearchParams({
       keyword: postCode,
     });
-    const res = await fetch(
-      `${komerceBaseUrl}/destination/search?${queryParam}`,
-      {
-        method: "GET",
-        headers: {
-          "x-api-key": komerceKey,
-        },
+    const res = await fetch(`${komerceBaseUrl}/destination/search?${queryParam}`, {
+      method: "GET",
+      headers: {
+        "x-api-key": komerceKey,
       },
-    );
+    });
     if (!res.ok) {
-      throw new AppError({
-        message: "Internal server error",
-        statusCode: 500,
+      const body = await res.text().catch(() => "<no-body>");
+      console.error("Failed to lookup district by post code", {
+        status: res.status,
+        statusText: res.statusText,
+        body,
+        url: `${komerceBaseUrl}/destination/search?${queryParam}`,
       });
+      throw new AppError({ message: "Internal server error", statusCode: 500 });
     }
-    const data: DistrictResponse = await res.json();
+
+    const data: DistrictResponse = await res.json().catch((e) => {
+      console.error("Failed to parse district lookup response as JSON", e);
+      throw new AppError({ message: "Internal server error", statusCode: 500 });
+    });
     const id = data.data?.[0]?.id;
+
+    if (!id) {
+      console.warn("No district id found for post code", postCode, { url: `${komerceBaseUrl}/destination/search?${queryParam}` });
+    }
 
     return id;
   }
