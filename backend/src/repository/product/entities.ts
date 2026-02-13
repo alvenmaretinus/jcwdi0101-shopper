@@ -46,6 +46,8 @@ export type Product = {
     price: number;
     createAt: Date; //TODO: Have this be changed to createdAt in future refactors
     categoryId: string;
+    category?: ProductCategory;
+    productImages?: ProductImage[];
     productStores?: {
         storeId: string;
         id: string;
@@ -55,6 +57,21 @@ export type Product = {
         productId: string;
         store: Store;
     }[];
+}
+
+export type ProductCategory = {
+    id: string;
+    category: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export type ProductImage = {
+    id: string;
+    url: string;
+    productId: string;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 

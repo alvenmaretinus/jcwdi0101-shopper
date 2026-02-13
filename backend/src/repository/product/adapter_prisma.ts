@@ -17,8 +17,22 @@ export class PrismaRepository implements ProductsRepo {
         const where = this.buildWhereClause(filter);
         const products = await this.prisma.product.findMany({
             where,
+            include: {
+                category: true,
+                productImages: true,
+            },
         });
-        return toDomainModels(products);
+        return products.map(p => ({
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            price: p.price,
+            createAt: p.createAt,
+            updatedAt: p.updatedAt,
+            categoryId: p.categoryId,
+            category: p.category,
+            productImages: p.productImages,
+        }));
     }
 
     async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<Product[]> {
@@ -26,6 +40,8 @@ export class PrismaRepository implements ProductsRepo {
         const productsRaw = await this.prisma.product.findMany({
             where,
             include: {
+                category: true,
+                productImages: true,
                 productStores: {
                     include: {
                         store: true,
@@ -34,31 +50,36 @@ export class PrismaRepository implements ProductsRepo {
             },
         });
 
-        return productsRaw.map(prismaProduct => {
-            const base = toDomainModel(prismaProduct as any);
-            return {
-                ...base,
-                productStores: prismaProduct.productStores?.map(ps => ({
-                    storeId: ps.storeId,
-                    id: ps.id,
-                    createdAt: ps.createdAt,
-                    updatedAt: ps.updatedAt,
-                    quantity: ps.quantity,
-                    productId: ps.productId,
-                    store: {
-                        id: ps.store.id,
-                        name: ps.store.name,
-                        description: ps.store.description,
-                        phone: ps.store.phone,
-                        longitude: ps.store.longitude,
-                        latitude: ps.store.latitude,
-                        addressName: ps.store.addressName,
-                        createdAt: ps.store.createdAt,
-                        updatedAt: ps.store.updatedAt,
-                    }
-                }))
-            } as Product;
-        });
+        return productsRaw.map(prismaProduct => ({
+            id: prismaProduct.id,
+            name: prismaProduct.name,
+            description: prismaProduct.description,
+            price: prismaProduct.price,
+            createAt: prismaProduct.createAt,
+            updatedAt: prismaProduct.updatedAt,
+            categoryId: prismaProduct.categoryId,
+            category: prismaProduct.category,
+            productImages: prismaProduct.productImages,
+            productStores: prismaProduct.productStores?.map(ps => ({
+                storeId: ps.storeId,
+                id: ps.id,
+                createdAt: ps.createdAt,
+                updatedAt: ps.updatedAt,
+                quantity: ps.quantity,
+                productId: ps.productId,
+                store: {
+                    id: ps.store.id,
+                    name: ps.store.name,
+                    description: ps.store.description,
+                    phone: ps.store.phone,
+                    longitude: ps.store.longitude,
+                    latitude: ps.store.latitude,
+                    addressName: ps.store.addressName,
+                    createdAt: ps.store.createdAt,
+                    updatedAt: ps.store.updatedAt,
+                }
+            }))
+        }));
     }
 
     private buildWhereClause(filter: Partial<GetProductReq>): ProductWhereClause {

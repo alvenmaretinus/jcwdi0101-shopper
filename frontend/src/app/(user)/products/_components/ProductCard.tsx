@@ -1,25 +1,12 @@
 import  Link  from "next/link";
-import { Plus, Heart, Star } from "lucide-react";
+import { Plus, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  category: string;
-  rating: number;
-  stock: number;
-  unit: string;
-  discount?: number;
-  isNew?: boolean;
-  isBuyOneGetOne?: boolean;
-}
+import { ProductWithDetails } from "@/services/product/getProducts";
+import Image from "next/image";
 
 interface ProductCardProps {
-  product: Product;
+  product: ProductWithDetails;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
@@ -31,25 +18,19 @@ export function ProductCard({ product }: ProductCardProps) {
     }).format(price);
   };
 
-  const isOutOfStock = product.stock === 0;
+  const totalStock = product.productStores
+    ? product.productStores.reduce((sum, ps) => sum + ps.quantity, 0)
+    : 0;
+  const isOutOfStock = totalStock === 0;
+  const primaryImage = product.productImages[0]?.url || "https://placehold.co/400x400?text=No+Image";
 
   return (
     <div className="card-product group relative">
       {/* Badges */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
-        {product.discount && (
-          <Badge className="bg-berry text-white border-0">
-            -{product.discount}%
-          </Badge>
-        )}
-        {product.isNew && (
-          <Badge className="bg-primary text-primary-foreground border-0">
-            New
-          </Badge>
-        )}
-        {product.isBuyOneGetOne && (
-          <Badge className="bg-secondary text-secondary-foreground border-0">
-            Buy 1 Get 1
+        {isOutOfStock && (
+          <Badge className="bg-destructive text-destructive-foreground border-0">
+            Out of Stock
           </Badge>
         )}
       </div>
@@ -61,17 +42,21 @@ export function ProductCard({ product }: ProductCardProps) {
 
       {/* Image */}
       <Link href={`/products/${product.id}`}>
-        <div className="aspect-square bg-muted/30 flex items-center justify-center p-6 overflow-hidden">
-          <span className="text-7xl group-hover:scale-110 transition-transform duration-300">
-            {product.image}
-          </span>
+        <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden relative">
+          <Image
+            src={primaryImage}
+            alt={product.name}
+            fill
+            className="object-cover group-hover:scale-110 transition-transform duration-300"
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+          />
         </div>
       </Link>
 
       {/* Content */}
       <div className="p-4">
         <span className="text-xs text-muted-foreground uppercase tracking-wide">
-          {product.category}
+          {product.category.category}
         </span>
         
         <Link href={`/products/${product.id}`}>
@@ -80,12 +65,12 @@ export function ProductCard({ product }: ProductCardProps) {
           </h3>
         </Link>
 
-        {/* Rating */}
-        <div className="flex items-center gap-1 mt-2">
-          <Star className="h-4 w-4 fill-secondary text-secondary" />
-          <span className="text-sm font-medium">{product.rating}</span>
-          <span className="text-xs text-muted-foreground">• {product.unit}</span>
-        </div>
+        {/* Description */}
+        {product.description && (
+          <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+            {product.description}
+          </p>
+        )}
 
         {/* Price and CTA */}
         <div className="flex items-end justify-between mt-3">
@@ -93,11 +78,6 @@ export function ProductCard({ product }: ProductCardProps) {
             <span className="text-lg font-bold text-foreground">
               {formatPrice(product.price)}
             </span>
-            {product.originalPrice && (
-              <span className="text-sm text-muted-foreground line-through ml-2">
-                {formatPrice(product.originalPrice)}
-              </span>
-            )}
           </div>
           
           <Button
@@ -114,12 +94,9 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
 
         {/* Stock status */}
-        {isOutOfStock && (
-          <p className="text-sm text-berry font-medium mt-2">Out of Stock</p>
-        )}
-        {product.stock > 0 && product.stock <= 5 && (
+        {!isOutOfStock && totalStock <= 10 && (
           <p className="text-sm text-secondary font-medium mt-2">
-            Only {product.stock} left
+            Only {totalStock} left
           </p>
         )}
       </div>

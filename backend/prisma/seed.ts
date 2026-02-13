@@ -1,8 +1,14 @@
 import { prisma } from "../src/lib/db/prisma";
 import { seedAccounts } from "./seeds/seedAccounts";
+import { seedProductCategories } from "./seeds/seedProductCategories";
+import { seedProducts } from "./seeds/seedProducts";
+import { seedStoresWithProducts } from "./seeds/seedStoresWithProducts";
 
 async function main() {
   await seedAccounts();
+  await seedProductCategories();
+  await seedProducts();
+  await seedStoresWithProducts();
 }
 main()
   .then(async () => {

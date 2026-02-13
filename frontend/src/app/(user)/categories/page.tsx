@@ -1,106 +1,63 @@
 import Link from "next/link";
 import { Layout } from "@/components/layout/Layout";
+import { getProductCategories } from "@/services/product/getProductCategories";
+import { getProducts } from "@/services/product/getProducts";
+import { headers } from "next/headers";
 
-const categories = [
-  { 
-    id: 1, 
-    name: "Fruits", 
-    icon: "🍎", 
-    description: "Fresh seasonal fruits",
-    color: "from-red-100 to-orange-100",
-    items: 48 
+// Icon and color mapping for fruit categories
+const categoryStyles: Record<string, { icon: string; color: string; description: string }> = {
+  "Tropical Fruits": {
+    icon: "🍌",
+    color: "from-yellow-100 to-amber-100",
+    description: "Bananas, pineapples, and more"
   },
-  { 
-    id: 2, 
-    name: "Vegetables", 
-    icon: "🥬", 
-    description: "Farm-fresh vegetables",
-    color: "from-green-100 to-emerald-100",
-    items: 62 
+  "Citrus Fruits": {
+    icon: "🍊",
+    color: "from-orange-100 to-yellow-100",
+    description: "Oranges, lemons, and citrus"
   },
-  { 
-    id: 3, 
-    name: "Dairy & Eggs", 
-    icon: "🥛", 
-    description: "Milk, cheese, eggs & more",
-    color: "from-blue-100 to-sky-100",
-    items: 35 
+  "Berries": {
+    icon: "🍓",
+    color: "from-red-100 to-pink-100",
+    description: "Strawberries, blueberries, and more"
   },
-  { 
-    id: 4, 
-    name: "Meat & Fish", 
-    icon: "🥩", 
-    description: "Fresh meat and seafood",
-    color: "from-rose-100 to-pink-100",
-    items: 28 
-  },
-  { 
-    id: 5, 
-    name: "Bakery", 
-    icon: "🍞", 
-    description: "Bread, pastries & cakes",
-    color: "from-amber-100 to-yellow-100",
-    items: 24 
-  },
-  { 
-    id: 6, 
-    name: "Beverages", 
-    icon: "🧃", 
-    description: "Juices, water & drinks",
-    color: "from-purple-100 to-violet-100",
-    items: 42 
-  },
-  { 
-    id: 7, 
-    name: "Snacks", 
-    icon: "🍪", 
-    description: "Chips, cookies & more",
-    color: "from-orange-100 to-amber-100",
-    items: 56 
-  },
-  { 
-    id: 8, 
-    name: "Frozen Foods", 
-    icon: "🧊", 
-    description: "Ice cream & frozen meals",
-    color: "from-cyan-100 to-blue-100",
-    items: 31 
-  },
-  { 
-    id: 9, 
-    name: "Rice & Grains", 
-    icon: "🍚", 
-    description: "Rice, pasta & cereals",
-    color: "from-stone-100 to-neutral-100",
-    items: 38 
-  },
-  { 
-    id: 10, 
-    name: "Cooking Essentials", 
-    icon: "🧈", 
-    description: "Oil, spices & sauces",
-    color: "from-yellow-100 to-lime-100",
-    items: 65 
-  },
-  { 
-    id: 11, 
-    name: "Organic", 
-    icon: "🌱", 
-    description: "Certified organic products",
-    color: "from-emerald-100 to-green-100",
-    items: 28 
-  },
-  { 
-    id: 12, 
-    name: "Baby Products", 
-    icon: "🍼", 
-    description: "Baby food & essentials",
+  "Stone Fruits": {
+    icon: "🍑",
     color: "from-pink-100 to-rose-100",
-    items: 22 
+    description: "Peaches, plums, and cherries"
   },
-];
+  "Exotic Fruits": {
+    icon: "🐲",
+    color: "from-purple-100 to-fuchsia-100",
+    description: "Dragon fruit, passion fruit, and more"
+  },
+  "Melons": {
+    icon: "🍉",
+    color: "from-green-100 to-emerald-100",
+    description: "Watermelons, cantaloupes, and more"
+  },
+  "Apples & Pears": {
+    icon: "🍎",
+    color: "from-red-100 to-orange-100",
+    description: "Fresh apples and pears"
+  },
+  "Dried Fruits": {
+    icon: "🥭",
+    color: "from-amber-100 to-orange-100",
+    description: "Dried mango, dates, and more"
+  }
+};
 
-const Categories = () => {
+const Categories = async () => {
+  const nextHeaders = await headers();
+  const categories = await getProductCategories(nextHeaders);
+  const allProducts = await getProducts({ withStock: true }, nextHeaders);
+  
+  // Count products per category
+  const productCounts = categories.map(category => ({
+    ...category,
+    productCount: allProducts.filter(p => p.categoryId === category.id).length
+  }));
   return (
     <Layout>
       <div className="bg-muted/30 min-h-screen">
@@ -117,30 +74,38 @@ const Categories = () => {
 
           {/* Categories grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {categories.map((category) => (
-              <Link
-                key={category.id}
-                href={`/products?category=${category.id}`}
-                className="group"
-              >
-                <div className={`bg-gradient-to-br ${category.color} rounded-2xl p-6 h-full transition-all duration-300 hover:shadow-elevated hover:-translate-y-1`}>
-                  <div className="flex items-start justify-between">
-                    <div className="text-6xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                      {category.icon}
+            {productCounts.map((category) => {
+              const style = categoryStyles[category.category] || {
+                icon: "🍇",
+                color: "from-purple-100 to-pink-100",
+                description: "Fresh fruits"
+              };
+              
+              return (
+                <Link
+                  key={category.id}
+                  href={`/products?categoryId=${category.id}`}
+                  className="group"
+                >
+                  <div className={`bg-gradient-to-br ${style.color} rounded-2xl p-6 h-full transition-all duration-300 hover:shadow-elevated hover:-translate-y-1`}>
+                    <div className="flex items-start justify-between">
+                      <div className="text-6xl mb-4 group-hover:scale-110 transition-transform duration-300">
+                        {style.icon}
+                      </div>
+                      <span className="text-xs font-medium bg-white/50 backdrop-blur-sm px-2 py-1 rounded-full">
+                        {category.productCount} items
+                      </span>
                     </div>
-                    <span className="text-xs font-medium bg-white/50 backdrop-blur-sm px-2 py-1 rounded-full">
-                      {category.items} items
-                    </span>
+                    <h3 className="text-xl font-bold text-foreground mb-2">
+                      {category.category}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {style.description}
+                    </p>
                   </div>
-                  <h3 className="text-xl font-bold text-foreground mb-2">
-                    {category.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {category.description}
-                  </p>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>

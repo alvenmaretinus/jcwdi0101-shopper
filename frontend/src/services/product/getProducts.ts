@@ -1,0 +1,69 @@
+import { apiFetch, HttpMethod } from "@/lib/apiFetch";
+import { ReadonlyHeaders } from "next/dist/server/web/spec-extension/adapters/headers";
+
+export interface ProductImage {
+  id: string;
+  url: string;
+  productId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductCategory {
+  id: string;
+  category: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductWithDetails {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  createAt: string;
+  updatedAt: string;
+  categoryId: string;
+  category: ProductCategory;
+  productImages: ProductImage[];
+  // Available when withStock=true
+  productStores?: Array<{
+    id: string;
+    quantity: number;
+    storeId: string;
+    productId: string;
+  }>;
+}
+
+export interface GetProductsParams {
+  id?: string;
+  name?: string;
+  categoryId?: string;
+  storeId?: string;
+  withStock?: boolean;
+}
+
+export const getProducts = async (
+  params?: GetProductsParams,
+  headers?: ReadonlyHeaders
+) => {
+  const queryParams = new URLSearchParams();
+  
+  if (params?.id) queryParams.append("id", params.id);
+  if (params?.name) queryParams.append("name", params.name);
+  if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
+  if (params?.storeId) queryParams.append("storeId", params.storeId);
+  if (params?.withStock !== undefined) {
+    queryParams.append("withStock", params.withStock.toString());
+  }
+
+  const queryString = queryParams.toString();
+  const url = queryString ? `/product?${queryString}` : "/product";
+
+  const res = await apiFetch<ProductWithDetails[]>(url, {
+    method: HttpMethod.GET,
+    headers,
+  });
+  
+  return res;
+};
