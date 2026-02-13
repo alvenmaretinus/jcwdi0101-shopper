@@ -3,10 +3,9 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./db/prisma";
 import { LRUCache } from "lru-cache";
 import { sendEmailVerification, sendResetPasswordEmail } from "./email/mailer";
-import { AppError } from "../error/AppError";
 import { BadRequestError } from "../error/BadRequestError";
 
-const rateLimit = new LRUCache<string, { email: string; lastRequest: Date }>({
+const _rateLimit = new LRUCache<string, { email: string; lastRequest: Date }>({
   ttl: 1000 * 60, // reset limit every 60 sec
   sizeCalculation: () => 1,
   maxSize: 5000,
@@ -74,7 +73,7 @@ export const auth = betterAuth({
         : undefined,
   },
   emailVerification: {
-    sendVerificationEmail: async ({ user, url, token }, request) => {
+    sendVerificationEmail: async ({ user, url, _token }, _request) => {
       // TODO: uncomment in prod
       // const record = rateLimit.get(user.email);
       // if (record)

@@ -97,7 +97,7 @@ router.post("/admin/expire-pending", isAuth, isAdmin, async (req: Request, res: 
  * @desc Handle Midtrans payment gateway webhooks
  * @access Public (Midtrans server + signature verification)
  */
-router.post("/webhook/midtrans", async (req: Request, res: Response, next: NextFunction) => {
+router.post("/webhook/midtrans", async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const webhookData = req.body;
     const { MidtransService } = await import("../service/midtrans.service");

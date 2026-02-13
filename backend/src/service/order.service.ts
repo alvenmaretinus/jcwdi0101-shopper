@@ -5,6 +5,7 @@ import { getDistance } from "geolib";
 import { ShippingCostService } from "./shipping-cost.service";
 import { GetShippingCostInput } from "../schema/shipping-cost/GetShippingCostSchema";
 import type { PrismaClient, Prisma, Store } from "../../prisma/generated/client";
+import { PricingCalculationService } from "./pricing-calculation.service";
 
 type StoreWithDistance = {
   store: Store;
@@ -18,12 +19,13 @@ export class OrderService {
    * @param addressId Shipping address ID
    * @param paymentType Payment method (BANK_TRANSFER or PAYMENT_GATEWAY)
    * @param voucherIds Optional array of voucher IDs to apply discounts
+   * @param discountIds Optional array of discount IDs to apply before vouchers
    * @returns Created order
    * @throws BadRequestError if address invalid, cart empty, or no store within 5km can fulfill
    * @note Sets payment deadline based on PAYMENT_DUE_HOURS env variable (default: 1 hour)
-   * @note Vouchers are ranked by highest amount first for discount calculation
+   * @note Discounts are applied first (best percentage vs amount), then vouchers
    */
-  static async createPendingOrder(userId: string, addressId: string, paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY" = "BANK_TRANSFER", voucherIds?: string[]) {
+  static async createPendingOrder(userId: string, addressId: string, paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY" = "BANK_TRANSFER", voucherIds?: string[], discountIds?: string[]) {
     const address = await prisma.userAddress.findUnique({ where: { id: addressId } });
     if (!address || address.userId !== userId) {
       throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
@@ -118,15 +120,13 @@ export class OrderService {
       shippingCost = Math.ceil(distanceKm * costPerKm);
     }
 
-    // Calculate voucher discount using VoucherService (ranked by highest amount first)
-    let totalDiscount = 0;
-    if (voucherIds && voucherIds.length > 0) {
-      const { VoucherService } = await import("./voucher/voucher.service");
-      const { PrismaVoucherRepository } = await import("../repository/voucher/adapter_prisma");
-      const voucherRepo = new PrismaVoucherRepository(db);
-      const voucherService = new VoucherService(voucherRepo);
-      totalDiscount = await voucherService.calculateVoucherDiscount(voucherIds, subtotal);
-    }
+    // Calculate total discount (discounts + vouchers)
+    const totalDiscount = await PricingCalculationService.calculateTotalDiscount(
+      subtotal,
+      discountIds,
+      voucherIds,
+      db
+    );
 
     const grandTotal = subtotal + shippingCost - totalDiscount;
 

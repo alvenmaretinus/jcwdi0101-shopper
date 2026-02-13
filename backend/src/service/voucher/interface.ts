@@ -1,5 +1,5 @@
 import { CreateVoucherInput, GetVouchersByFilterInput, UpdateVoucherInput } from "../../schema/voucher/index";
-import { VoucherCreateReq, VoucherFilter, VoucherResponse, VoucherUpdateReq } from "../../repository/voucher/entity";
+import { VoucherResponse} from "../../repository/voucher/entity";
 
 export interface Service {
     createVoucher(data: CreateVoucherInput): Promise<VoucherResponse>;
