@@ -1,6 +1,7 @@
 import { prisma } from "../lib/db/prisma";
 import { CartRepository } from "../repository/cart.repository";
 import { BadRequestError } from "../error/BadRequestError";
+import { PricingCalculationService } from "./pricing-calculation.service";
 
 export class CartService {
   static async addToCart(userId: string, productId: string, quantity: number) {
@@ -21,7 +22,7 @@ export class CartService {
     if (existing) {
       return CartRepository.incrementCartItemQuantity(existing.id, quantity);
     }
-    const product = await prisma.product.findUnique({
+    await prisma.product.findUnique({
       where: { id: productId },
       select: { name: true },
     });
@@ -35,11 +36,29 @@ export class CartService {
     });
   }
 
-  static async getCart(userId: string, recommendedStoreId?: string) {
+  static async getCart(userId: string, recommendedStoreId?: string, discountIds?: string[], voucherIds?: string[]) {
     const cartWithItems = await CartRepository.findCartWithItemsAndProduct(userId);
     if (!cartWithItems) {
-      return { cartId: null, cartItems: [] };
+      return { cartId: null, cartItems: [], pricing: { subtotal: 0, totalDiscount: 0, shippingCost: 0, grandTotal: 0 } };
     }
+    
+    // Calculate subtotal
+    const subtotal = cartWithItems.cartItems.reduce((sum, item) => {
+      return sum + (item.product.price * item.quantity);
+    }, 0);
+
+    // Calculate total discount (discounts + vouchers)
+    const totalDiscount = await PricingCalculationService.calculateTotalDiscount(
+      subtotal,
+      discountIds,
+      voucherIds,
+      prisma
+    );
+
+    // Shipping cost is estimated as 0 in cart (calculated during checkout)
+    const shippingCost = 0;
+    const grandTotal = subtotal - totalDiscount + shippingCost;
+
     const enrichedItems = await Promise.all(
       cartWithItems.cartItems.map(async (item) => {
         // get stock for the selected store and productTotal across all stores
@@ -65,6 +84,12 @@ export class CartService {
     return {
       cartId: cartWithItems.id,
       cartItems: enrichedItems,
+      pricing: {
+        subtotal,
+        totalDiscount,
+        shippingCost,
+        grandTotal,
+      },
     };
   }
 

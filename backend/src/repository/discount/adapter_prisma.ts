@@ -17,10 +17,10 @@ export class PrismaRepository implements DiscountRepo {
             ...data,
             type: data.type as DiscountType,
         }
-        const discount: DiscountResponse = await this.prisma.discount.create(
+        const discount = await this.prisma.discount.create(
             { data: discountCreateData }
         );
-        return discount;
+        return discount as DiscountResponse;
     }
     async updateDiscount(id: string, data: Partial<DiscountUpdateReq>): Promise<DiscountResponse> {
          const updateData = {

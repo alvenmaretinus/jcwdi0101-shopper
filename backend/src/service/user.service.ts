@@ -48,8 +48,6 @@ export class UserService {
       }
     }
 
-    const now: Date = new Date();
-
     const createUserReq: UserReq = {
       id: v4(),
       email: input.email,

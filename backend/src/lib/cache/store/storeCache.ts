@@ -1,7 +1,7 @@
 import { cacheClient } from "..";
 import { Store, User } from "../../../../prisma/generated/client";
 
-type StoresWithEmployeeCount = Store & { employeeCount: number };
+type _StoresWithEmployeeCount = Store & { employeeCount: number };
 
 const storeCacheKeys = {
   all: () => "store:all",

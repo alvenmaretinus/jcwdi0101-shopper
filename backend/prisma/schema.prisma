@@ -334,9 +334,12 @@ enum VoucherType {
 
 model Discount {
   id          String  @id @default(uuid())
+  name        String?
   percentage  Decimal? @db.Decimal(5, 2)
   amount      Int?
   type        DiscountType
+
+  isVoucher   Boolean @default(false)
 
   isWithMinimum Boolean @default(false)
   minimumPrice Int?
