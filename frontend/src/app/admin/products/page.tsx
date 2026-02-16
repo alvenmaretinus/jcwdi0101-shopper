@@ -51,7 +51,7 @@ export default function Products() {
         filterStrings.push(`name=${searchQuery}`);
       }
       const filterQuery = filterStrings.length > 0 ? `?${filterStrings.join('&')}` : '';
-      const data = await apiFetch<any[]>(`/products${filterQuery}`, apiInit);
+      const data = await apiFetch<any[]>(`/product${filterQuery}`, apiInit);
       console.log('Fetched products:', data);
       setProducts(data);
     } catch (error) {
