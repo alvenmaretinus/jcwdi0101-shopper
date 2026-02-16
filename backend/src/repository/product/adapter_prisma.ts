@@ -45,7 +45,10 @@ export class PrismaRepository implements ProductsRepo {
 
     private buildWhereClause(filter: Partial<GetProductReq>): ProductWhereClause {
         const { name, storeId, ...restFilter } = filter;
-        const where: ProductWhereClause = { ...restFilter };
+        const where: ProductWhereClause = { 
+            ...restFilter,
+            isSoftDeleted: false // Filter out soft-deleted products by default
+        };
 
         if (name) {
             where.name = {
@@ -81,6 +84,10 @@ export class PrismaRepository implements ProductsRepo {
 
         const createdProduct = await this.prisma.product.create({
             data: productCreateInput,
+            include: {
+                category: true,
+                productImages: true,
+            },
         });
         return toDomainModel(createdProduct);
     }
@@ -96,13 +103,21 @@ export class PrismaRepository implements ProductsRepo {
         const updatedProduct = await this.prisma.product.update({
             where: { id: id },
             data: productUpdateData,
+            include: {
+                category: true,
+                productImages: true,
+            },
         });
         return toDomainModel(updatedProduct);
     }
 
     async deleteProduct(id: string): Promise<void> {
-        await this.prisma.product.delete({
+        await this.prisma.product.update({
             where: { id: id },
+            data: {
+                isSoftDeleted: true,
+                updatedAt: new Date(),
+            },
         });
     }
 }

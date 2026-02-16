@@ -20,7 +20,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { ProductWithDetails } from "@/services/product/getProducts";
-import { ProductCard } from "./ProductCard";
+import { ProductCard } from "../../../../components/products/ProductCard";
 
 interface ProductCategory {
   id: string;

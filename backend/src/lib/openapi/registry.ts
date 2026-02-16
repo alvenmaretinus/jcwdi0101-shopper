@@ -62,7 +62,7 @@ export function generateOpenAPIDocument() {
     },
     servers: [
       {
-        url: process.env.API_URL || "http://localhost:3001/api",
+        url: process.env.API_URL || "http://localhost:3001",
         description: "API Server",
       },
     ],

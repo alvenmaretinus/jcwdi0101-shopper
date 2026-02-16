@@ -29,6 +29,8 @@ export async function apiFetch<T>(url: string, input: ApiInit): Promise<T> {
       headers,
       body: input.body ? JSON.stringify(input.body) : undefined,
       credentials: "include",
+      cache: "no-store", // Disable Next.js caching
+      next: { revalidate: 0 }, // Disable revalidation
     });
 
     const contentType = res.headers.get("content-type") || "";

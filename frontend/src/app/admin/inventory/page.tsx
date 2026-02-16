@@ -37,10 +37,16 @@ export default function Inventory() {
     const fetchStores = async () => {
         const apiInit: ApiInit = { method: HttpMethod.GET };
         try {
-            const data = await apiFetch<any[]>(`/stores`, apiInit);
-            setStores(data);
+            // Add query parameters required by the backend
+            const data = await apiFetch<any>(`/stores?page=1&pageSize=100`, apiInit);
+            console.log('Stores API response:', data);
+            console.log('Stores is array?', Array.isArray(data));
+            console.log('Stores length:', data?.length);
+            // The backend returns array directly
+            setStores(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Failed to fetch stores:', error);
+            console.error('This might be an authentication issue - /stores requires login');
             setStores([]);
         }
     };
@@ -53,15 +59,16 @@ export default function Inventory() {
     };
     const fetchStockRecords = async () => {
         try {
-            let url = `/products`
+            let url = `/product?withStock=true`
             if (selectedStoreId !== 'all') {
-                url += `?storeId=${selectedStoreId}`;
+                url += `&storeId=${selectedStoreId}`;
             }
             if (searchQuery.trim() !== '') {
-                url += url.includes('?') ? `&name=${searchQuery}` : `?name=${searchQuery}`;
+                url += `&name=${searchQuery}`;
             }
             const data = await apiFetch<Product[]>(url, apiInit);
-            setStockRecords(data);
+            console.log('Stock records API response:', data);
+            setStockRecords(Array.isArray(data) ? data : []);
         }
         catch (error) {
             console.error('Failed to fetch stock records:', error);
@@ -72,9 +79,9 @@ export default function Inventory() {
   }, [selectedStoreId, searchQuery]);
             
 
-  const startEditing = (record: Product) => {
-    setEditingId(record.id);
-    setEditQuantity(record.productStores?.[0]?.quantity || 0);
+  const startEditing = (productStoreId: string, quantity: number) => {
+    setEditingId(productStoreId);
+    setEditQuantity(quantity);
   };
 
   const cancelEditing = () => {
@@ -82,10 +89,33 @@ export default function Inventory() {
     setEditQuantity(0);
   };
 
-  const saveQuantity = () => {
-    // TODO: PATCH /api/product-stores/:id { quantity: editQuantity }
-    console.log('Saving quantity', editingId, editQuantity);
-    setEditingId(null);
+  const saveQuantity = async () => {
+    if (!editingId) return;
+
+    try {
+      const apiInit: ApiInit = {
+        method: HttpMethod.PATCH,
+        body: JSON.stringify({ quantity: editQuantity }),
+      };
+      
+      await apiFetch(`/product-store/${editingId}`, apiInit);
+      
+      // Update local state to reflect the change
+      setStockRecords(prevRecords =>
+        prevRecords.map(product => ({
+          ...product,
+          productStores: product.productStores?.map(ps =>
+            ps.id === editingId ? { ...ps, quantity: editQuantity } : ps
+          ),
+        }))
+      );
+      
+      setEditingId(null);
+      setEditQuantity(0);
+    } catch (error) {
+      console.error('Failed to update quantity:', error);
+      alert('Failed to update quantity. Please try again.');
+    }
   };
 
   return (
@@ -117,7 +147,7 @@ export default function Inventory() {
                     <SelectValue placeholder="Select product" />
                   </SelectTrigger>
                   <SelectContent>
-                    {stockRecords.map(product => (
+                    {Array.isArray(stockRecords) && stockRecords.map(product => (
                       <SelectItem key={product.id} value={product.id}>
                         {product.name}
                       </SelectItem>
@@ -132,9 +162,9 @@ export default function Inventory() {
                     <SelectValue placeholder="Select store" />
                   </SelectTrigger>
                   <SelectContent>
-                    {stockRecords.map(product => (
-                      <SelectItem key={product.productStores?.[0]?.storeId} value={product.productStores?.[0]?.storeId? product.productStores?.[0]?.storeId : ''}>
-                        {product.productStores?.[0]?.store.name}
+                    {Array.isArray(stores) && stores.map(store => (
+                      <SelectItem key={store.id} value={store.id}>
+                        {store.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -167,7 +197,7 @@ export default function Inventory() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem key="all" value="all">All Stores</SelectItem>
-                  {stores.map(store => (
+                  {Array.isArray(stores) && stores.map(store => (
                     <SelectItem key={store.id} value={store.id}>
                       {store.name}
                     </SelectItem>
@@ -214,7 +244,7 @@ export default function Inventory() {
               ) : (
                 stockRecords.map((stock) => (
                     stock.productStores?.map((ps) => (
-                        <TableRow key={stock.id}>
+                        <TableRow key={ps.id}>
                             <TableCell>
                             <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
@@ -227,7 +257,7 @@ export default function Inventory() {
                             <TableCell>{ps.store.name}</TableCell>
                             )}
                             <TableCell>
-                            {editingId === stock.id ? (
+                            {editingId === ps.id ? (
                                 <Input
                                 type="number"
                                 min={0}
@@ -241,9 +271,9 @@ export default function Inventory() {
                             )}
                             </TableCell>
                             <TableCell>
-                            {(editingId === stock.id ? editQuantity : ps.quantity) === 0 ? (
+                            {(editingId === ps.id ? editQuantity : ps.quantity) === 0 ? (
                                 <Badge variant="destructive">Out of Stock</Badge>
-                            ) : (editingId === stock.id ? editQuantity : ps.quantity) <= 10 ? (
+                            ) : (editingId === ps.id ? editQuantity : ps.quantity) <= 10 ? (
                                 <Badge className="bg-yellow-100 text-yellow-800">Low Stock</Badge>
                             ) : (
                                 <Badge variant="secondary">In Stock</Badge>
@@ -253,7 +283,7 @@ export default function Inventory() {
                             {format(stock.updatedAt, 'MMM dd, yyyy')}
                             </TableCell>
                             <TableCell className="text-right">
-                            {editingId === stock.id ? (
+                            {editingId === ps.id ? (
                                 <div className="flex items-center justify-end gap-1">
                                 <Button size="sm" variant="ghost" onClick={saveQuantity}>
                                     <Save className="h-4 w-4" />
@@ -263,7 +293,7 @@ export default function Inventory() {
                                 </Button>
                                 </div>
                             ) : (
-                                <Button size="sm" variant="ghost" onClick={() => startEditing(stock)}>
+                                <Button size="sm" variant="ghost" onClick={() => startEditing(ps.id, ps.quantity)}>
                                 <Pencil className="h-4 w-4" />
                                 </Button>
                             )}

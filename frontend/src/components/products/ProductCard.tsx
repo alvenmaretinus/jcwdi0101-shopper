@@ -1,15 +1,19 @@
+"use client";
 import  Link  from "next/link";
 import { Plus, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductWithDetails } from "@/services/product/getProducts";
 import Image from "next/image";
+import { useCart } from "@/hooks/useCart";
 
 interface ProductCardProps {
   product: ProductWithDetails;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const { addToCart } = useCart();
+  
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -83,6 +87,10 @@ export function ProductCard({ product }: ProductCardProps) {
           <Button
             size="icon"
             disabled={isOutOfStock}
+            onClick={(e) => {
+              e.preventDefault();
+              addToCart(product.id);
+            }}
             className={`h-9 w-9 rounded-full shrink-0 ${
               isOutOfStock 
                 ? "bg-muted text-muted-foreground" 

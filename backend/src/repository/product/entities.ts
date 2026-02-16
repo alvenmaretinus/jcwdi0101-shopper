@@ -38,6 +38,22 @@ export type ProductWhereClause = {
             storeId: string;
         };
     };
+    isSoftDeleted: boolean; // Ensure this is always included to filter out soft-deleted products
+}
+
+export type ProductCategory = {
+    id: string;
+    category: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export type ProductImage = {
+    id: string;
+    url: string;
+    productId: string;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 export type Product = {
@@ -50,6 +66,8 @@ export type Product = {
     weight: number;
     categoryId: string;
     isSoftDeleted: boolean; // Optional field to indicate soft deletion status
+    category?: ProductCategory; // Optional: included when queried with relations
+    productImages?: ProductImage[]; // Optional: included when queried with relations
     // productStores removed from base Product type; use ProductWithStock when store-level data is needed
 }
 

@@ -32,6 +32,10 @@ export interface ProductWithDetails {
     quantity: number;
     storeId: string;
     productId: string;
+    store: {
+      id: string;
+      name: string;
+    };
   }>;
 }
 
