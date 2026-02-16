@@ -13,6 +13,7 @@ export type CreateProductReq = {
     createAt?: Date | string //TODO: Have this be changed to createdAt in future refactors
     updatedAt?: Date | string
     categoryId: string
+    weight?: number
 }
 
 export type UpdateProductReq = {
@@ -22,6 +23,7 @@ export type UpdateProductReq = {
     createAt?: Date | string //TODO: Have this be changed to createdAt in future refactors
     updatedAt?: Date | string
     categoryId?: string
+    weight?: number
 }
 
 export type ProductWhereClause = {
@@ -45,35 +47,11 @@ export type Product = {
     updatedAt: Date;
     price: number;
     createAt: Date; //TODO: Have this be changed to createdAt in future refactors
+    weight: number;
     categoryId: string;
-    category?: ProductCategory;
-    productImages?: ProductImage[];
-    productStores?: {
-        storeId: string;
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        quantity: number;
-        productId: string;
-        store: Store;
-    }[];
+    isSoftDeleted: boolean; // Optional field to indicate soft deletion status
+    // productStores removed from base Product type; use ProductWithStock when store-level data is needed
 }
-
-export type ProductCategory = {
-    id: string;
-    category: string;
-    createdAt: Date;
-    updatedAt: Date;
-}
-
-export type ProductImage = {
-    id: string;
-    url: string;
-    productId: string;
-    createdAt: Date;
-    updatedAt: Date;
-}
-
 
 export type Store = {
     id: string;
@@ -88,38 +66,18 @@ export type Store = {
 }
 
 
-
-
-type x = ({
-    productStores: ({
-        store: {
-            name: string;
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            addressName: string;
-            isDefault: boolean;
-            longitude: number;
-            latitude: number;
-            postCode: string;
-            description: string | null;
-            phone: string;
-            isSoftDeleted: boolean;
-        };
-    } & {
+// Product augmented with computed stock information
+export type ProductWithStock = Product & {
+    // total stock across stores
+    totalStock: number;
+    // per-store stock records
+    productStores: {
+        storeId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        storeId: string;
         quantity: number;
         productId: string;
-    })[];
-} & {
-    name: string;
-    id: string;
-    updatedAt: Date;
-    description: string | null;
-    price: number;
-    createAt: Date;
-    categoryId: string;
-})[]
+        store: Store;
+    }[];
+};

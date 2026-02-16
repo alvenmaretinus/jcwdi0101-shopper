@@ -1,10 +1,12 @@
 import Decimal from "decimal.js";
 
 export type DiscountCreateReq = {
+    name: string;
     percentage?: Decimal;
     amount?: number;
     type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
     
+    isVoucher?: boolean;
     isWithMinimum: boolean;
     minimumPrice?: number;
     
@@ -19,10 +21,12 @@ export type DiscountCreateReq = {
 }
 
 export type DiscountUpdateReq = {
+    name?: string;
     percentage?: Decimal;
     amount?: number;
     type?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
     
+    isVoucher?: boolean;
     isWithMinimum?: boolean;
     minimumPrice?: number;
     
@@ -37,10 +41,12 @@ export type DiscountUpdateReq = {
 }
 
 export type DiscountFilter = {
+    name?: string;
     percentage?: Decimal;
     amount?: number;
     type?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
     
+    isVoucher?: boolean;
     isWithMinimum?: boolean;
     minimumPrice?: number;
     
@@ -56,10 +62,12 @@ export type DiscountFilter = {
 export type  DiscountResponse = {
     id: string;
 
+    name: string | null;
     percentage: Decimal | null;
     amount: number | null;
     type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
     
+    isVoucher: boolean;
     isWithMinimum: boolean;
     minimumPrice: number | null;
 

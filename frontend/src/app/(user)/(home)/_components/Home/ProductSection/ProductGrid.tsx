@@ -1,45 +1,15 @@
 "use client";
 
 import { ProductCard } from "@/app/(user)/_components/ProductCard";
-import { getDistance } from "geolib";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { StoreWithProducts } from "@/types/Store";
 import { StoreProduct } from "@/types/StoreProduct";
+import { getNearestProducts } from "@/services/store/getNearestProducts";
 
-type Props = { inititalStores: StoreWithProducts[]; isDefaultAddress: boolean };
+type Props = { initialProducts: StoreProduct[]; isDefaultAddress: boolean };
 
-export const ProductGrid = ({ inititalStores, isDefaultAddress }: Props) => {
-  const [storesWithProducts, setStoresWithProducts] = useState(inititalStores);
-
-  const nearestProductIds = new Set<string>();
-  const productMap = new Map<string, StoreProduct>();
-  storesWithProducts.forEach((store) => {
-    store.products.forEach((product) => {
-      if (!nearestProductIds.has(product.id)) {
-        nearestProductIds.add(product.id);
-      }
-      const existingProduct = productMap.get(product.id);
-      if (!existingProduct) {
-        productMap.set(product.id, product);
-      } else {
-        const currMaxStock = existingProduct.quantity;
-        productMap.set(product.id, {
-          ...existingProduct,
-          quantity: Math.max(currMaxStock, product.quantity),
-        });
-      }
-    });
-  });
-  const uniqueProducts = Array.from(nearestProductIds)
-    .map((id) => {
-      const product = productMap.get(id);
-      if (!product) {
-        return null;
-      }
-      return product;
-    })
-    .filter((product) => product !== null);
+export const ProductGrid = ({ initialProducts, isDefaultAddress }: Props) => {
+  const [products, setProducts] = useState<StoreProduct[]>(initialProducts);
 
   useEffect(() => {
     if (!isDefaultAddress) {
@@ -49,34 +19,18 @@ export const ProductGrid = ({ inititalStores, isDefaultAddress }: Props) => {
           return;
         }
         navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const newSortedStores = [...storesWithProducts].sort(
-              (storeA, storeB) => {
-                const distanceA = getDistance(
-                  {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                  },
-                  {
-                    latitude: storeA.latitude,
-                    longitude: storeA.longitude,
-                  }
-                );
-                const distanceB = getDistance(
-                  {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                  },
-                  {
-                    latitude: storeB.latitude,
-                    longitude: storeB.longitude,
-                  }
-                );
-                return distanceA - distanceB;
-              }
-            );
-
-            setStoresWithProducts(newSortedStores);
+          async (position) => {
+            try {
+              const products = await getNearestProducts({
+                coords: {
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                },
+              });
+              setProducts(products);
+            } catch (error) {
+              console.error("Failed to fetch stores with location:", error);
+            }
           },
           (error) => {
             console.error("Geolocation error:", error);
@@ -90,7 +44,7 @@ export const ProductGrid = ({ inititalStores, isDefaultAddress }: Props) => {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-      {uniqueProducts.map((product) => (
+      {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}
     </div>

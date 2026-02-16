@@ -1,45 +1,26 @@
 import Link from "next/link";
-import { StoreWithProducts } from "@/types/Store";
 import { headers } from "next/headers";
 import { getDefaultAddressByUserId } from "@/services/user-address/getDefaultAddressByUserId";
-import { getStoresWithProducts } from "@/services/store/getStoresWithProducts";
-import { getDistance } from "geolib";
+import { getNearestProducts } from "@/services/store/getNearestProducts";
 import { ProductGrid } from "./ProductGrid";
 
 export async function ProductSection() {
   const nextHeaders = await headers();
-  const storesWithProducts = await getStoresWithProducts(nextHeaders);
-  let defaultAddress=null
+  /* eslint-disable  @typescript-eslint/no-explicit-any */
+  let defaultAddress: any = null;
   try {
-     defaultAddress = await getDefaultAddressByUserId(nextHeaders);
-  } catch (error) {
-  }
-  let sortedStores = storesWithProducts;
-  if (defaultAddress) {
-    sortedStores = storesWithProducts.sort((storeA, storeB) => {
-      const distanceA = getDistance(
-        {
+    defaultAddress = await getDefaultAddressByUserId(nextHeaders);
+  } catch (error) {}
+
+  const products = await getNearestProducts({
+    headers: nextHeaders,
+    coords: defaultAddress
+      ? {
           latitude: defaultAddress.latitude,
           longitude: defaultAddress.longitude,
-        },
-        {
-          latitude: storeA.latitude,
-          longitude: storeA.longitude,
         }
-      );
-      const distanceB = getDistance(
-        {
-          latitude: defaultAddress.latitude,
-          longitude: defaultAddress.longitude,
-        },
-        {
-          latitude: storeB.latitude,
-          longitude: storeB.longitude,
-        }
-      );
-      return distanceA - distanceB;
-    });
-  }
+      : undefined,
+  });
 
   return (
     <section className="py-12 md:py-16 bg-muted/30">
@@ -62,7 +43,7 @@ export async function ProductSection() {
 
         {/* Products grid */}
         <ProductGrid
-          inititalStores={sortedStores}
+          initialProducts={products}
           isDefaultAddress={!!defaultAddress}
         />
 

@@ -58,13 +58,13 @@ router.get("/", isAuth, async (req: Request, res: Response, next: NextFunction) 
 router.post("/checkout", isAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id as string;
-    const { addressId, paymentType } = req.body;
+    const { addressId, paymentType, voucherIds } = req.body;
 
     if (!userId || !addressId) {
       return res.status(400).json({ success: false, message: "SHIPPING_ADDRESS_REQUIRED" });
     }
 
-    const order = await OrderService.createPendingOrder(userId, addressId, paymentType);
+    const order = await OrderService.createPendingOrder(userId, addressId, paymentType, voucherIds);
     return res.status(200).json({ success: true, data: order, message: "Order created (PAYMENT_PENDING)" });
   } catch (err: any) {
     next(err);
@@ -97,7 +97,7 @@ router.post("/admin/expire-pending", isAuth, isAdmin, async (req: Request, res: 
  * @desc Handle Midtrans payment gateway webhooks
  * @access Public (Midtrans server + signature verification)
  */
-router.post("/webhook/midtrans", async (req: Request, res: Response, next: NextFunction) => {
+router.post("/webhook/midtrans", async (req: Request, res: Response, _next: NextFunction) => {
   try {
     const webhookData = req.body;
     const { MidtransService } = await import("../service/midtrans.service");

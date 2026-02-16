@@ -262,6 +262,7 @@ model Product {
   description String?
   price       Int
   isSoftDeleted Boolean @default(false)
+  weight      Int @default(1)
 
   createAt  DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -338,6 +339,8 @@ model Discount {
   percentage  Decimal? @db.Decimal(5, 2)
   amount      Int?
   type        DiscountType
+
+  isVoucher   Boolean @default(false)
 
   isWithMinimum Boolean @default(false)
   minimumPrice Int?

@@ -6,18 +6,25 @@ import { UpdateStoreSchema } from "../schema/store/UpdateStoreSchema";
 import { DeleteStoreByIdSchema } from "../schema/store/DeleteStoreByIdSchema";
 import { AddEmployeeSchema } from "../schema/store/AddEmployeeSchema";
 import { RemoveEmployeeSchema } from "../schema/store/RemoveEmployeeSchema";
+import { GetNearestProductsSchema } from "../schema/store/GetNearestProductsSchema";
+import { SetDefaultStoreSchema } from "../schema/store/SetDefaultStoreSchema";
+import { isAuth } from "../middleware/isAuth";
+import { isSuperAdmin } from "../middleware/isSuperAdmin";
+import { GetStoresWithEmployeeCountSchema } from "../schema/store/GetStoresWithEmployeeCountSchema";
 
 const router = Router();
 
-// TODO: Use isSuperAdmin for some routes
-
-router.get("/", async (req, res) => {
-  const result = await StoreService.getStoresWithEmployeeCount();
+router.get("/nearest-products", async (req, res) => {
+  const query = GetNearestProductsSchema.parse(req.query);
+  const result = await StoreService.getNearestProducts(query);
   return res.json(result);
 });
 
-router.get("/products", async (req, res) => {
-  const result = await StoreService.getStoresWithProducts();
+router.use(isAuth, isSuperAdmin);
+
+router.get("/", async (req, res) => {
+  const query = GetStoresWithEmployeeCountSchema.parse(req.query);
+  const result = await StoreService.getStoresWithEmployeeCount(query);
   return res.json(result);
 });
 
@@ -45,6 +52,12 @@ router.patch("/:id", async (req, res) => {
     ...req.body,
   });
   const result = await StoreService.updateStore(inputData);
+  return res.json(result);
+});
+
+router.patch("/:id/default", async (req, res) => {
+  const inputData = SetDefaultStoreSchema.parse(req.params);
+  const result = await StoreService.setDefaultStore(inputData);
   return res.json(result);
 });
 

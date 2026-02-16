@@ -6,9 +6,11 @@ import {
 import { Store } from "@/types/Store";
 import { User } from "@/types/User";
 import { toast } from "sonner";
+import { ReadonlyHeaders } from "next/dist/server/web/spec-extension/adapters/headers";
 
 export const getStoreByIdWithEmployees = async (
-  inputData: GetStoreByIdInput
+  inputData: GetStoreByIdInput,
+  headers?: ReadonlyHeaders
 ) => {
   const parseResult = GetStoreByIdSchema.safeParse(inputData);
 
@@ -22,7 +24,7 @@ export const getStoreByIdWithEmployees = async (
 
   const res = await apiFetch<Store & { employees: User[] }>(
     `/stores/${inputData.id}/employees`,
-    { method: "GET" }
+    { method: "GET", headers }
   );
 
   return res;

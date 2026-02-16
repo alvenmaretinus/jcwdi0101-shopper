@@ -5,6 +5,7 @@ import { getDistance } from "geolib";
 import { ShippingCostService } from "./shipping-cost.service";
 import { GetShippingCostInput } from "../schema/shipping-cost/GetShippingCostSchema";
 import type { PrismaClient, Prisma, Store } from "../../prisma/generated/client";
+import { PricingCalculationService } from "./pricing-calculation.service";
 
 type StoreWithDistance = {
   store: Store;
@@ -17,11 +18,14 @@ export class OrderService {
    * @param userId User ID
    * @param addressId Shipping address ID
    * @param paymentType Payment method (BANK_TRANSFER or PAYMENT_GATEWAY)
+   * @param voucherIds Optional array of voucher IDs to apply discounts
+   * @param discountIds Optional array of discount IDs to apply before vouchers
    * @returns Created order
    * @throws BadRequestError if address invalid, cart empty, or no store within 5km can fulfill
    * @note Sets payment deadline based on PAYMENT_DUE_HOURS env variable (default: 1 hour)
+   * @note Discounts are applied first (best percentage vs amount), then vouchers
    */
-  static async createPendingOrder(userId: string, addressId: string, paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY" = "BANK_TRANSFER") {
+  static async createPendingOrder(userId: string, addressId: string, paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY" = "BANK_TRANSFER", voucherIds?: string[], discountIds?: string[]) {
     const address = await prisma.userAddress.findUnique({ where: { id: addressId } });
     if (!address || address.userId !== userId) {
       throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
@@ -115,7 +119,15 @@ export class OrderService {
       console.warn(`[OrderService] Shipping cost service failed for pending order, using fallback: ${e instanceof Error ? e.message : "unknown error"}`);
       shippingCost = Math.ceil(distanceKm * costPerKm);
     }
-    const totalDiscount = 0;
+
+    // Calculate total discount (discounts + vouchers)
+    const totalDiscount = await PricingCalculationService.calculateTotalDiscount(
+      subtotal,
+      discountIds,
+      voucherIds,
+      db
+    );
+
     const grandTotal = subtotal + shippingCost - totalDiscount;
 
     // create pending order snapshot; do NOT decrement stock here

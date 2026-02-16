@@ -10,9 +10,11 @@ import orderRoute from "./order";
 import userAddressRouter from "./user-address";
 import shippingCostRouter from "./shipping-cost";
 import discountRouter from "./discount.route";
+import voucherRouter from "./voucher.route";
 import productCategoryRouter from "./product-category.route";
 import salesReportRouter from "./sales-report.route";
 import stockReportRouter from "./stock-report.route";
+import docsRouter from "./docs.route";
 
 export const appRouter = Router();
 
@@ -26,6 +28,8 @@ appRouter.use(orderRoute);
 appRouter.use(userAddressRouter);
 appRouter.use(shippingCostRouter);
 appRouter.use(discountRouter);
+appRouter.use(voucherRouter);
 appRouter.use(productCategoryRouter);
 appRouter.use(salesReportRouter);
 appRouter.use(stockReportRouter);
+appRouter.use("/docs", docsRouter);

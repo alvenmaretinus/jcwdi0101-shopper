@@ -50,6 +50,7 @@ export function SignupForm() {
         toast.error(firstError || "Invalid input");
         return;
       }
+
       await authClient.signUp.email(
         {
           email,
@@ -58,17 +59,34 @@ export function SignupForm() {
           callbackURL: `${window.location.origin}/login`,
         },
         {
-          onRequest: (ctx) => {
+          onRequest: () => {
             setIsLoading(true);
           },
-          onSuccess: (ctx) => {
+          onSuccess: () => {
             toast.success("Click link in your email and login again.", {
               duration: 5000,
             });
             router.push("/login");
           },
           onError: (ctx) => {
-            toast.error(ctx.error.message);
+            if (
+              ctx.error.code === "USER_ALREADY_EXISTS" ||
+              ctx.error.message.includes("already exists")
+            ) {
+              toast.error(
+                "Account already signed up. If it's not you, try reset your password.",
+                {
+                  duration: 6000,
+                  action: {
+                    label: "Reset Password",
+                    onClick: () =>
+                      router.push(`/forgot-password?email=${email}`),
+                  },
+                }
+              );
+            } else {
+              toast.error(ctx.error.message);
+            }
             setIsLoading(false);
           },
         }

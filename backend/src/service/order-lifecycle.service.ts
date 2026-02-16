@@ -151,8 +151,8 @@ export class OrderLifecycleService {
               const scData = await ShippingCostService.getShippingCost(scInput);
               const option = scData.calculate_reguler?.[0] ?? scData.calculate_instant?.[0] ?? scData.calculate_cargo?.[0];
               newShippingCost = option?.shipping_cost_net ?? newShippingCost;
-            } catch (e) {
-              console.warn(`[OrderLifecycleService] Shipping cost recalculation failed for order ${orderId}, using fallback`);
+            } catch (err) {
+              console.warn(`[OrderLifecycleService] Shipping cost recalculation failed for order ${orderId}, using fallback, error: ${err}`);
             }
 
             // Update store info and recalculated shipping cost
@@ -170,7 +170,7 @@ export class OrderLifecycleService {
 
           // Record product movement for audit trail
           for (const it of items) {
-            const p = productMap[it.productId];
+            
             await tx.productMovement.create({
               data: {
                 quantityChange: -it.quantity,

@@ -1,16 +1,17 @@
 import { Router } from "express";
 import { ShippingCostService } from "../service/shipping-cost.service";
 import { GetShippingCostSchema } from "../schema/shipping-cost/GetShippingCostSchema";
+import { isAuth } from "../middleware/isAuth";
 
 const router = Router();
 
-router.get("/", async (req, res) => {
+router.get("/", isAuth, async (req, res) => {
   const { originPostCode, destinationPostCode, weight, itemValue } = req.query;
   const inputData = GetShippingCostSchema.parse({
     originPostCode,
     destinationPostCode,
-    weight: Number(weight),
-    itemValue: Number(itemValue),
+    weight,
+    itemValue,
   });
   const result = await ShippingCostService.getShippingCost(inputData);
 
