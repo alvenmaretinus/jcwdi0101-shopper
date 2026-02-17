@@ -14,6 +14,7 @@ import { useState , useEffect, useCallback } from 'react';
 import { Product } from '@/types/Product';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
+import { getStores } from '@/services/store/getStores';
 
 
 
@@ -57,18 +58,13 @@ export default function Inventory() {
     if (!isSuperAdmin) return;
     
     const fetchStores = async () => {
-        const apiInit: ApiInit = { method: HttpMethod.GET };
         try {
-            // Add query parameters required by the backend
-            const data = await apiFetch<any>(`/stores?page=1&pageSize=100`, apiInit);
-            console.log('Stores API response:', data);
-            console.log('Stores is array?', Array.isArray(data));
-            console.log('Stores length:', data?.length);
-            // The backend returns array directly
-            setStores(Array.isArray(data) ? data : []);
+            const response = await getStores();
+            console.log('Stores API response:', response);
+            // The backend returns { data: [...], meta: {...} }
+            setStores(response.data || []);
         } catch (error) {
             console.error('Failed to fetch stores:', error);
-            console.error('This might be an authentication issue - /stores requires login');
             setStores([]);
         }
     };

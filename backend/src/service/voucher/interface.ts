@@ -8,5 +8,7 @@ export interface Service {
     getVoucherById(id: string): Promise<VoucherResponse | null>;
     getVoucherByCode(code: string): Promise<VoucherResponse | null>;
     getVouchersByIds(ids: string[]): Promise<VoucherResponse[]>;
+    getVouchersByCodes(codes: string[]): Promise<VoucherResponse[]>;
     deleteVoucher(id: string): Promise<void>;
+    calculateVoucherDiscount(voucherCodes: string[], subtotal: number): Promise<number>;
 }

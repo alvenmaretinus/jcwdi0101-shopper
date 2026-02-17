@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const CalculateVoucherDiscountSchema = z.object({
-    voucherIds: z.array(z.uuid("Invalid voucher ID")).min(1, "At least one voucher ID is required"),
+    voucherCodes: z.array(z.string().min(1, "Invalid voucher code")).min(1, "At least one voucher code is required"),
     subtotal: z.number().int().min(0, "Subtotal must be at least 0"),
 });
 

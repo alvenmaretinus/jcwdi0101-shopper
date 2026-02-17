@@ -147,6 +147,7 @@ export class PrismaVoucherRepository implements VoucherRepo {
         if (isWithMinimum !== undefined) discountFilter.isWithMinimum = isWithMinimum;
         if (minimumPrice !== undefined) discountFilter.minimumPrice = minimumPrice;
         discountFilter.isVoucher = true;
+        discountFilter.isSoftDeleted = false;
 
         if (activeOnDate) {
             const andConditions: Prisma.DiscountWhereInput[] = this.buildActiveDateFilter(activeOnDate);
@@ -162,6 +163,11 @@ export class PrismaVoucherRepository implements VoucherRepo {
 
     async getVouchersByFilter(filter: Partial<VoucherFilter>): Promise<VoucherResponse[]> {
         const formattedFilter: Prisma.VoucherWhereInput = this.formatFilter(filter);
+        formattedFilter.isSoftDeleted = false;
+        formattedFilter.discount = {
+            ...((formattedFilter.discount as any) || {}),
+            isSoftDeleted: false,
+        };
         const vouchers = await this.prisma.voucher.findMany({
             where: formattedFilter,
             include: {
@@ -172,8 +178,14 @@ export class PrismaVoucherRepository implements VoucherRepo {
     }
 
     async getVoucherById(id: string): Promise<VoucherResponse | null> {
-        const voucher = await this.prisma.voucher.findUnique({
-            where: { id },
+        const voucher = await this.prisma.voucher.findFirst({
+            where: { 
+                id,
+                isSoftDeleted: false,
+                discount: {
+                    isSoftDeleted: false,
+                },
+            },
             include: {
                 discount: true,
             },
@@ -182,8 +194,14 @@ export class PrismaVoucherRepository implements VoucherRepo {
     }
 
     async getVoucherByCode(code: string): Promise<VoucherResponse | null> {
-        const voucher = await this.prisma.voucher.findUnique({
-            where: { code },
+        const voucher = await this.prisma.voucher.findFirst({
+            where: { 
+                code,
+                isSoftDeleted: false,
+                discount: {
+                    isSoftDeleted: false,
+                },
+            },
             include: {
                 discount: true,
             },
@@ -195,6 +213,26 @@ export class PrismaVoucherRepository implements VoucherRepo {
         const vouchers = await this.prisma.voucher.findMany({
             where: { 
                 id: { in: ids },
+                isSoftDeleted: false,
+                discount: {
+                    isSoftDeleted: false,
+                },
+            },
+            include: {
+                discount: true,
+            },
+        });
+        return vouchers as VoucherResponse[];
+    }
+
+    async getVouchersByCodes(codes: string[]): Promise<VoucherResponse[]> {
+        const vouchers = await this.prisma.voucher.findMany({
+            where: { 
+                code: { in: codes },
+                isSoftDeleted: false,
+                discount: {
+                    isSoftDeleted: false,
+                },
             },
             include: {
                 discount: true,
@@ -204,21 +242,23 @@ export class PrismaVoucherRepository implements VoucherRepo {
     }
 
     async deleteVoucher(id: string): Promise<void> {
-        // Delete both Voucher and Discount in a transaction
+        // Soft delete both Voucher and Discount in a transaction
         await this.prisma.$transaction(async (tx) => {
             // Get the voucher to find the discount
             const voucher = await tx.voucher.findUniqueOrThrow({
                 where: { id },
             });
 
-            // Delete the voucher first (foreign key constraint)
-            await tx.voucher.delete({
+            // Soft delete the voucher
+            await tx.voucher.update({
                 where: { id },
+                data: { isSoftDeleted: true },
             });
 
-            // Then delete the discount
-            await tx.discount.delete({
+            // Soft delete the discount
+            await tx.discount.update({
                 where: { id: voucher.discountId },
+                data: { isSoftDeleted: true },
             });
         });
     }

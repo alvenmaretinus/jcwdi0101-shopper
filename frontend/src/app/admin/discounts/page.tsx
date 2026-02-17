@@ -9,13 +9,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Search, Percent, Tag, Gift, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Percent, Tag, Gift, Loader2, Copy, Ticket, Truck, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Discount } from '@/types/Discount';
+import type { Voucher } from '@/types/Voucher';
 import { getDiscounts, createDiscount, updateDiscount, deleteDiscount, CreateDiscountInput, UpdateDiscountInput } from '@/services/discount';
+import { getVouchers, createVoucher, deleteVoucher, CreateVoucherInput } from '@/services/voucher';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const discountTypeIcons = {
   PERCENTAGE: Percent,
@@ -27,6 +30,18 @@ const discountTypeLabels = {
   PERCENTAGE: 'Percentage',
   FIXED_AMOUNT: 'Fixed Amount',
   QUANTITY: 'Buy X Get Y',
+};
+
+const voucherTypeIcons = {
+  REFERRAL: Users,
+  TRANSACTIONAL: Ticket,
+  FREEDELIVERY: Truck,
+};
+
+const voucherTypeLabels = {
+  REFERRAL: 'Referral',
+  TRANSACTIONAL: 'Transactional',
+  FREEDELIVERY: 'Free Delivery',
 };
 
 export default function Discounts() {
@@ -43,6 +58,13 @@ export default function Discounts() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWithMinimumChecked, setIsWithMinimumChecked] = useState<boolean>(editingDiscount?.isWithMinimum ?? false);
+  
+  // Voucher states
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [voucherSearch, setVoucherSearch] = useState('');
+  const [voucherTypeFilter, setVoucherTypeFilter] = useState<string>('all');
+  const [isVoucherDialogOpen, setIsVoucherDialogOpen] = useState(false);
+  const [isVouchersLoading, setIsVouchersLoading] = useState(false);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -64,6 +86,11 @@ export default function Discounts() {
     fetchDiscounts();
   }, [typeFilter]);
 
+  // Fetch vouchers on mount and when filters change
+  useEffect(() => {
+    fetchVouchers();
+  }, [voucherTypeFilter]);
+
   const fetchDiscounts = async () => {
     setIsLoading(true);
     try {
@@ -78,6 +105,20 @@ export default function Discounts() {
     }
   };
 
+  const fetchVouchers = async () => {
+    setIsVouchersLoading(true);
+    try {
+      const data = await getVouchers({ 
+        voucherType: voucherTypeFilter !== 'all' ? voucherTypeFilter : undefined 
+      });
+      setVouchers(data);
+    } catch (error) {
+      toast.error('Failed to load vouchers');
+    } finally {
+      setIsVouchersLoading(false);
+    }
+  };
+
   const filteredDiscounts: Discount[] = discounts.filter((discount: Discount) => {
     const matchesSearch = 
       discount.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -86,6 +127,23 @@ export default function Discounts() {
       discount.type.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
+
+  const filteredVouchers: Voucher[] = vouchers.filter((voucher: Voucher) => {
+    const matchesSearch = 
+      voucher.code.toLowerCase().includes(voucherSearch.toLowerCase()) ||
+      voucher.discount.name?.toLowerCase().includes(voucherSearch.toLowerCase()) ||
+      voucher.voucherType.toLowerCase().includes(voucherSearch.toLowerCase());
+    return matchesSearch;
+  });
+
+  const getDiscountForVoucher = (voucher: Voucher): Discount | undefined => {
+    return voucher.discount;
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success('Voucher code copied to clipboard');
+  };
 
   const handleEdit = (discount: Discount) => {
     setEditingDiscount(discount);
@@ -170,6 +228,66 @@ export default function Discounts() {
     }
   };
 
+  const handleVoucherDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this voucher?')) {
+      return;
+    }
+
+    try {
+      await deleteVoucher(id);
+      await fetchVouchers();
+    } catch (error) {
+      // Error toast is handled in the service
+    }
+  };
+
+  const handleVoucherSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      const type = formData.get('voucherDiscountType') as 'PERCENTAGE' | 'FIXED_AMOUNT';
+      const endsAt = formData.get('voucherEndsAt') as string;
+      const startsAt = formData.get('voucherStartsAt') as string;
+      
+      const voucherData: CreateVoucherInput = {
+        code: (formData.get('voucherCode') as string).toUpperCase(),
+        name: formData.get('voucherName') as string,
+        type,
+        voucherType: formData.get('voucherType') as 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY',
+        isWithMinimum: formData.get('voucherIsWithMinimum') === 'true',
+      };
+
+      // Add type-specific fields
+      if (type === 'PERCENTAGE') {
+        voucherData.percentage = Number(formData.get('voucherValue'));
+      } else if (type === 'FIXED_AMOUNT') {
+        voucherData.amount = Number(formData.get('voucherValue'));
+      }
+
+      if (formData.get('voucherMinimumPrice')) {
+        voucherData.minimumPrice = Number(formData.get('voucherMinimumPrice'));
+      }
+
+      if (startsAt) {
+        voucherData.startsAt = new Date(startsAt);
+      }
+
+      if (endsAt) {
+        voucherData.endsAt = new Date(endsAt);
+      }
+
+      await createVoucher(voucherData);
+      await fetchVouchers();
+      setIsVoucherDialogOpen(false);
+    } catch (error) {
+      // Error toast is handled in the service
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const getDiscountValue = (discount: Discount) => {
     switch (discount.type) {
       case 'PERCENTAGE':
@@ -188,16 +306,52 @@ export default function Discounts() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Discounts</h1>
-          <p className="text-muted-foreground">Manage promotions and discounts</p>
+          <p className="text-muted-foreground">Manage promotions, voucher codes and discounts</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleCreate}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Discount
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+      </div>
+
+      <Tabs defaultValue="discounts">
+        <TabsList>
+          <TabsTrigger value="discounts">Discounts</TabsTrigger>
+          <TabsTrigger value="vouchers">Vouchers</TabsTrigger>
+        </TabsList>
+
+        
+      
+      <TabsContent value="discounts" className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 flex-1">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search discounts..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="PERCENTAGE">Percentage</SelectItem>
+                  <SelectItem value="FIXED_AMOUNT">Fixed Amount</SelectItem>
+                  <SelectItem value="QUANTITY">Buy X Get Y</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => { setEditingDiscount(null); setIsDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Discount
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>{editingDiscount ? 'Edit Discount' : 'Create New Discount'}</DialogTitle>
               <DialogDescription>
@@ -334,34 +488,10 @@ export default function Discounts() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search discounts..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="PERCENTAGE">Percentage</SelectItem>
-                <SelectItem value="FIXED_AMOUNT">Fixed Amount</SelectItem>
-                <SelectItem value="QUANTITY">Buy X Get Y</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardHeader>
         <CardContent>
+          
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -437,6 +567,187 @@ export default function Discounts() {
           )}
         </CardContent>
       </Card>
+      </TabsContent>
+
+
+      <TabsContent value="vouchers" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search voucher codes..."
+                      value={voucherSearch}
+                      onChange={(e) => setVoucherSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select value={voucherTypeFilter} onValueChange={setVoucherTypeFilter}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Filter by type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="REFERRAL">Referral</SelectItem>
+                      <SelectItem value="TRANSACTIONAL">Transactional</SelectItem>
+                      <SelectItem value="FREEDELIVERY">Free Delivery</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Dialog open={isVoucherDialogOpen} onOpenChange={setIsVoucherDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => setIsVoucherDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Voucher
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Create Voucher</DialogTitle>
+                      <DialogDescription>Generate a voucher code with a new discount</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleVoucherSubmit} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="voucherCode">Voucher Code</Label>
+                        <Input id="voucherCode" name="voucherCode" placeholder="e.g. SUMMER2024" className="uppercase" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="voucherName">Discount Name</Label>
+                        <Input id="voucherName" name="voucherName" placeholder="e.g. Summer Sale" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="voucherType">Voucher Type</Label>
+                        <Select name="voucherType" required>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select voucher type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="REFERRAL">Referral</SelectItem>
+                            <SelectItem value="TRANSACTIONAL">Transactional</SelectItem>
+                            <SelectItem value="FREEDELIVERY">Free Delivery</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="voucherDiscountType">Discount Type</Label>
+                        <Select name="voucherDiscountType" required>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select discount type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PERCENTAGE">Percentage</SelectItem>
+                            <SelectItem value="FIXED_AMOUNT">Fixed Amount</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="voucherValue">Discount Value</Label>
+                        <Input id="voucherValue" name="voucherValue" type="number" step="0.01" placeholder="e.g. 10" required />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" id="voucherIsWithMinimum" name="voucherIsWithMinimum" value="true" className="rounded" />
+                          <Label htmlFor="voucherIsWithMinimum">Requires minimum purchase</Label>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="voucherMinimumPrice">Minimum Purchase (Rp)</Label>
+                        <Input id="voucherMinimumPrice" name="voucherMinimumPrice" type="number" placeholder="e.g. 100000" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="voucherStartsAt">Start Date (Optional)</Label>
+                        <Input id="voucherStartsAt" name="voucherStartsAt" type="datetime-local" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="voucherEndsAt">End Date (Optional)</Label>
+                        <Input id="voucherEndsAt" name="voucherEndsAt" type="datetime-local" />
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setIsVoucherDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+                        <Button type="submit" disabled={isSubmitting}>
+                          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                          Create Voucher
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isVouchersLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredVouchers.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No vouchers found
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Linked Discount</TableHead>
+                      <TableHead>Value</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredVouchers.map((voucher) => {
+                      const VTypeIcon = voucherTypeIcons[voucher.voucherType];
+                      const linkedDiscount = getDiscountForVoucher(voucher);
+                      return (
+                        <TableRow key={voucher.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <code className="bg-muted px-2 py-0.5 rounded text-sm font-mono">{voucher.code}</code>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyCode(voucher.code)}>
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <VTypeIcon className="h-4 w-4 text-muted-foreground" />
+                            <Badge variant="outline">{voucherTypeLabels[voucher.voucherType]}</Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{linkedDiscount?.name ?? '-'}</TableCell>
+                        <TableCell>{linkedDiscount ? getDiscountValue(linkedDiscount) : '-'}</TableCell>
+                        <TableCell>
+                          {voucher.isRedeemed ? (
+                            <Badge variant="secondary">Redeemed</Badge>
+                          ) : (
+                            <Badge className="bg-green-100 text-green-800">Available</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{format(voucher.createdAt, 'MMM dd, yyyy')}</TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleVoucherDelete(voucher.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs> 
     </div>
   );
 }

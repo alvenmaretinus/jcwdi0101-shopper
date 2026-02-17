@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/apiFetch";
+import { apiFetch, HttpMethod } from "@/lib/apiFetch";
 import { Store } from "@/types/Store";
 import {
   GetStoresWithEmployeeCountInput,
@@ -38,7 +38,7 @@ export const getStores = async ({
   const res = await apiFetch<GetStoresWithEmployeeCountResponse>(
     `/stores?${queryParams}`,
     {
-      method: "GET",
+      method: HttpMethod.GET,
       headers,
     }
   );

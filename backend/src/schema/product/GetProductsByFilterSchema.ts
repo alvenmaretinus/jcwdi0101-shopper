@@ -16,7 +16,7 @@ export const FilterSchema = z.object({
 export type FilterInput = z.infer<typeof FilterSchema>;
 
 // Accept flat query params (as produced by req.query) and coerce them,
-// then transform into the expected { filter, withStock } shape.
+// then transform into the expected { filter, withStock, pagination } shape.
 export const GetProductsByFilterSchema = z
   .object({
     id: idField,
@@ -34,6 +34,8 @@ export const GetProductsByFilterSchema = z
       }, z.boolean())
       .optional()
       .default(false),
+    page: z.coerce.number().int().min(1).optional().default(1),
+    limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   })
   .transform((raw) => ({
     filter: {
@@ -43,6 +45,10 @@ export const GetProductsByFilterSchema = z
       storeId: raw.storeId,
     },
     withStock: raw.withStock ?? false,
+    pagination: {
+      page: raw.page,
+      limit: raw.limit,
+    },
   }));
 
 export type GetProductsByFilterInput = z.infer<typeof GetProductsByFilterSchema>;

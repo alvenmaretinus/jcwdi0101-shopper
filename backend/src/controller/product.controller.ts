@@ -17,7 +17,7 @@ const router = Router();
 router.get("/",  async (req, res) => {
     const inputData: GetProductsByFilterInput = GetProductsByFilterSchema.parse(req.query);
     const filter: FilterInput = inputData.filter;
-    const result = await productService.getProductsByFilterWithOptionalStock(filter, inputData.withStock);
+    const result = await productService.getProductsByFilterWithOptionalStock(filter, inputData.withStock, inputData.pagination);
     return res.json(result);    
 });
 
@@ -25,7 +25,8 @@ router.get("/",  async (req, res) => {
 router.get("/:id", async (req, res) => {
     const inputData: GetProductByIdInput = GetProductByIdSchema.parse(req.params);
     const result = await productService.getProductsByFilterWithOptionalStock({ id: inputData.id }, false);
-    return res.json(result);
+    // For single product lookup, return just the data array (without pagination metadata)
+    return res.json(result.data);
 });
 
 router.post("/", isAuth, isSuperAdmin, async (req, res) => {

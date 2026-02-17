@@ -1,4 +1,4 @@
-import { ProductsRepo } from './interface';
+import { ProductsRepo, PaginationParams, PaginatedResponse } from './interface';
 import { PrismaClient } from '../../../prisma/generated/client';
 import { Product, CreateProductReq, GetProductReq, ProductWhereClause, UpdateProductReq, ProductWithStock } from './entities';
 import { ProductCreateInput} from '../../../prisma/generated/models';
@@ -13,39 +13,73 @@ export class PrismaRepository implements ProductsRepo {
         this.prisma = prisma;
     }
 
-    async getProductsByFilter(filter: Partial<GetProductReq>): Promise<Product[]> {
+    async getProductsByFilter(filter: Partial<GetProductReq>, pagination?: PaginationParams): Promise<PaginatedResponse<Product>> {
         const where = this.buildWhereClause(filter);
-        const products = await this.prisma.product.findMany({
-            where,
-            include: {
-                category: true,
-                productImages: true,
+        
+        const skip = pagination ? (pagination.page - 1) * pagination.limit : 0;
+        const take = pagination ? pagination.limit : undefined;
+
+        const [products, total] = await Promise.all([
+            this.prisma.product.findMany({
+                where,
+                include: {
+                    category: true,
+                    productImages: true,
+                },
+                skip,
+                take,
+            }),
+            this.prisma.product.count({ where }),
+        ]);
+
+        return {
+            data: toDomainModels(products),
+            meta: {
+                page: pagination?.page ?? 1,
+                limit: pagination?.limit ?? total,
+                total,
+                totalPages: pagination ? Math.ceil(total / pagination.limit) : 1,
             },
-        });
-        return toDomainModels(products);
+        };
     }
 
-    async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<ProductWithStock[]> {
+    async getProductsByFilterWithStock(filter: Partial<GetProductReq>, pagination?: PaginationParams): Promise<PaginatedResponse<ProductWithStock>> {
         const where = this.buildWhereClause(filter);
         
         // Build productStores filter - only include stores matching storeId if provided
         const productStoresWhere = filter.storeId ? { storeId: filter.storeId } : {};
         
-        const products = await this.prisma.product.findMany({
-            where,
-            include: {
-                category: true,
-                productImages: true,
-                productStores: {
-                    where: productStoresWhere,
-                    include: {
-                        store: true,
+        const skip = pagination ? (pagination.page - 1) * pagination.limit : 0;
+        const take = pagination ? pagination.limit : undefined;
+
+        const [products, total] = await Promise.all([
+            this.prisma.product.findMany({
+                where,
+                include: {
+                    category: true,
+                    productImages: true,
+                    productStores: {
+                        where: productStoresWhere,
+                        include: {
+                            store: true,
+                        },
                     },
                 },
-            },
-        });
+                skip,
+                take,
+            }),
+            this.prisma.product.count({ where }),
+        ]);
         
-        return toDomainModelsWithStock(products);
+        return {
+            data: toDomainModelsWithStock(products),
+            meta: {
+                page: pagination?.page ?? 1,
+                limit: pagination?.limit ?? total,
+                total,
+                totalPages: pagination ? Math.ceil(total / pagination.limit) : 1,
+            },
+        };
     }
 
     private buildWhereClause(filter: Partial<GetProductReq>): ProductWhereClause {

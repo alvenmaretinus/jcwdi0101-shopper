@@ -58,6 +58,14 @@ export class VoucherService implements Service {
         return this.repo.getVouchersByIds(ids);
     }
 
+    /**
+     * Get multiple vouchers by their codes.
+     * Used for checkout to validate and apply voucher discounts.
+     */
+    async getVouchersByCodes(codes: string[]): Promise<VoucherResponse[]> {
+        return this.repo.getVouchersByCodes(codes);
+    }
+
     async deleteVoucher(id: string): Promise<void> {
         return this.repo.deleteVoucher(id);
     }
@@ -67,16 +75,16 @@ export class VoucherService implements Service {
      * Vouchers are ranked by highest amount first (business requirement).
      * Only applicable vouchers (meeting minimum price requirement) are applied.
      * 
-     * @param voucherIds Array of voucher IDs to apply
+     * @param voucherCodes Array of voucher codes to apply
      * @param subtotal Order subtotal amount
      * @returns Total discount amount from all applicable vouchers
      */
-    async calculateVoucherDiscount(voucherIds: string[], subtotal: number): Promise<number> {
-        if (!voucherIds || voucherIds.length === 0) {
+    async calculateVoucherDiscount(voucherCodes: string[], subtotal: number): Promise<number> {
+        if (!voucherCodes || voucherCodes.length === 0) {
             return 0;
         }
 
-        const vouchers = await this.getVouchersByIds(voucherIds);
+        const vouchers = await this.getVouchersByCodes(voucherCodes);
 
         // Filter out vouchers that don't meet minimum price requirement
         const applicableVouchers = vouchers.filter(v => {

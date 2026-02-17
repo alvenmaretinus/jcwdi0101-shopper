@@ -36,7 +36,8 @@ export class PostgresRepository implements UsersRepo {
 
   async getUsersByFilter(filter: Partial<UserReq>): Promise<User[]> {
     const users = await this.prisma.user.findMany({
-      where: filter,
+      where: { ...filter }, // Exclude referrals from filter to avoid issues with array fields
+      include: { referrals: true }, // Include referrals in the result for stats
     });
     return toDomainModels(users);
   }

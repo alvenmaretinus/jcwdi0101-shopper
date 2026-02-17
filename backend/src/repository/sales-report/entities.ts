@@ -9,6 +9,8 @@ export type SalesReportEntity = {
     product_price: number;
     quantity: number;
     total_price: number;
+    voucher_codes: string[];
+    discount_names: string[];
 }
 
 // This DTO is exclusively for transferring filter parameters to the repository layer
@@ -59,6 +61,8 @@ export type OrderItemSalesReportEntity = ({
     grandTotal: number;
     status: OrderStatus;
     paymentType: OrderPaymentType;
+    voucherCodes: string[];
+    discountNames: string[];
     createdAt: Date;
     updatedAt: Date;
     paidAt: Date | null;

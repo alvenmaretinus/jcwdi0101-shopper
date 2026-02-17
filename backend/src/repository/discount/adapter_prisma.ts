@@ -22,6 +22,7 @@ export class PrismaRepository implements DiscountRepo {
         );
         return discount as DiscountResponse;
     }
+    
     async updateDiscount(id: string, data: Partial<DiscountUpdateReq>): Promise<DiscountResponse> {
          const updateData = {
             ...data,
@@ -106,6 +107,7 @@ export class PrismaRepository implements DiscountRepo {
      */
     async getDiscountsByFilter(filter: Partial<DiscountFilter>): Promise<DiscountResponse[]> {
         const formattedFilter: Prisma.DiscountWhereInput = this.formatFilter(filter);
+        formattedFilter.isSoftDeleted = false;
         const discounts = await this.prisma.discount.findMany({
             where: formattedFilter,
         });
@@ -113,15 +115,20 @@ export class PrismaRepository implements DiscountRepo {
     }
     
     async getDiscountById(id: string): Promise<DiscountResponse | null> {
-        const discount = await this.prisma.discount.findUnique({
-            where: { id },
+        const discount = await this.prisma.discount.findFirst({
+            where: { 
+                id,
+                isSoftDeleted: false,
+            },
         });
         return discount as DiscountResponse | null;
     }
 
     async deleteDiscount(id: string): Promise<void> {
-        await this.prisma.discount.delete({
+        // Soft delete
+        await this.prisma.discount.update({
             where: { id },
+            data: { isSoftDeleted: true },
         });
     } 
 }

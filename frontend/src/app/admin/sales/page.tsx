@@ -20,6 +20,8 @@ interface SalesReportEntity {
   product_price: number;
   quantity: number;
   total_price: number;
+  voucher_codes: string[];
+  discount_names: string[];
 }
 
 const months = [
@@ -177,6 +179,8 @@ export default function SalesReport() {
                   <TableHead>Order ID</TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Discounts</TableHead>
+                  <TableHead>Vouchers</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
                   <TableHead className="text-right">Total</TableHead>
@@ -192,6 +196,32 @@ export default function SalesReport() {
                     <TableCell className="font-mono text-xs">{record.order_id}</TableCell>
                     <TableCell className="font-medium">{record.product_name}</TableCell>
                     <TableCell>{record.category_name}</TableCell>
+                    <TableCell>
+                      {record.discount_names.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {record.discount_names.map((discount, idx) => (
+                            <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                              {discount}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {record.voucher_codes.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {record.voucher_codes.map((voucher, idx) => (
+                            <span key={idx} className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded font-mono">
+                              {voucher}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">Rp {record.product_price.toLocaleString('id-ID')}</TableCell>
                     <TableCell className="text-right">{record.quantity}</TableCell>
                     <TableCell className="text-right font-medium">Rp {record.total_price.toLocaleString('id-ID')}</TableCell>

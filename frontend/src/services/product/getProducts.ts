@@ -45,6 +45,18 @@ export interface GetProductsParams {
   categoryId?: string;
   storeId?: string;
   withStock?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface GetProductsResponse {
+  data: ProductWithDetails[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export const getProducts = async (
@@ -60,11 +72,17 @@ export const getProducts = async (
   if (params?.withStock !== undefined) {
     queryParams.append("withStock", params.withStock.toString());
   }
+  if (params?.page !== undefined) {
+    queryParams.append("page", params.page.toString());
+  }
+  if (params?.limit !== undefined) {
+    queryParams.append("limit", params.limit.toString());
+  }
 
   const queryString = queryParams.toString();
   const url = queryString ? `/product?${queryString}` : "/product";
 
-  const res = await apiFetch<ProductWithDetails[]>(url, {
+  const res = await apiFetch<GetProductsResponse>(url, {
     method: HttpMethod.GET,
     headers,
   });
