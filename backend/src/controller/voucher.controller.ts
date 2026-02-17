@@ -5,6 +5,8 @@ import { VoucherService } from '../service/voucher/voucher.service';
 import { 
     GetVoucherByIdInput, 
     GetVoucherByIdSchema, 
+    GetVoucherByCodeInput,
+    GetVoucherByCodeSchema,
     GetVouchersByFilterInput, 
     GetVouchersByFilterSchema, 
     CreateVoucherInput, 
@@ -59,6 +61,17 @@ router.delete("/vouchers/:id", isAuth, isSuperAdmin, async (req, res) => {
     const inputData: DeleteVoucherByIdInput = DeleteVoucherByIdSchema.parse(req.params);
     await voucherService.deleteVoucher(inputData.id);
     return res.status(204).send();
+});
+
+// Get voucher by code - public endpoint for users to apply vouchers
+// MUST be before the /:id route to avoid conflicts
+router.get("/vouchers/code/:code", async (req, res) => {
+    const inputData: GetVoucherByCodeInput = GetVoucherByCodeSchema.parse(req.params);
+    const voucher = await voucherService.getVoucherByCode(inputData.code);
+    if (!voucher) {
+        return res.status(404).json({ message: "Voucher not found" });
+    }
+    return res.json(voucher);
 });
 
 // Anyone (even non-logged in users) can view voucher details

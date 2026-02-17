@@ -32,6 +32,7 @@ export class PrismaVoucherRepository implements VoucherRepo {
             // Then create the voucher linking to the discount
             const voucher = await tx.voucher.create({
                 data: {
+                    code: data.code,
                     discountId: discount.id,
                     voucherType: data.voucherType as VoucherType,
                 },
@@ -73,10 +74,13 @@ export class PrismaVoucherRepository implements VoucherRepo {
                 });
             }
 
-            // Update the voucher if voucherType is provided
+            // Update the voucher if voucherType or code is provided
             const voucherUpdateData: any = {};
             if (data.voucherType !== undefined) {
                 voucherUpdateData.voucherType = data.voucherType as VoucherType;
+            }
+            if (data.code !== undefined) {
+                voucherUpdateData.code = data.code;
             }
 
             const voucher = await tx.voucher.update({
@@ -170,6 +174,16 @@ export class PrismaVoucherRepository implements VoucherRepo {
     async getVoucherById(id: string): Promise<VoucherResponse | null> {
         const voucher = await this.prisma.voucher.findUnique({
             where: { id },
+            include: {
+                discount: true,
+            },
+        });
+        return voucher as VoucherResponse | null;
+    }
+
+    async getVoucherByCode(code: string): Promise<VoucherResponse | null> {
+        const voucher = await this.prisma.voucher.findUnique({
+            where: { code },
             include: {
                 discount: true,
             },

@@ -316,6 +316,7 @@ model ProductStore {
 // TODO: When business wants to implement vouchers, use this model.
 model Voucher {
   id        String  @id @default(uuid())
+  code      String  @unique
   discountId String
   voucherType VoucherType
   discount   Discount @relation(fields: [discountId], references: [id])

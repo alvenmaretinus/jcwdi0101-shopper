@@ -1,6 +1,7 @@
 import Decimal from "decimal.js";
 
 export type VoucherCreateReq = {
+    code: string;
     name: string;
     percentage?: Decimal;
     amount?: number;
@@ -13,6 +14,7 @@ export type VoucherCreateReq = {
 }
 
 export type VoucherUpdateReq = {
+    code?: string;
     name?: string;
     percentage?: Decimal;
     amount?: number;
@@ -25,6 +27,7 @@ export type VoucherUpdateReq = {
 }
 
 export type VoucherFilter = {
+    code?: string;
     name?: string;
     percentage?: Decimal;
     amount?: number;
@@ -38,6 +41,7 @@ export type VoucherFilter = {
 
 export type VoucherResponse = {
     id: string;
+    code: string;
     discountId: string;
     voucherType: 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY';
     isRedeemed: boolean;

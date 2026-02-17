@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const CreateVoucherSchema = z.strictObject({
+    code: z.string().min(3, "Code must be at least 3 characters").max(50, "Code must be at most 50 characters").regex(/^[A-Z0-9_-]+$/, "Code must contain only uppercase letters, numbers, hyphens, and underscores"),
     name: z.string().min(1, "Name is required"),
     percentage: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid decimal format").transform(val => parseFloat(val)).pipe(z.number().min(0).max(100)).optional(),
     amount: z.number().int().min(0, "Amount must be at least 0").optional(),

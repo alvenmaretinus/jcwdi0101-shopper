@@ -46,6 +46,10 @@ export class VoucherService implements Service {
         return this.repo.getVoucherById(id);
     }
 
+    async getVoucherByCode(code: string): Promise<VoucherResponse | null> {
+        return this.repo.getVoucherByCode(code);
+    }
+
     /**
      * Get multiple vouchers by their IDs.
      * Used for checkout to validate and apply voucher discounts.
