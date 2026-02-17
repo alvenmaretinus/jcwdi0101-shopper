@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { getMonth, getYear } from 'date-fns';
 import { Search } from 'lucide-react';
+import { authClient } from '@/lib/authClient';
+import { getUserByEmail } from '@/services/user/getUserByEmail';
 
 interface SalesReportEntity {
   number: number;
@@ -29,15 +31,12 @@ const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 
 export default function SalesReport() {
-  const user = {
-    role: 'SUPERADMIN', // Change to 'ADMIN' to test non-superadmin view
-    storeId: 'store-123',
-  };
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const { data } = authClient.useSession();
+  const sessionUser = data?.user;
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [userStoreId, setUserStoreId] = useState<string>('');
 
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(
-    isSuperAdmin ? 'all' : user?.storeId || ''
-  );
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>(String(getMonth(new Date())));
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -45,6 +44,24 @@ export default function SalesReport() {
   const [allSalesRecords, setAllSalesRecords] = useState<SalesReportEntity[]>([]);
   const [stores, setStores] = useState<{ id: string; name: string }[]>([]);
   const [categories, setCategories] = useState<{ id: string; category: string }[]>([]);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (sessionUser) {
+        const userData = await getUserByEmail(sessionUser.email);
+        if (userData?.role === 'SUPERADMIN') {
+          setIsSuperAdmin(true);
+        }
+        if (userData?.storeId) {
+          setUserStoreId(userData.storeId);
+          if (userData.role !== 'SUPERADMIN') {
+            setSelectedStoreId(userData.storeId);
+          }
+        }
+      }
+    };
+    fetchUserRole();
+  }, [sessionUser]);
 
   useEffect(() => {
     const fetchStoresAndCategories = async () => {

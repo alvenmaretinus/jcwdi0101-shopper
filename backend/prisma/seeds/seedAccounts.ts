@@ -58,6 +58,7 @@ export async function seedAccounts() {
       email: "admin@example.com",
       emailVerified: true,
       role: UserRole.ADMIN,
+      storeId: null, // Admin doesn't belong to a specific store
     },
   });
   console.log(`Created admin: ${admin.email}`);

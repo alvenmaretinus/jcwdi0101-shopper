@@ -4,21 +4,37 @@ import { useState, useEffect, useCallback } from 'react';
 import ProductForm from './_components/_product-form/product-form';
 import ProductsCard from './_components/_products-card/products-card';
 import { apiFetch, ApiInit, HttpMethod } from '@/lib/apiFetch';
+import { authClient } from '@/lib/authClient';
+import { getUserByEmail } from '@/services/user/getUserByEmail';
 
 export default function Products() {
-  const user  = { role: 'SUPERADMIN' }; // Replace with actual user context
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const { data } = authClient.useSession();
+  const user = data?.user;
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
 
   const [categories, setCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (user) {
+        const userData = await getUserByEmail(user.email);
+        if (userData?.role === 'SUPERADMIN') {
+          setIsSuperAdmin(true);
+        } 
+      }
+    };
+    fetchUserRole();
+  }, [user]);
+
   useEffect(() => {
     const apiInit: ApiInit = {
       method: HttpMethod.GET,
@@ -43,7 +59,7 @@ export default function Products() {
       const apiInit: ApiInit = {
         method: HttpMethod.GET,
       };
-      let filterStrings = [];
+      let filterStrings = ['withStock=true']; // Include store information
       if (categoryFilter !== undefined && categoryFilter !== 'all') {
         filterStrings.push(`categoryId=${categoryFilter}`);
       }

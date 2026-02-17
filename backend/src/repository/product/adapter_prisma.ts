@@ -27,12 +27,17 @@ export class PrismaRepository implements ProductsRepo {
 
     async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<ProductWithStock[]> {
         const where = this.buildWhereClause(filter);
+        
+        // Build productStores filter - only include stores matching storeId if provided
+        const productStoresWhere = filter.storeId ? { storeId: filter.storeId } : {};
+        
         const products = await this.prisma.product.findMany({
             where,
             include: {
                 category: true,
                 productImages: true,
                 productStores: {
+                    where: productStoresWhere,
                     include: {
                         store: true,
                     },
@@ -57,13 +62,8 @@ export class PrismaRepository implements ProductsRepo {
             };
         }
 
-        if (storeId) {
-            where.productStores = {
-                some: {
-                    storeId
-                }
-            };
-        }
+        // Note: storeId filtering is handled in the include clause for getProductsByFilterWithStock
+        // to allow filtering of productStores rather than products themselves
 
         return where;
     }

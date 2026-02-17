@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Plus, Pencil, Trash2, Search, FolderTree } from 'lucide-react';
 import { format } from 'date-fns';
 import type { ProductCategory } from '@/types/admin';
+import { authClient } from '@/lib/authClient';
+import { getUserByEmail } from '@/services/user/getUserByEmail';
 
 type Categories = {
   id: string;
@@ -25,8 +27,9 @@ const mockCategories: Categories[] = []
 const mockProducts = []
 
 export default function Categories() {
-  const user  = { role: 'SUPERADMIN' }; // Replace with actual user context
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const { data } = authClient.useSession();
+  const user = data?.user;
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -34,6 +37,18 @@ export default function Categories() {
   const [categories, setCategories] = useState<Categories[]>([]);
   const [categoryName, setCategoryName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (user) {
+        const userData = await getUserByEmail(user.email);
+        if (userData?.role === 'SUPERADMIN') {
+          setIsSuperAdmin(true);
+        }
+      }
+    };
+    fetchUserRole();
+  }, [user]);
 
   useEffect(() => {
     const fetchCategories = async () => {

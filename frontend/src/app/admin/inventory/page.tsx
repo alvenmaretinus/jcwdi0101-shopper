@@ -12,17 +12,18 @@ import { format } from 'date-fns';
 import { apiFetch, ApiInit, HttpMethod } from '@/lib/apiFetch';
 import { useState , useEffect, useCallback } from 'react';
 import { Product } from '@/types/Product';
+import { authClient } from '@/lib/authClient';
+import { getUserByEmail } from '@/services/user/getUserByEmail';
 
 
 
 export default function Inventory() {
-  //const { user } = useAdminAuth();
-  const user  = { role: 'SUPERADMIN', storeId: 'store-1' }; // Replace with actual user context
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const { data, isPending } = authClient.useSession();
+  const sessionUser = data?.user;
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [userStoreId, setUserStoreId] = useState<string>('');
 
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(
-    isSuperAdmin ? 'all' : user?.storeId || ''
-  );
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -33,7 +34,28 @@ export default function Inventory() {
   const [stores, setStores] = useState<any[]>([]);
 
   useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!isPending && sessionUser) {
+        const userData = await getUserByEmail(sessionUser.email);
+        if (userData?.role === 'SUPERADMIN') {
+          setIsSuperAdmin(true);
+          setSelectedStoreId('all'); // Superadmin can view all stores
+        }
+        if (userData?.storeId) {
+          setUserStoreId(userData.storeId);
+          if (userData.role !== 'SUPERADMIN') {
+            setSelectedStoreId(userData.storeId);
+          }
+        }
+      }
+    };
+    fetchUserRole();
+  }, [sessionUser, isPending]);
+
+  useEffect(() => {
     // Fetch stores for the store filter dropdown
+    if (!isSuperAdmin) return;
+    
     const fetchStores = async () => {
         const apiInit: ApiInit = { method: HttpMethod.GET };
         try {
@@ -51,7 +73,7 @@ export default function Inventory() {
         }
     };
     fetchStores();
-  }, []);
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     const apiInit: ApiInit = {
@@ -60,12 +82,18 @@ export default function Inventory() {
     const fetchStockRecords = async () => {
         try {
             let url = `/product?withStock=true`
+            console.log('Selected store ID for fetching stock records:', selectedStoreId);
+            console.log('Session user:', sessionUser);
+            if (selectedStoreId === '') {
+              return; // Don't fetch if store ID is not set yet
+            }
             if (selectedStoreId !== 'all') {
                 url += `&storeId=${selectedStoreId}`;
             }
             if (searchQuery.trim() !== '') {
                 url += `&name=${searchQuery}`;
             }
+            console.log('Fetching stock records with URL:', url);
             const data = await apiFetch<Product[]>(url, apiInit);
             console.log('Stock records API response:', data);
             setStockRecords(Array.isArray(data) ? data : []);
@@ -95,7 +123,7 @@ export default function Inventory() {
     try {
       const apiInit: ApiInit = {
         method: HttpMethod.PATCH,
-        body: JSON.stringify({ quantity: editQuantity }),
+        body: { "quantity": editQuantity },
       };
       
       await apiFetch(`/product-store/${editingId}`, apiInit);
@@ -155,21 +183,23 @@ export default function Inventory() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Store</Label>
-                <Select defaultValue={selectedStoreId !== 'all' ? selectedStoreId : undefined}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select store" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.isArray(stores) && stores.map(store => (
-                      <SelectItem key={store.id} value={store.id}>
-                        {store.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {isSuperAdmin && (
+                <div className="space-y-2">
+                  <Label>Store</Label>
+                  <Select defaultValue={selectedStoreId !== 'all' ? selectedStoreId : undefined}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select store" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.isArray(stores) && stores.map(store => (
+                        <SelectItem key={store.id} value={store.id}>
+                          {store.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Initial Quantity</Label>
                 <Input type="number" min={0} placeholder="e.g., 100" />

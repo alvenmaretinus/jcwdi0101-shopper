@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { apiFetch } from "@/lib/apiFetch";
+import { apiFetch, HttpMethod } from "@/lib/apiFetch";
 import { User } from "@/types/User";
 import { ReadonlyHeaders } from "next/dist/server/web/spec-extension/adapters/headers";
 
@@ -14,7 +14,7 @@ export const getUserByEmail = async (email: string, headers?: ReadonlyHeaders) =
     email,
   });
   const users = await apiFetch<User[]>(`/users?${queryParams}`, {
-    method: "GET",
+    method: HttpMethod.GET,
     headers,
   });
   return users[0];

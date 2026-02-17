@@ -9,6 +9,8 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { format, getMonth, getYear } from 'date-fns';
 import type { MovementType } from '@/types/MovementType';
 import type { StockReport } from '@/types/StockReport';
+import { authClient } from '@/lib/authClient';
+import { getUserByEmail } from '@/services/user/getUserByEmail';
 
 const movementTypeColors: Record<MovementType, string> = {
   PURCHASED: 'bg-green-100 text-green-800',
@@ -26,12 +28,12 @@ const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 export default function StockReport() {
-  const user  = { role: 'SUPERADMIN', storeId: 'store-123' }; // Mocked user data
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const { data } = authClient.useSession();
+  const sessionUser = data?.user;
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [userStoreId, setUserStoreId] = useState<string>('');
   
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(
-    isSuperAdmin ? 'all' : user?.storeId || ''
-  );
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>(String(getMonth(new Date())));
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
 
@@ -40,6 +42,24 @@ export default function StockReport() {
   
   const [stores, setStores] = useState<{ id: string; name: string }[]>([]);
   const [categories, setCategories] = useState<{ id: string; category: string }[]>([]);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (sessionUser) {
+        const userData = await getUserByEmail(sessionUser.email);
+        if (userData?.role === 'SUPERADMIN') {
+          setIsSuperAdmin(true);
+        }
+        if (userData?.storeId) {
+          setUserStoreId(userData.storeId);
+          if (userData.role !== 'SUPERADMIN') {
+            setSelectedStoreId(userData.storeId);
+          }
+        }
+      }
+    };
+    fetchUserRole();
+  }, [sessionUser]);
 
   useEffect(() => {
     const fetchStoresAndCategories = async () => {

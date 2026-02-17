@@ -14,6 +14,8 @@ import { format } from 'date-fns';
 import type { Discount } from '@/types/Discount';
 import { getDiscounts, createDiscount, updateDiscount, deleteDiscount, CreateDiscountInput, UpdateDiscountInput } from '@/services/discount';
 import { toast } from 'sonner';
+import { authClient } from '@/lib/authClient';
+import { getUserByEmail } from '@/services/user/getUserByEmail';
 
 const discountTypeIcons = {
   PERCENTAGE: Percent,
@@ -28,8 +30,10 @@ const discountTypeLabels = {
 };
 
 export default function Discounts() {
-  const user  = { role: 'SUPERADMIN', storeId: 'some-store-id' }; // Replace with actual user context
-  const isSuperAdmin = user?.role === 'SUPERADMIN';
+  const { data } = authClient.useSession();
+  const sessionUser = data?.user;
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [userStoreId, setUserStoreId] = useState<string>('');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -39,6 +43,21 @@ export default function Discounts() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWithMinimumChecked, setIsWithMinimumChecked] = useState<boolean>(editingDiscount?.isWithMinimum ?? false);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (sessionUser) {
+        const userData = await getUserByEmail(sessionUser.email);
+        if (userData?.role === 'SUPERADMIN') {
+          setIsSuperAdmin(true);
+        }
+        if (userData?.storeId) {
+          setUserStoreId(userData.storeId);
+        }
+      }
+    };
+    fetchUserRole();
+  }, [sessionUser]);
 
   // Fetch discounts on mount and when filters change
   useEffect(() => {

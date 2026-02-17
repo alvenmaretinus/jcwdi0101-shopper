@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Layout } from "@/components/layout/Layout";
 import { ProductCard } from "@/components/products/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,13 @@ import {
 } from "@/components/ui/sheet";
 import { getProducts, ProductWithDetails } from "@/services/product/getProducts";
 import { getProductCategories, ProductCategory } from "@/services/product/getProductCategories";
+import { authClient } from "@/lib/authClient";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 const Products = () => {
+  const router = useRouter();
+  const { data, isPending } = authClient.useSession();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("featured");
@@ -34,8 +40,17 @@ const Products = () => {
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Check authentication
+  useEffect(() => {
+    if (!isPending && !data) {
+      router.replace(`/login?redirectTo=${window.location.pathname}`);
+    }
+  }, [data, isPending, router]);
+
   // Fetch products and categories on mount
   useEffect(() => {
+    if (!data) return;
+    
     const fetchData = async () => {
       try {
         setIsLoading(true);
@@ -52,7 +67,7 @@ const Products = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [data]);
 
   const filteredProducts = allProducts.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -138,6 +153,11 @@ const Products = () => {
       </div>
     </div>
   );
+
+  // Show loading screen while checking authentication
+  if (isPending || !data) {
+    return <LoadingScreen />;
+  }
 
   return (
     <Layout>
