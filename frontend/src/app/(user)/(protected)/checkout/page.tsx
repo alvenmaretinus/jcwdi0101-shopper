@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getUserAddresses } from "@/services/user-address/getUserAddresses";
+import {
+  calculateVoucher,
+  CalculateVoucherResponse,
+} from "@/services/voucher/calculateVoucher";
 import { useCart } from "@/hooks/useCart";
 import { createOrder } from "@/services/order/createOrder";
 import { UserAddress } from "@/types/UserAddress";
@@ -37,6 +41,9 @@ const Checkout = () => {
   >("BANK_TRANSFER");
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [voucherInput, setVoucherInput] = useState("");
+  const [appliedVouchers, setAppliedVouchers] = useState<string[]>([]);
+  const [voucherDiscount, setVoucherDiscount] = useState(0);
 
   // Fetch addresses on mount
   useEffect(() => {
@@ -93,6 +100,7 @@ const Checkout = () => {
       const order = await createOrder({
         addressId: selectedAddressId,
         paymentType,
+        voucherIds: appliedVouchers.length > 0 ? appliedVouchers : undefined,
       });
 
       console.log("[Checkout] Order created successfully:", order);
@@ -119,9 +127,60 @@ const Checkout = () => {
 
   // Calculate order summary from cart
   const cartSubtotal = subtotal || 0;
-  const discount = 0; // TODO: Add discount calculation from promo
+  const discount = voucherDiscount; // voucher discount applied after server validation
   const shippingCost = deliveryFee || 0;
   const total = cartSubtotal - discount + shippingCost;
+
+  const applyVoucher = async () => {
+    if (!voucherInput) return toast.error("Masukkan kode voucher atau ID");
+    try {
+      // For now, treat input as voucher ID. Backend accepts voucherIds array.
+      const ids = [...appliedVouchers, voucherInput.trim()];
+      const resp = await calculateVoucher({
+        voucherIds: ids,
+        subtotal: cartSubtotal,
+      });
+      // resp may be wrapped by apiFetch — accept both shapes
+      const isApiWrapper = (
+        v: unknown
+      ): v is { data: CalculateVoucherResponse } =>
+        typeof v === "object" && v !== null && "data" in v;
+      const result: CalculateVoucherResponse = isApiWrapper(resp)
+        ? resp.data
+        : (resp as CalculateVoucherResponse);
+      const totalDiscount = result.totalDiscount ?? 0;
+      setAppliedVouchers(ids);
+      setVoucherDiscount(totalDiscount);
+      setVoucherInput("");
+      toast.success("Voucher applied");
+    } catch (err) {
+      console.error("[Checkout] Apply voucher failed:", err);
+      const msg =
+        err instanceof Error ? err.message : "Gagal menerapkan voucher";
+      toast.error(msg);
+    }
+  };
+
+  const removeVoucher = (id: string) => {
+    const ids = appliedVouchers.filter((v) => v !== id);
+    setAppliedVouchers(ids);
+    // Recalculate discount with remaining vouchers
+    if (ids.length === 0) setVoucherDiscount(0);
+    else {
+      calculateVoucher({ voucherIds: ids, subtotal: cartSubtotal })
+        .then((resp) => {
+          const isApiWrapper = (
+            v: unknown
+          ): v is { data: CalculateVoucherResponse } =>
+            typeof v === "object" && v !== null && "data" in v;
+          const result: CalculateVoucherResponse = isApiWrapper(resp)
+            ? resp.data
+            : (resp as CalculateVoucherResponse);
+          setVoucherDiscount(result.totalDiscount ?? 0);
+        })
+        .catch(() => setVoucherDiscount(0));
+    }
+  };
 
   // Get selected address for display (not used here)
 
@@ -215,6 +274,38 @@ const Checkout = () => {
               )}
             </div>
 
+            {/* Voucher input */}
+            <div className="bg-card rounded-2xl p-6 shadow-soft">
+              <h2 className="text-lg font-semibold mb-3">Voucher / Promo</h2>
+              <div className="flex gap-2">
+                <input
+                  value={voucherInput}
+                  onChange={(e) => setVoucherInput(e.target.value)}
+                  placeholder="Masukkan voucher ID"
+                  className="flex-1 input"
+                />
+                <Button onClick={applyVoucher} className="px-4">
+                  Apply
+                </Button>
+              </div>
+              {appliedVouchers.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {appliedVouchers.map((v) => (
+                    <div key={v} className="flex items-center justify-between">
+                      <div className="text-sm">Voucher: {v}</div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeVoucher(v)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Payment Method */}
             <div className="bg-card rounded-2xl p-6 shadow-soft">
               <h2 className="text-xl font-bold flex items-center gap-2 mb-4">
@@ -280,7 +371,7 @@ const Checkout = () => {
 
           {/* Order summary */}
           <div>
-            <div className="bg-card rounded-2xl p-6 shadow-soft sticky top-28">
+            <div className="bg-card rounded-2xl p-6 shadow-soft lg:sticky lg:top-28">
               <h2 className="text-xl font-bold mb-4">Order Summary</h2>
 
               {/* Items */}

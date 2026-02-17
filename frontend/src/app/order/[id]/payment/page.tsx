@@ -524,7 +524,9 @@ export default function PaymentPage({ params }: { params: unknown }) {
                             "image/gif",
                           ];
                           if (!allowed.includes(file.type)) {
-                            toast.error("Format tidak didukung. Gunakan JPG/PNG/GIF.");
+                            toast.error(
+                              "Format tidak didukung. Gunakan JPG/PNG/GIF."
+                            );
                             setProofFile(null);
                             return;
                           }
@@ -541,8 +543,8 @@ export default function PaymentPage({ params }: { params: unknown }) {
                         }
                       />
                       <div className="text-sm text-muted-foreground mt-2">
-                        Maksimum ukuran upload: <strong>1MB</strong>. Format yang
-                        diterima: JPG, PNG, GIF.
+                        Maksimum ukuran upload: <strong>1MB</strong>. Format
+                        yang diterima: JPG, PNG, GIF.
                       </div>
                     </div>
 
@@ -552,6 +554,7 @@ export default function PaymentPage({ params }: { params: unknown }) {
                         isProcessing ||
                         (remainingSeconds !== null && remainingSeconds <= 0)
                       }
+                      className="w-full md:w-auto"
                     >
                       {isProcessing ? "Uploading..." : "Upload Proof"}
                     </Button>
@@ -566,7 +569,11 @@ export default function PaymentPage({ params }: { params: unknown }) {
                 <p className="text-sm mb-4">
                   Anda akan diarahkan ke halaman pembayaran Midtrans.
                 </p>
-                <Button onClick={handleMidtrans} disabled={isProcessing}>
+                <Button
+                  onClick={handleMidtrans}
+                  disabled={isProcessing}
+                  className="w-full md:w-auto"
+                >
                   {isProcessing ? "Processing..." : "Pay with Midtrans"}
                 </Button>
               </div>
@@ -584,6 +591,7 @@ export default function PaymentPage({ params }: { params: unknown }) {
                   variant="destructive"
                   onClick={handleCancel}
                   disabled={isProcessing || order.status !== "PAYMENT_PENDING"}
+                  className="w-full md:w-auto"
                 >
                   {isProcessing ? "Processing..." : "Cancel Order"}
                 </Button>
@@ -593,6 +601,7 @@ export default function PaymentPage({ params }: { params: unknown }) {
             <Button
               variant="ghost"
               onClick={() => router.push("/profile/order")}
+              className="w-full md:w-auto"
             >
               Back to Orders
             </Button>

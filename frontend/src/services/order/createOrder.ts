@@ -4,6 +4,7 @@ import { ReadonlyHeaders } from "next/dist/server/web/spec-extension/adapters/he
 export interface CreateOrderRequest {
   addressId: string;
   paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY";
+  voucherIds?: string[];
 }
 
 export interface OrderItem {

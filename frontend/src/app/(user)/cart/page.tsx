@@ -2,17 +2,9 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Minus,
-  Plus,
-  Trash2,
-  Tag,
-  ArrowRight,
-  ShoppingBag,
-} from "lucide-react";
+import { Minus, Plus, Trash2, ArrowRight, ShoppingBag } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
-import { useState } from "react";
+
 
 const Cart = () => {
   const {
@@ -20,28 +12,15 @@ const Cart = () => {
     loading,
     updateQuantity,
     removeItem,
-    applyPromo,
+
     subtotal,
     deliveryFee,
     formatPrice,
   } = useCart();
 
-  const [promoCode, setPromoCode] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
-  const [promoError, setPromoError] = useState<string | null>(null);
+  
 
-  const handleApplyPromo = async () => {
-    setPromoError(null);
-    const result = await applyPromo(promoCode);
-    if (result.success) {
-      setAppliedPromo(promoCode.toUpperCase());
-      setPromoCode("");
-    } else {
-      setPromoError(result.message);
-    }
-  };
-
-  const discount = appliedPromo ? Math.round(subtotal * 0.1) : 0;
+  const discount = 0;
   const total = subtotal + deliveryFee - discount;
 
   if (loading) {
@@ -169,49 +148,15 @@ const Cart = () => {
 
           {/* Order summary */}
           <div>
-            <div className="bg-card rounded-2xl p-6 shadow-soft sticky top-28">
+            <div className="bg-card rounded-2xl p-6 shadow-soft lg:sticky lg:top-28">
               <h2 className="text-xl font-bold mb-6">Order Summary</h2>
 
-              {/* Promo code */}
-              <div className="mb-6">
-                <label className="text-sm font-medium mb-2 block">
-                  Promo Code
-                </label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Enter code"
-                      value={promoCode}
-                      onChange={(e) => {
-                        setPromoCode(e.target.value);
-                        setPromoError(null);
-                      }}
-                      className={`pl-10 rounded-full ${
-                        promoError
-                          ? "border-red-500 focus-visible:ring-red-500"
-                          : ""
-                      }`}
-                      disabled={!!appliedPromo}
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="rounded-full"
-                    onClick={handleApplyPromo}
-                    disabled={!promoCode || !!appliedPromo}
-                  >
-                    Apply
-                  </Button>
-                </div>
-                {promoError && (
-                  <p className="text-sm text-red-500 mt-2">⚠️ {promoError}</p>
-                )}
-                {appliedPromo && (
-                  <p className="text-sm text-primary mt-2">
-                    ✓ {appliedPromo} applied - 10% off
-                  </p>
-                )}
+              {/* Promo code removed: voucher application moved to Checkout page */}
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground">
+                  Promo code is available at Checkout. Go to Checkout to apply
+                  vouchers and preview discounts.
+                </p>
               </div>
 
               {/* Summary lines */}

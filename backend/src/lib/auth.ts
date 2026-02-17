@@ -73,7 +73,7 @@ export const auth = betterAuth({
         : undefined,
   },
   emailVerification: {
-    sendVerificationEmail: async ({ user, url, _token }, _request) => {
+    sendVerificationEmail: async ({ user, url, token: _token }, _request) => {
       // TODO: uncomment in prod
       // const record = rateLimit.get(user.email);
       // if (record)

@@ -26,10 +26,11 @@ export class OrderService {
    * @note Discounts are applied first (best percentage vs amount), then vouchers
    */
   static async createPendingOrder(userId: string, addressId: string, paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY" = "BANK_TRANSFER", voucherIds?: string[], discountIds?: string[]) {
-    const address = await prisma.userAddress.findUnique({ where: { id: addressId } });
-    if (!address || address.userId !== userId) {
-      throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
-    }
+    try {
+      const address = await prisma.userAddress.findUnique({ where: { id: addressId } });
+      if (!address || address.userId !== userId) {
+        throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
+      }
 
       const cart = await CartRepository.findCartWithItemsAndProduct(userId);
       if (!cart || !cart.cartItems || cart.cartItems.length === 0) {
@@ -39,6 +40,9 @@ export class OrderService {
       const items = cart.cartItems.map((ci) => ({ productId: ci.productId, quantity: ci.quantity }));
 
       const db: PrismaClient = prisma;
+      // normalize address coordinates
+      const addrLat = Number(address.latitude);
+      const addrLon = Number(address.longitude);
       const stores = await db.store.findMany();
       const storesWithDistance: StoreWithDistance[] = stores
         .map((store) => {
@@ -104,35 +108,30 @@ export class OrderService {
       const distanceKm = storesWithDistance.find((s) => s.store.id === candidateStore!.id)?.distanceKm ?? 0;
       const costPerKm = 1000;
 
-    // Calculate shipping cost using same logic as checkout
-    // Try external shipping cost service first; fall back to distance * costPerKm
-    let shippingCost = 0;
-    try {
-      const scInput: GetShippingCostInput = {
-        originPostCode: String(candidateStore.postCode ?? ""),
-        destinationPostCode: String(address.postCode ?? ""),
-        weight: 1,
-        itemValue: subtotal,
-      };
-      const scData = await ShippingCostService.getShippingCost(scInput);
-      // prefer first available regular shipping option
-      const option = scData.calculate_reguler?.[0] ?? scData.calculate_instant?.[0] ?? scData.calculate_cargo?.[0];
-      shippingCost = option?.shipping_cost_net ?? Math.ceil(distanceKm * costPerKm);
-    } catch (e) {
-      // Log shipping service failure but don't crash - fall back to simple calculation
-      console.warn(`[OrderService] Shipping cost service failed for pending order, using fallback: ${e instanceof Error ? e.message : "unknown error"}`);
-      shippingCost = Math.ceil(distanceKm * costPerKm);
-    }
+      // Calculate shipping cost using same logic as checkout
+      // Try external shipping cost service first; fall back to distance * costPerKm
+      let shippingCost = 0;
+      try {
+        const scInput: GetShippingCostInput = {
+          originPostCode: String(candidateStore.postCode ?? ""),
+          destinationPostCode: String(address.postCode ?? ""),
+          weight: 1,
+          itemValue: subtotal,
+        };
+        const scData = await ShippingCostService.getShippingCost(scInput);
+        // prefer first available regular shipping option
+        const option = scData.calculate_reguler?.[0] ?? scData.calculate_instant?.[0] ?? scData.calculate_cargo?.[0];
+        shippingCost = option?.shipping_cost_net ?? Math.ceil(distanceKm * costPerKm);
+      } catch (e) {
+        // Log shipping service failure but don't crash - fall back to simple calculation
+        console.warn(`[OrderService] Shipping cost service failed for pending order, using fallback: ${e instanceof Error ? e.message : "unknown error"}`);
+        shippingCost = Math.ceil(distanceKm * costPerKm);
+      }
 
-    // Calculate total discount (discounts + vouchers)
-    const totalDiscount = await PricingCalculationService.calculateTotalDiscount(
-      subtotal,
-      discountIds,
-      voucherIds,
-      db
-    );
+      // Calculate total discount (discounts + vouchers)
+      const totalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotal, discountIds, voucherIds, db);
 
-    const grandTotal = subtotal + shippingCost - totalDiscount;
+      const grandTotal = subtotal + shippingCost - totalDiscount;
 
       // create pending order snapshot; do NOT decrement stock here
       // Payment deadline: 1 hour for manual bank transfer (per brief: "sekitar 1 jam" to upload proof)
