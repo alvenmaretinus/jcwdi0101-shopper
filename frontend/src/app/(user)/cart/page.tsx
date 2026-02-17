@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2, ArrowRight, ShoppingBag } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 
-
 const Cart = () => {
   const {
     cartItems,
@@ -17,8 +16,6 @@ const Cart = () => {
     deliveryFee,
     formatPrice,
   } = useCart();
-
-  
 
   const discount = 0;
   const total = subtotal + deliveryFee - discount;
@@ -152,13 +149,7 @@ const Cart = () => {
               <h2 className="text-xl font-bold mb-6">Order Summary</h2>
 
               {/* Promo code removed: voucher application moved to Checkout page */}
-              <div className="mb-4">
-                <p className="text-sm text-muted-foreground">
-                  Promo code is available at Checkout. Go to Checkout to apply
-                  vouchers and preview discounts.
-                </p>
-              </div>
-
+              
               {/* Summary lines */}
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">

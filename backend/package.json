@@ -24,6 +24,7 @@
     "express": "^5.2.1",
     "geolib": "^3.3.4",
     "lru-cache": "^11.2.4",
+    "midtrans-client": "^1.4.3",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.12",

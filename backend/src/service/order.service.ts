@@ -15,32 +15,19 @@ type StoreWithDistance = {
 export class OrderService {
   /**
    * Create a pending order (checkout)
-   * @param userId User ID
-   * @param addressId Shipping address ID
-   * @param paymentType Payment method (BANK_TRANSFER or PAYMENT_GATEWAY)
-   * @param voucherIds Optional array of voucher IDs to apply discounts
-   * @param discountIds Optional array of discount IDs to apply before vouchers
-   * @returns Created order
-   * @throws BadRequestError if address invalid, cart empty, or no store within 5km can fulfill
-   * @note Sets payment deadline based on PAYMENT_DUE_HOURS env variable (default: 1 hour)
-   * @note Discounts are applied first (best percentage vs amount), then vouchers
    */
   static async createPendingOrder(userId: string, addressId: string, paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY" = "BANK_TRANSFER", voucherIds?: string[], discountIds?: string[]) {
+    const db: PrismaClient = prisma;
     try {
-      const address = await prisma.userAddress.findUnique({ where: { id: addressId } });
-      if (!address || address.userId !== userId) {
-        throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
-      }
+      const address = await db.userAddress.findUnique({ where: { id: addressId } });
+      if (!address || address.userId !== userId) throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
 
       const cart = await CartRepository.findCartWithItemsAndProduct(userId);
-      if (!cart || !cart.cartItems || cart.cartItems.length === 0) {
-        throw new BadRequestError("Cart is empty.");
-      }
+      if (!cart || !cart.cartItems || cart.cartItems.length === 0) throw new BadRequestError("Cart is empty.");
 
       const items = cart.cartItems.map((ci) => ({ productId: ci.productId, quantity: ci.quantity }));
 
-      const db: PrismaClient = prisma;
-      // normalize address coordinates
+      // find nearby stores within 5km
       const addrLat = Number(address.latitude);
       const addrLon = Number(address.longitude);
       const stores = await db.store.findMany();
@@ -56,28 +43,17 @@ export class OrderService {
         .filter((s) => s.distanceKm <= 5)
         .sort((a, b) => a.distanceKm - b.distanceKm);
 
-      if (storesWithDistance.length === 0) {
-        throw new BadRequestError("No store within 5 km of the shipping address.");
-      }
+      if (storesWithDistance.length === 0) throw new BadRequestError("No store within 5 km of the shipping address.");
 
-      // pick nearest store that has enough stock for all items
-      // Batch load productStore records to avoid N+1 queries
+      // pick nearest store that can fulfill all items
       const productIds = items.map((i) => i.productId);
-      let candidateStore = null as Store | null;
+      let candidateStore: Store | null = null;
       for (const s of storesWithDistance) {
         const storeCandidate = s.store;
+        const storeProducts = await db.productStore.findMany({ where: { storeId: storeCandidate.id, productId: { in: productIds } } });
+        const psMap: Record<string, { quantity: number }> = {};
+        for (const ps of storeProducts) psMap[ps.productId] = ps as any;
 
-        // Batch load all productStore records for this store at once
-        const storeProducts = await db.productStore.findMany({
-          where: {
-            storeId: storeCandidate.id,
-            productId: { in: productIds },
-          },
-        });
-        const psMap: Record<string, any> = {};
-        for (const ps of storeProducts) psMap[ps.productId] = ps;
-
-        // Check if all items can be fulfilled
         let canFulfill = true;
         for (const it of items) {
           const ps = psMap[it.productId];
@@ -92,11 +68,8 @@ export class OrderService {
         }
       }
 
-      if (!candidateStore) {
-        throw new BadRequestError("No store within 5 km can fulfill the entire order.");
-      }
+      if (!candidateStore) throw new BadRequestError("No store within 5 km can fulfill the entire order.");
 
-      // productIds already declared earlier (line 53)
       const products = await db.product.findMany({ where: { id: { in: productIds } }, include: { category: true } });
       type ProductWithCategory = Prisma.ProductGetPayload<{ include: { category: true } }>;
       const productMap: Record<string, ProductWithCategory | undefined> = {};
@@ -104,12 +77,9 @@ export class OrderService {
 
       const subtotal = items.reduce((s, it) => s + (productMap[it.productId]?.price ?? 0) * it.quantity, 0);
 
-      // Calculate distance from the selected candidateStore (not nearest) for accurate shipping cost
       const distanceKm = storesWithDistance.find((s) => s.store.id === candidateStore!.id)?.distanceKm ?? 0;
       const costPerKm = 1000;
 
-      // Calculate shipping cost using same logic as checkout
-      // Try external shipping cost service first; fall back to distance * costPerKm
       let shippingCost = 0;
       try {
         const scInput: GetShippingCostInput = {
@@ -119,24 +89,19 @@ export class OrderService {
           itemValue: subtotal,
         };
         const scData = await ShippingCostService.getShippingCost(scInput);
-        // prefer first available regular shipping option
         const option = scData.calculate_reguler?.[0] ?? scData.calculate_instant?.[0] ?? scData.calculate_cargo?.[0];
         shippingCost = option?.shipping_cost_net ?? Math.ceil(distanceKm * costPerKm);
       } catch (e) {
-        // Log shipping service failure but don't crash - fall back to simple calculation
         console.warn(`[OrderService] Shipping cost service failed for pending order, using fallback: ${e instanceof Error ? e.message : "unknown error"}`);
         shippingCost = Math.ceil(distanceKm * costPerKm);
       }
 
-      // Calculate total discount (discounts + vouchers)
       const totalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotal, discountIds, voucherIds, db);
-
       const grandTotal = subtotal + shippingCost - totalDiscount;
 
-      // create pending order snapshot; do NOT decrement stock here
-      // Payment deadline: 1 hour for manual bank transfer (per brief: "sekitar 1 jam" to upload proof)
       const paymentDueHours = Number.isFinite(Number(process.env.PAYMENT_DUE_HOURS)) ? Number(process.env.PAYMENT_DUE_HOURS) : 1;
       const paymentDueAt = new Date(Date.now() + paymentDueHours * 60 * 60 * 1000);
+
       const order = await db.order.create({
         data: {
           subtotal,
@@ -165,7 +130,7 @@ export class OrderService {
       });
 
       return order;
-    } catch (err) {
+    } catch (err: any) {
       console.error("[OrderService] createPendingOrder error:", err instanceof Error ? err.stack || err.message : err);
       throw err;
     }

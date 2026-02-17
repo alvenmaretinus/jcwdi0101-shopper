@@ -126,7 +126,7 @@ const Orders = () => {
       case "delivered":
         return <CheckCircle className="h-5 w-5 text-primary" />;
       case "shipping":
-        return <Truck className="h-5 w-5 text-secondary" />;
+        return <Truck className="h-5 w-5 text-orange-500" />;
       case "processing":
         return <Package className="h-5 w-5 text-blue-500" />;
       case "pending":
@@ -143,7 +143,7 @@ const Orders = () => {
       case "delivered":
         return "bg-primary/10 text-primary border-primary/20";
       case "shipping":
-        return "bg-secondary/10 text-secondary border-secondary/20";
+        return "bg-orange-50 text-orange-600 border-orange-200";
       case "processing":
         return "bg-blue-50 text-blue-600 border-blue-200";
       case "pending":
@@ -255,15 +255,7 @@ const Orders = () => {
                             )}
                           </div>
                         )}
-                        {order.status === "shipping" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="rounded-full"
-                          >
-                            {order.statusLabel}
-                          </Button>
-                        )}
+                        {/* status label already shown in Badge above; remove duplicate */}
                         {order.status === "shipping" && (
                           <Button
                             size="sm"
