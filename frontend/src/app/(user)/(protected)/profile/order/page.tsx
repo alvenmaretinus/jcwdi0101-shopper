@@ -17,6 +17,8 @@ import {
 import { formatPrice } from "@/lib/formatPrice";
 
 import { apiFetch } from "@/lib/apiFetch";
+import { confirmOrder } from "@/services/order/confirmOrder";
+import { toast } from "sonner";
 import type {
   CreateOrderResponse,
   OrderItem as OrderServiceItem,
@@ -48,71 +50,72 @@ const Orders = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [orders, setOrders] = useState<UIOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmingIds, setConfirmingIds] = useState<string[]>([]);
+
+  // Extracted loader so it can be reused after actions
+  const loadOrders = async () => {
+    setLoading(true);
+    try {
+      const resp = await apiFetch<
+        | { success?: boolean; data?: CreateOrderResponse[] }
+        | CreateOrderResponse[]
+      >("/order", { method: "GET" });
+      const maybe = resp as { data?: CreateOrderResponse[] };
+      const data = maybe.data ?? (resp as CreateOrderResponse[]);
+
+      const mapped: UIOrder[] = (Array.isArray(data) ? data : []).map(
+        (o: CreateOrderResponse) => {
+          const statusMap: Record<string, string> = {
+            PAYMENT_PENDING: "pending",
+            PAYMENT_WAITING_CONFIRMATION: "pending",
+            PAYMENT_EXPIRED: "cancelled",
+            PROCESSING: "processing",
+            SHIPPED: "shipping",
+            DELIVERED: "delivered",
+            CANCELLED: "cancelled",
+          };
+
+          const status = statusMap[o.status] ?? "processing";
+
+          return {
+            id: o.id,
+            date: new Date(o.createdAt).toLocaleDateString(),
+            status,
+            rawStatus: o.status,
+            statusLabel: status.charAt(0).toUpperCase() + status.slice(1),
+            total: o.grandTotal ?? 0,
+            items: Array.isArray(o.orderItems)
+              ? o.orderItems.map((it: OrderServiceItem) => ({
+                  name: it.productName,
+                  quantity: it.quantity,
+                  price: it.unitPrice,
+                  image: undefined,
+                }))
+              : [],
+            address: o.shippingAddress ?? o.storeAddress ?? "",
+            paymentMethod:
+              o.paymentType === "BANK_TRANSFER"
+                ? "Bank Transfer"
+                : "Payment Gateway",
+            paymentDeadline: o.paymentDueAt
+              ? new Date(o.paymentDueAt).toLocaleString()
+              : null,
+            trackingNumber: o.trackingNumber ?? null,
+          };
+        }
+      );
+
+      setOrders(mapped);
+    } catch (e) {
+      console.error("Failed to load orders", e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
-    const load = async () => {
-      try {
-        setLoading(true);
-        const resp = await apiFetch<
-          | { success?: boolean; data?: CreateOrderResponse[] }
-          | CreateOrderResponse[]
-        >("/order", { method: "GET" });
-        // backend returns { success, data: orders[] } or raw array
-        const maybe = resp as { data?: CreateOrderResponse[] };
-        const data = maybe.data ?? (resp as CreateOrderResponse[]);
-        if (!mounted) return;
-        const mapped: UIOrder[] = (Array.isArray(data) ? data : []).map(
-          (o: CreateOrderResponse) => {
-            const statusMap: Record<string, string> = {
-              PAYMENT_PENDING: "pending",
-              PAYMENT_WAITING_CONFIRMATION: "pending",
-              PAYMENT_EXPIRED: "cancelled",
-              PROCESSING: "processing",
-              SHIPPED: "shipping",
-              DELIVERED: "delivered",
-              CANCELLED: "cancelled",
-            };
-
-            const status = statusMap[o.status] ?? "processing";
-
-            return {
-              id: o.id,
-              date: new Date(o.createdAt).toLocaleDateString(),
-              status,
-              rawStatus: o.status,
-              statusLabel: status.charAt(0).toUpperCase() + status.slice(1),
-              total: o.grandTotal ?? 0,
-              items: Array.isArray(o.orderItems)
-                ? o.orderItems.map((it: OrderServiceItem) => ({
-                    name: it.productName,
-                    quantity: it.quantity,
-                    price: it.unitPrice,
-                    image: undefined,
-                  }))
-                : [],
-              address: o.shippingAddress ?? o.storeAddress ?? "",
-              paymentMethod:
-                o.paymentType === "BANK_TRANSFER"
-                  ? "Bank Transfer"
-                  : "Payment Gateway",
-              paymentDeadline: o.paymentDueAt
-                ? new Date(o.paymentDueAt).toLocaleString()
-                : null,
-              trackingNumber: o.trackingNumber ?? null,
-            };
-          }
-        );
-
-        setOrders(mapped);
-      } catch (e) {
-        console.error("Failed to load orders", e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    load();
+    if (mounted) loadOrders();
     return () => {
       mounted = false;
     };
@@ -258,15 +261,41 @@ const Orders = () => {
                             variant="outline"
                             className="rounded-full"
                           >
-                            Track Order
+                            {order.statusLabel}
                           </Button>
                         )}
                         {order.status === "shipping" && (
                           <Button
                             size="sm"
                             className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full"
+                            disabled={confirmingIds.includes(order.id)}
+                            onClick={async () => {
+                              try {
+                                setConfirmingIds((s) => [...s, order.id]);
+                                await confirmOrder(order.id);
+                                toast.success(
+                                  "Pesanan dikonfirmasi — Terima kasih"
+                                );
+                                await loadOrders();
+                              } catch (err: unknown) {
+                                console.error("Failed to confirm order", err);
+                                const msg =
+                                  err instanceof Error
+                                    ? err.message
+                                    : String(err);
+                                toast.error(
+                                  msg || "Gagal mengkonfirmasi pesanan"
+                                );
+                              } finally {
+                                setConfirmingIds((s) =>
+                                  s.filter((id) => id !== order.id)
+                                );
+                              }
+                            }}
                           >
-                            Confirm Receipt
+                            {confirmingIds.includes(order.id)
+                              ? "Confirming..."
+                              : "Confirm Receipt"}
                           </Button>
                         )}
                       </div>

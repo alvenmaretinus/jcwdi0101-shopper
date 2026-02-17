@@ -19,7 +19,6 @@ import { toast } from "sonner";
 import Image from "next/image";
 import { useUploadThing } from "@/lib/uploadthing";
 import { authClient } from "@/lib/authClient";
-import { apiFetch } from "@/lib/apiFetch";
 
 const imageSchema = z.object({
   image: z
@@ -55,7 +54,7 @@ export const ChangePictureDialog = ({
       setPreviewImageUrl(null);
       setSelectedFile(null);
     }
-  }, [isOpen]);
+  }, [isOpen, isUploadPicture]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -70,7 +69,7 @@ export const ChangePictureDialog = ({
       }
       setSelectedFile(file);
       setPreviewImageUrl(URL.createObjectURL(file));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.log(err);
     }
   };
@@ -109,7 +108,7 @@ export const ChangePictureDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-106.25">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
             <DialogTitle>Edit image</DialogTitle>

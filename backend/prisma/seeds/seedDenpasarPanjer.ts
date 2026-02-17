@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { prisma } from "../../src/lib/db/prisma";
+import { UserRole } from "../generated/enums";
 
 async function seedDenpasarPanjer() {
   console.log("Seeding Denpasar - Panjer store and products...");
@@ -32,6 +33,31 @@ async function seedDenpasarPanjer() {
       },
     });
     console.log("Created store:", store.id);
+  }
+
+  // Ensure admin@example.com is assigned to this store (idempotent)
+  try {
+    const adminUser = await prisma.user.upsert({
+      where: { email: "admin@example.com" },
+      update: {
+        role: UserRole.ADMIN,
+        storeId: store.id,
+        emailVerified: true,
+        employeeJoinedAt: new Date(),
+      },
+      create: {
+        id: crypto.randomUUID(),
+        name: "Admin",
+        email: "admin@example.com",
+        emailVerified: true,
+        role: UserRole.ADMIN,
+        storeId: store.id,
+        employeeJoinedAt: new Date(),
+      },
+    });
+    console.log("Ensured admin user assigned to store:", adminUser.email, adminUser.storeId);
+  } catch (e) {
+    console.error("Failed to assign admin to store:", e);
   }
 
   // Ensure category
@@ -83,9 +109,4 @@ async function seedDenpasarPanjer() {
   console.log("Denpasar Panjer seed finished.");
 }
 
-seedDenpasarPanjer()
-  .then(() => process.exit(0))
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
+export default seedDenpasarPanjer;

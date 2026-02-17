@@ -1,11 +1,12 @@
 import "dotenv/config";
 import express from "express";
+import { auth } from "./lib/auth";
+import { fromNodeHeaders } from "better-auth/node";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middleware/errorHandler";
 import { appRouter } from "./route";
 import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
-import { auth } from "./lib/auth";
 import cron from "node-cron";
 import { OrderService } from "./service/order.service";
 
@@ -51,23 +52,31 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Serve uploaded files (payment proofs, etc.) at /uploads path (protected with API key + session auth)
-const uploadsAuthMiddleware: express.RequestHandler = (req, res, next) => {
-  // Allow authentication via x-api-key header for programmatic access
-  const apiKey = req.header("x-api-key");
-  const kommerceApiKey = process.env.KOMERCE_API_KEY;
+const uploadsAuthMiddleware: express.RequestHandler = async (req, res, next) => {
+  try {
+    // Allow authentication via x-api-key header for programmatic access
+    const apiKey = req.header("x-api-key");
+    const kommerceApiKey = process.env.KOMERCE_API_KEY;
+    if (apiKey && kommerceApiKey && apiKey === kommerceApiKey) {
+      return next();
+    }
 
-  // Allow authenticated users via session
-  if (req.user) {
-    return next();
+    // Allow authenticated users via session cookie
+    const session = await auth.api.getSession({
+      headers: fromNodeHeaders(req.headers),
+    });
+    if (session?.user) {
+      return next();
+    }
+
+    return res.status(401).json({
+      error: "Unauthorized access to uploads. Provide valid authentication or x-api-key header.",
+    });
+  } catch {
+    return res.status(401).json({
+      error: "Unauthorized access to uploads. Provide valid authentication or x-api-key header.",
+    });
   }
-
-  // Allow API key based access (e.g., for webhooks or backend services)
-  if (apiKey && kommerceApiKey && apiKey === kommerceApiKey) {
-    return next();
-  }
-
-  // Deny access
-  return res.status(401).json({ error: "Unauthorized access to uploads. Provide valid authentication or x-api-key header." });
 };
 app.use("/uploads", uploadsAuthMiddleware, express.static("uploads"));
 

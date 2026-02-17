@@ -511,13 +511,39 @@ export default function PaymentPage({ params }: { params: unknown }) {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) =>
-                          setProofFile(e.target.files?.[0] ?? null)
-                        }
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+                          if (!file) {
+                            setProofFile(null);
+                            return;
+                          }
+                          const allowed = [
+                            "image/jpeg",
+                            "image/jpg",
+                            "image/png",
+                            "image/gif",
+                          ];
+                          if (!allowed.includes(file.type)) {
+                            toast.error("Format tidak didukung. Gunakan JPG/PNG/GIF.");
+                            setProofFile(null);
+                            return;
+                          }
+                          const max = 1 * 1024 * 1024; // 1MB
+                          if (file.size > max) {
+                            toast.error("File terlalu besar. Maks 1MB.");
+                            setProofFile(null);
+                            return;
+                          }
+                          setProofFile(file);
+                        }}
                         disabled={
                           remainingSeconds !== null && remainingSeconds <= 0
                         }
                       />
+                      <div className="text-sm text-muted-foreground mt-2">
+                        Maksimum ukuran upload: <strong>1MB</strong>. Format yang
+                        diterima: JPG, PNG, GIF.
+                      </div>
                     </div>
 
                     <Button
