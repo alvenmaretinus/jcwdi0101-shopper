@@ -40,6 +40,63 @@ export default function Checkout({
     initialShippingData
   );
   const [isLoading, setIsLoading] = useState(false);
+  useEffect(() => {
+    const updateShippingCost = async () => {
+      if (selectedAddress) {
+        setIsLoading(true);
+        try {
+          const nearestStore = stores[0];
+          console.log(
+            "[Checkout useEffect] Updating shipping cost for address change:",
+            {
+              originPostCode: selectedAddress.postCode,
+              destinationPostCode: nearestStore.postCode,
+              weight: totalWeight,
+              itemValue: subtotal,
+            }
+          );
+
+          const newShippingData = await getShippingCost({
+            originPostCode: selectedAddress.postCode,
+            destinationPostCode: nearestStore.postCode,
+            weight: totalWeight,
+            itemValue: subtotal,
+          });
+
+          console.log(
+            "[Checkout useEffect] New shipping data:",
+            newShippingData
+          );
+          setShippingData(newShippingData);
+        } catch (error: unknown) {
+          console.error(
+            "[Checkout useEffect] ❌ SHIPPING COST API FAILED:",
+            error instanceof Error ? error.message : String(error)
+          );
+
+          if (
+            error instanceof Error &&
+            error.message.includes("Invalid Token")
+          ) {
+            console.log(
+              "[Checkout useEffect] ❌ AUTH REQUIRED - User must login!"
+            );
+            toast.error("Please login to calculate shipping cost");
+          } else {
+            toast.error(
+              `Shipping cost API error: ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+
+          // DO NOT USE MOCK - LET IT FAIL IF API FAILS
+          setShippingData(null);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    updateShippingCost();
+  }, [selectedAddress, stores, totalWeight, subtotal]);
 
   if (!orderItems || orderItems.length === 0) {
     return (
@@ -94,59 +151,6 @@ export default function Checkout({
     }
     toast.success("Order placed successfully! (Mock)");
   };
-
-  useEffect(() => {
-    const updateShippingCost = async () => {
-      if (selectedAddress) {
-        setIsLoading(true);
-        try {
-          const nearestStore = stores[0];
-          console.log(
-            "[Checkout useEffect] Updating shipping cost for address change:",
-            {
-              originPostCode: selectedAddress.postCode,
-              destinationPostCode: nearestStore.postCode,
-              weight: totalWeight,
-              itemValue: subtotal,
-            }
-          );
-
-          const newShippingData = await getShippingCost({
-            originPostCode: selectedAddress.postCode,
-            destinationPostCode: nearestStore.postCode,
-            weight: totalWeight,
-            itemValue: subtotal,
-          });
-
-          console.log(
-            "[Checkout useEffect] New shipping data:",
-            newShippingData
-          );
-          setShippingData(newShippingData);
-        } catch (error: any) {
-          console.error(
-            "[Checkout useEffect] ❌ SHIPPING COST API FAILED:",
-            error?.message || error
-          );
-
-          if (error?.message?.includes("Invalid Token")) {
-            console.log(
-              "[Checkout useEffect] ❌ AUTH REQUIRED - User must login!"
-            );
-            toast.error("Please login to calculate shipping cost");
-          } else {
-            toast.error(`Shipping cost API error: ${error?.message}`);
-          }
-
-          // DO NOT USE MOCK - LET IT FAIL IF API FAILS
-          setShippingData(null);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-    updateShippingCost();
-  }, [selectedAddress, stores, totalWeight, subtotal]);
 
   return (
     <>
