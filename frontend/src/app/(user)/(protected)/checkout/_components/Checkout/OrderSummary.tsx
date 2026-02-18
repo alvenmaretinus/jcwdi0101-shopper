@@ -20,6 +20,7 @@ export interface OrderSummaryProps {
   shippingCost: number;
   total: number;
   onPlaceOrder: () => void;
+  isCreatingOrder?: boolean;
 }
 
 export const OrderSummary = ({
@@ -29,6 +30,7 @@ export const OrderSummary = ({
   shippingCost,
   total,
   onPlaceOrder,
+  isCreatingOrder = false,
 }: OrderSummaryProps) => {
   return (
     <div className="bg-card rounded-2xl border border-border p-6 shadow-soft sticky top-24">
@@ -68,10 +70,12 @@ export const OrderSummary = ({
           <span className="text-muted-foreground">Subtotal</span>
           <span>Rp {subtotal.toLocaleString("id-ID")}</span>
         </div>
-        <div className={`flex justify-between text-sm ${discount>0 ? "" : "hidden"}`}>
+        <div
+          className={`flex justify-between text-sm ${discount > 0 ? "" : "hidden"}`}
+        >
           <span className="text-muted-foreground">Discount</span>
           <span className="text-red-500">
-             Rp {discount.toLocaleString("id-ID")}
+            Rp {discount.toLocaleString("id-ID")}
           </span>
         </div>
         <div className="flex justify-between text-sm">
@@ -90,12 +94,13 @@ export const OrderSummary = ({
       <Button
         className="w-full mt-8 rounded-full py-6 text-lg font-semibold shadow-lg shadow-primary/20"
         onClick={onPlaceOrder}
+        disabled={isCreatingOrder}
       >
-        Place Order
+        {isCreatingOrder ? "Processing..." : "Place Order"}
       </Button>
 
       <p className="text-[10px] text-center text-muted-foreground mt-4 italic">
-        By clicking "Place Order", you agree to our Terms and Conditions.
+        By clicking Place Order, you agree to our Terms and Conditions.
       </p>
     </div>
   );

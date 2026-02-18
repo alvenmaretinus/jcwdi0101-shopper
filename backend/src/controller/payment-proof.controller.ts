@@ -12,9 +12,18 @@ const handleMulterUpload = (req: Request, res: Response, next: NextFunction) => 
   uploadPaymentProof.single("proof")(req, res, (err) => {
     if (err) {
       console.error("[PaymentProof] Multer upload error:", err);
+      // Multer exposes a code property for limit errors
+      const code = (err as any).code || (err as Error).name;
+      if (code === "LIMIT_FILE_SIZE" || code === "MulterError") {
+        return res.status(413).json({
+          success: false,
+          message: "File too large. Maximum allowed size is 1MB.",
+        });
+      }
+
       return res.status(400).json({
         success: false,
-        message: err.message || "File upload failed - invalid file or size exceeded",
+        message: (err as any).message || "File upload failed - invalid file or size exceeded",
       });
     }
     next();

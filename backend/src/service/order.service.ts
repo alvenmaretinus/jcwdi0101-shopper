@@ -12,156 +12,227 @@ type StoreWithDistance = {
   distanceKm: number;
 };
 
-export class OrderService {
-  /**
-   * Create a pending order (checkout)
-   * @param userId User ID
-   * @param addressId Shipping address ID
-   * @param paymentType Payment method (BANK_TRANSFER or PAYMENT_GATEWAY)
-   * @param voucherIds Optional array of voucher IDs to apply discounts
-   * @param discountIds Optional array of discount IDs to apply before vouchers
-   * @returns Created order
-   * @throws BadRequestError if address invalid, cart empty, or no store within 5km can fulfill
-   * @note Sets payment deadline based on PAYMENT_DUE_HOURS env variable (default: 1 hour)
-   * @note Discounts are applied first (best percentage vs amount), then vouchers
-   */
-  static async createPendingOrder(userId: string, addressId: string, paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY" = "BANK_TRANSFER", voucherIds?: string[], discountIds?: string[]) {
-    const address = await prisma.userAddress.findUnique({ where: { id: addressId } });
-    if (!address || address.userId !== userId) {
-      throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
-    }
+/** Shared helper: find nearby stores sorted by distance */
+function findNearbyStores(stores: Store[], lat: number, lon: number): StoreWithDistance[] {
+  return stores
+    .map((store) => {
+      const sLat = Number(store.latitude);
+      const sLon = Number(store.longitude);
+      if (!Number.isFinite(sLat) || !Number.isFinite(sLon)) return null;
+      const distanceKm = getDistance({ latitude: lat, longitude: lon }, { latitude: sLat, longitude: sLon }) / 1000;
+      return { store, distanceKm } as StoreWithDistance;
+    })
+    .filter((s): s is StoreWithDistance => s !== null)
+    .filter((s) => s.distanceKm <= 5)
+    .sort((a, b) => a.distanceKm - b.distanceKm);
+}
 
-    const cart = await CartRepository.findCartWithItemsAndProduct(userId);
-    if (!cart || !cart.cartItems || cart.cartItems.length === 0) {
-      throw new BadRequestError("Cart is empty.");
-    }
+/** Shared helper: find first store that can fulfill all items */
+async function findFulfillableStore(db: PrismaClient, storesWithDistance: StoreWithDistance[], items: { productId: string; quantity: number }[]): Promise<StoreWithDistance | null> {
+  const productIds = items.map((i) => i.productId);
+  for (const s of storesWithDistance) {
+    const storeProducts = await db.productStore.findMany({
+      where: { storeId: s.store.id, productId: { in: productIds } },
+    });
+    const psMap: Record<string, { quantity: number }> = {};
+    for (const ps of storeProducts) psMap[ps.productId] = ps as any;
 
-    const items = cart.cartItems.map((ci) => ({ productId: ci.productId, quantity: ci.quantity }));
-
-    const db: PrismaClient = prisma;
-    const stores = await db.store.findMany();
-    const storesWithDistance: StoreWithDistance[] = stores
-      .map((store) => ({
-        store,
-        distanceKm: getDistance({ latitude: Number(address.latitude), longitude: Number(address.longitude) }, { latitude: store.latitude, longitude: store.longitude }) / 1000,
-      }))
-      .filter((s) => s.distanceKm <= 5)
-      .sort((a, b) => a.distanceKm - b.distanceKm);
-
-    if (storesWithDistance.length === 0) {
-      throw new BadRequestError("No store within 5 km of the shipping address.");
-    }
-
-    // pick nearest store that has enough stock for all items
-    // Batch load productStore records to avoid N+1 queries
-    const productIds = items.map((i) => i.productId);
-    let candidateStore = null as Store | null;
-    for (const s of storesWithDistance) {
-      const storeCandidate = s.store;
-
-      // Batch load all productStore records for this store at once
-      const storeProducts = await db.productStore.findMany({
-        where: {
-          storeId: storeCandidate.id,
-          productId: { in: productIds },
-        },
-      });
-      const psMap: Record<string, any> = {};
-      for (const ps of storeProducts) psMap[ps.productId] = ps;
-
-      // Check if all items can be fulfilled
-      let canFulfill = true;
-      for (const it of items) {
-        const ps = psMap[it.productId];
-        if (!ps || ps.quantity < it.quantity) {
-          canFulfill = false;
-          break;
-        }
-      }
-      if (canFulfill) {
-        candidateStore = storeCandidate;
+    let canFulfill = true;
+    for (const it of items) {
+      const ps = psMap[it.productId];
+      if (!ps || ps.quantity < it.quantity) {
+        canFulfill = false;
         break;
       }
     }
+    if (canFulfill) return s;
+  }
+  return null;
+}
 
-    if (!candidateStore) {
-      throw new BadRequestError("No store within 5 km can fulfill the entire order.");
-    }
+export class OrderService {
+  /**
+   * Get checkout shipping info: find nearest store + return shipping methods
+   * Called when user selects address on checkout page (Early Store Selection)
+   */
+  static async getCheckoutShippingInfo(userId: string, addressId: string) {
+    const db: PrismaClient = prisma;
 
-    // productIds already declared earlier (line 53)
-    const products = await db.product.findMany({ where: { id: { in: productIds } }, include: { category: true } });
-    type ProductWithCategory = Prisma.ProductGetPayload<{ include: { category: true } }>;
-    const productMap: Record<string, ProductWithCategory | undefined> = {};
-    for (const p of products as ProductWithCategory[]) productMap[p.id] = p;
+    const address = await db.userAddress.findUnique({ where: { id: addressId } });
+    if (!address || address.userId !== userId) throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
 
+    const cart = await CartRepository.findCartWithItemsAndProduct(userId);
+    if (!cart || !cart.cartItems || cart.cartItems.length === 0) throw new BadRequestError("Cart is empty.");
+
+    const items = cart.cartItems.map((ci) => ({ productId: ci.productId, quantity: ci.quantity }));
+    const addrLat = Number(address.latitude);
+    const addrLon = Number(address.longitude);
+
+    const stores = await db.store.findMany();
+    const storesWithDistance = findNearbyStores(stores, addrLat, addrLon);
+    if (storesWithDistance.length === 0) throw new BadRequestError("No store within 5 km of the shipping address.");
+
+    const candidate = await findFulfillableStore(db, storesWithDistance, items);
+    if (!candidate) throw new BadRequestError("No store within 5 km can fulfill the entire order.");
+
+    const { store } = candidate;
+
+    // Calculate subtotal for shipping cost
+    const productIds = items.map((i) => i.productId);
+    const products = await db.product.findMany({ where: { id: { in: productIds } } });
+    const productMap: Record<string, { price: number }> = {};
+    for (const p of products) productMap[p.id] = p;
     const subtotal = items.reduce((s, it) => s + (productMap[it.productId]?.price ?? 0) * it.quantity, 0);
 
-    // Calculate distance from the selected candidateStore (not nearest) for accurate shipping cost
-    const distanceKm = storesWithDistance.find((s) => s.store.id === candidateStore.id)?.distanceKm ?? 0;
-    const costPerKm = 1000;
-
-    // Calculate shipping cost using same logic as checkout
-    // Try external shipping cost service first; fall back to distance * costPerKm
-    let shippingCost = 0;
+    // Fetch shipping methods from RajaOngkir
+    const totalWeight = items.reduce((w, it) => w + it.quantity, 0);
+    let shippingMethods = null;
     try {
       const scInput: GetShippingCostInput = {
-        originPostCode: String(candidateStore.postCode ?? ""),
+        originPostCode: String(store.postCode ?? ""),
         destinationPostCode: String(address.postCode ?? ""),
-        weight: 1,
+        weight: totalWeight || 1,
         itemValue: subtotal,
       };
-      const scData = await ShippingCostService.getShippingCost(scInput);
-      // prefer first available regular shipping option
-      const option = scData.calculate_reguler?.[0] ?? scData.calculate_instant?.[0] ?? scData.calculate_cargo?.[0];
-      shippingCost = option?.shipping_cost_net ?? Math.ceil(distanceKm * costPerKm);
+      shippingMethods = await ShippingCostService.getShippingCost(scInput);
     } catch (e) {
-      // Log shipping service failure but don't crash - fall back to simple calculation
-      console.warn(`[OrderService] Shipping cost service failed for pending order, using fallback: ${e instanceof Error ? e.message : "unknown error"}`);
-      shippingCost = Math.ceil(distanceKm * costPerKm);
+      console.warn(`[OrderService] Shipping cost fetch failed: ${e instanceof Error ? e.message : "unknown"}`);
+      // Fallback: distance-based estimate
+      const costPerKm = 1000;
+      const fallbackCost = Math.ceil(candidate.distanceKm * costPerKm);
+      shippingMethods = {
+        calculate_reguler: [
+          {
+            shipping_name: "Estimasi",
+            service_name: "Standard",
+            weight: 1,
+            is_cod: false,
+            shipping_cost: fallbackCost,
+            shipping_cashback: 0,
+            shipping_cost_net: fallbackCost,
+            grandtotal: fallbackCost,
+            service_fee: 0,
+            net_income: 0,
+            etd: "3-5 hari",
+          },
+        ],
+        calculate_cargo: [],
+        calculate_instant: [],
+      };
     }
 
-    // Calculate total discount (discounts + vouchers)
-    const totalDiscount = await PricingCalculationService.calculateTotalDiscount(
-      subtotal,
-      discountIds,
-      voucherIds,
-      db
-    );
+    return {
+      store: { id: store.id, name: store.name, postCode: store.postCode, addressName: store.addressName },
+      distance: candidate.distanceKm,
+      shippingMethods,
+    };
+  }
 
-    const grandTotal = subtotal + shippingCost - totalDiscount;
+  /**
+   * Create a pending order (checkout)
+   * Now accepts shippingCost + shippingMethod from frontend (Early Store Selection)
+   */
+  static async createPendingOrder(
+    userId: string,
+    addressId: string,
+    paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY" = "BANK_TRANSFER",
+    voucherIds?: string[],
+    discountIds?: string[],
+    selectedShippingCost?: number,
+    _selectedShippingMethod?: string,
+  ) {
+    const db: PrismaClient = prisma;
+    try {
+      const address = await db.userAddress.findUnique({ where: { id: addressId } });
+      if (!address || address.userId !== userId) throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
 
-    // create pending order snapshot; do NOT decrement stock here
-    // Payment deadline: 1 hour for manual bank transfer (per brief: "sekitar 1 jam" to upload proof)
-    const paymentDueHours = Number.isFinite(Number(process.env.PAYMENT_DUE_HOURS)) ? Number(process.env.PAYMENT_DUE_HOURS) : 1;
-    const paymentDueAt = new Date(Date.now() + paymentDueHours * 60 * 60 * 1000);
-    const order = await db.order.create({
-      data: {
-        subtotal,
-        totalDiscount,
-        shippingCost,
-        grandTotal,
-        status: "PAYMENT_PENDING",
-        paymentType,
-        shippingAddress: `${address.recipientName} - ${address.addressName} | ${address.latitude},${address.longitude} | ${address.postCode}`,
-        storeAddress: candidateStore.addressName,
-        storeName: candidateStore.name,
-        storeId: candidateStore.id,
-        userAddressId: addressId,
-        paymentDueAt,
-        userId,
-        orderItems: {
-          create: items.map((it) => ({
-            quantity: it.quantity,
-            unitPrice: productMap[it.productId]?.price ?? 0,
-            productName: productMap[it.productId]?.name ?? "",
-            productCategory: productMap[it.productId]?.category?.category ?? "",
-            productId: it.productId,
-          })),
+      const cart = await CartRepository.findCartWithItemsAndProduct(userId);
+      if (!cart || !cart.cartItems || cart.cartItems.length === 0) throw new BadRequestError("Cart is empty.");
+
+      const items = cart.cartItems.map((ci) => ({ productId: ci.productId, quantity: ci.quantity }));
+
+      // find nearby stores within 5km
+      const addrLat = Number(address.latitude);
+      const addrLon = Number(address.longitude);
+      const stores = await db.store.findMany();
+      const storesWithDistance = findNearbyStores(stores, addrLat, addrLon);
+
+      if (storesWithDistance.length === 0) throw new BadRequestError("No store within 5 km of the shipping address.");
+
+      // pick nearest store that can fulfill all items
+      const candidate = await findFulfillableStore(db, storesWithDistance, items);
+      if (!candidate) throw new BadRequestError("No store within 5 km can fulfill the entire order.");
+
+      const candidateStore = candidate.store;
+      const productIds = items.map((i) => i.productId);
+      const products = await db.product.findMany({ where: { id: { in: productIds } }, include: { category: true } });
+      type ProductWithCategory = Prisma.ProductGetPayload<{ include: { category: true } }>;
+      const productMap: Record<string, ProductWithCategory | undefined> = {};
+      for (const p of products as ProductWithCategory[]) productMap[p.id] = p;
+
+      const subtotal = items.reduce((s, it) => s + (productMap[it.productId]?.price ?? 0) * it.quantity, 0);
+
+      // Use frontend-provided shipping cost (Early Selection) or fallback to auto-calculate
+      let shippingCost: number;
+      if (selectedShippingCost !== undefined && selectedShippingCost >= 0) {
+        shippingCost = selectedShippingCost;
+      } else {
+        const distanceKm = candidate.distanceKm;
+        const costPerKm = 1000;
+        try {
+          const scInput: GetShippingCostInput = {
+            originPostCode: String(candidateStore.postCode ?? ""),
+            destinationPostCode: String(address.postCode ?? ""),
+            weight: 1,
+            itemValue: subtotal,
+          };
+          const scData = await ShippingCostService.getShippingCost(scInput);
+          const option = scData.calculate_reguler?.[0] ?? scData.calculate_instant?.[0] ?? scData.calculate_cargo?.[0];
+          shippingCost = option?.shipping_cost_net ?? Math.ceil(distanceKm * costPerKm);
+        } catch (e) {
+          console.warn(`[OrderService] Shipping cost fallback: ${e instanceof Error ? e.message : "unknown error"}`);
+          shippingCost = Math.ceil(distanceKm * costPerKm);
+        }
+      }
+
+      const totalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotal, discountIds, voucherIds, db);
+      const grandTotal = subtotal + shippingCost - totalDiscount;
+
+      const paymentDueHours = Number.isFinite(Number(process.env.PAYMENT_DUE_HOURS)) ? Number(process.env.PAYMENT_DUE_HOURS) : 1;
+      const paymentDueAt = new Date(Date.now() + paymentDueHours * 60 * 60 * 1000);
+
+      const order = await db.order.create({
+        data: {
+          subtotal,
+          totalDiscount,
+          shippingCost,
+          grandTotal,
+          status: "PAYMENT_PENDING",
+          paymentType,
+          shippingAddress: `${address.recipientName} - ${address.addressName} | ${address.latitude},${address.longitude} | ${address.postCode}`,
+          storeAddress: candidateStore.addressName,
+          storeName: candidateStore.name,
+          storeId: candidateStore.id,
+          userAddressId: addressId,
+          paymentDueAt,
+          userId,
+          orderItems: {
+            create: items.map((it) => ({
+              quantity: it.quantity,
+              unitPrice: productMap[it.productId]?.price ?? 0,
+              productName: productMap[it.productId]?.name ?? "",
+              productCategory: productMap[it.productId]?.category?.category ?? "",
+              productId: it.productId,
+            })),
+          },
         },
-      },
-    });
+      });
 
-    return order;
+      return order;
+    } catch (err: any) {
+      console.error("[OrderService] createPendingOrder error:", err instanceof Error ? err.stack || err.message : err);
+      throw err;
+    }
   }
 
   /**
