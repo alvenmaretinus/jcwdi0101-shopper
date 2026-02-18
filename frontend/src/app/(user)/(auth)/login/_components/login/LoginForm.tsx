@@ -117,7 +117,7 @@ export function LoginForm() {
         </Field>
 
         <Field>
-          <Button onClick={handleLogin} disabled={isLoading}>
+          <Button type="button" onClick={handleLogin} disabled={isLoading}>
             Login
           </Button>
         </Field>

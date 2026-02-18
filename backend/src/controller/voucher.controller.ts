@@ -29,8 +29,8 @@ const router = Router();
 // Business requires that even non-logged in users can view vouchers
 router.get("/vouchers", async (req, res) => {
     const inputData: GetVouchersByFilterInput = GetVouchersByFilterSchema.parse(req.query);
-    const vouchers = await voucherService.getVouchersByFilter(inputData);
-    return res.json(vouchers);
+    const result = await voucherService.getVouchersByFilter(inputData);
+    return res.json(result);
 });
 
 // Calculate voucher discount - public endpoint for UI preview

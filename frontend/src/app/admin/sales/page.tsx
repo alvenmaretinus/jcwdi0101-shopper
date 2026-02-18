@@ -10,6 +10,7 @@ import { getMonth, getYear } from 'date-fns';
 import { Search } from 'lucide-react';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
+import { Pagination } from '@/components/Pagination/Pagination';
 
 interface SalesReportEntity {
   number: number;
@@ -46,6 +47,13 @@ export default function SalesReport() {
   const [allSalesRecords, setAllSalesRecords] = useState<SalesReportEntity[]>([]);
   const [stores, setStores] = useState<{ id: string; name: string }[]>([]);
   const [categories, setCategories] = useState<{ id: string; category: string }[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -75,19 +83,46 @@ export default function SalesReport() {
   
 
   useEffect(() => {
-    // Mock fetch - replace with actual API call
+    // Fetch sales records with pagination
     const fetchSalesRecords = async () => {
-      let query = ``
+      const limit = 20;
+      const skip = (currentPage - 1) * limit;
+      let query = `skip=${skip}&take=${limit}`
       if (selectedCategory !== 'all') query += `&categoryId=${selectedCategory}`
       if (selectedStoreId !== 'all') query += `&storeId=${selectedStoreId}`
       if (productSearch.trim() !== '') query += `&productName=${encodeURIComponent(productSearch.trim())}`
       query += `&monthAndYear=${selectedYear}-${String(Number(selectedMonth) + 1).padStart(2, '0')}`
       fetch(`/api/sales-report?${query}`) // Adjust query params as needed
         .then(res => res.json())
-        .then(data => setAllSalesRecords(data))
-        .catch(err => console.error('Failed to fetch sales records:', err));
+        .then(response => {
+          // Check if response has data array and count
+          if (response && 'data' in response) {
+            setAllSalesRecords(response.data || []);
+            // Calculate pagination from response
+            const total = response.count || 0;
+            const totalPages = Math.ceil(total / limit);
+            setPagination({
+              page: response.page || 1,
+              limit: limit,
+              total: total,
+              totalPages: totalPages,
+            });
+          } else {
+            // Fallback if response is just an array
+            setAllSalesRecords(Array.isArray(response) ? response : []);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch sales records:', err);
+          setAllSalesRecords([]);
+        });
     };
     fetchSalesRecords();
+  }, [selectedCategory, selectedStoreId, selectedMonth, selectedYear, productSearch, currentPage]);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
   }, [selectedCategory, selectedStoreId, selectedMonth, selectedYear, productSearch]);
 
   return (
@@ -231,6 +266,14 @@ export default function SalesReport() {
             </Table>
           )}
         </CardContent>
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          onChange={(page) => {
+            setCurrentPage(page);
+          }}
+        />
       </Card>
     </div>
   );

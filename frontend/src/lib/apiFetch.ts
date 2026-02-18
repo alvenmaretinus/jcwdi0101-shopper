@@ -29,8 +29,13 @@ export async function apiFetch<T>(url: string, input: ApiInit): Promise<T> {
       headers,
       body: input.body ? JSON.stringify(input.body) : undefined,
       credentials: "include",
-      cache: "no-store", // Disable Next.js caching
-      next: { revalidate: 0 }, // Disable revalidation
+    });
+
+    console.log("API Request:", {
+      url: `${apiUrl}/api${url}`,
+      method: input.method,
+      headers,
+      body: input.body,
     });
 
     const contentType = res.headers.get("content-type") || "";
@@ -45,10 +50,17 @@ export async function apiFetch<T>(url: string, input: ApiInit): Promise<T> {
     if (res.ok) return data as T;
 
     if (typeof window !== "undefined") {
-      toast.error(data?.error || "Internal Server Error");
+      const errorMessage = data?.error || data?.message || "Internal Server Error";
+      toast.error(errorMessage);
+      console.error("API Error:", {
+        url: `${apiUrl}/api${url}`,
+        status: res.status,
+        statusText: res.statusText,
+        error: data,
+      });
     }
 
-    throw new Error(data?.error || "Request failed");
+    throw new Error(data?.error || data?.message || "Request failed");
   } catch (error) {
     throw error;
   }

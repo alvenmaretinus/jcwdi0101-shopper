@@ -1,7 +1,7 @@
 import { CreateVoucherInput, GetVouchersByFilterInput, UpdateVoucherInput } from "../../schema/voucher/index";
 import { VoucherCreateReq, VoucherFilter, VoucherResponse, VoucherUpdateReq } from "../../repository/voucher/entity";
 import { Service } from "./interface";
-import { VoucherRepo } from "../../repository/voucher/interface";
+import { VoucherRepo, PaginatedResponse } from "../../repository/voucher/interface";
 import Decimal from "decimal.js";
 
 export class VoucherService implements Service {
@@ -30,16 +30,16 @@ export class VoucherService implements Service {
 
     /**
      * Get vouchers with flexible filtering options.
-     * Supports field filters and active date filtering.
+     * Supports field filters, active date filtering, and pagination.
      */
-    async getVouchersByFilter(filter: GetVouchersByFilterInput): Promise<VoucherResponse[]> {
-        const { percentage, ...rest } = filter;
+    async getVouchersByFilter(filter: GetVouchersByFilterInput): Promise<PaginatedResponse<VoucherResponse>> {
+        const { percentage, page, limit, ...rest } = filter;
         const formattedFilter: Partial<VoucherFilter> = {
             ...rest,
             ...(percentage !== undefined ? { percentage: new Decimal(percentage) } : {}),
         };
 
-        return this.repo.getVouchersByFilter(formattedFilter);
+        return this.repo.getVouchersByFilter(formattedFilter, { page, limit });
     }
 
     async getVoucherById(id: string): Promise<VoucherResponse | null> {

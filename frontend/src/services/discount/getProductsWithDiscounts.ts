@@ -1,5 +1,4 @@
-import { apiFetch } from "@/lib/apiFetch";
-import { HttpMethod } from "@/lib/apiFetch";
+import { apiFetch, HttpMethod } from "@/lib/apiFetch";
 import { Discount } from "@/types/Discount";
 
 export interface GetDiscountsParams {
@@ -11,8 +10,37 @@ export interface GetDiscountsParams {
   limit?: number;
 }
 
-export interface PaginatedDiscountsResponse {
-  data: Discount[];
+export interface ProductWithDiscount extends Discount {
+  product?: {
+    id: string;
+    name: string;
+    description: string | null;
+    price: number;
+    weight: number;
+    categoryId: string;
+    category?: {
+      id: string;
+      category: string;
+    };
+    productImages?: Array<{
+      id: string;
+      url: string;
+    }>;
+    productStores?: Array<{
+      id: string;
+      quantity: number;
+      storeId: string;
+      productId: string;
+      store: {
+        id: string;
+        name: string;
+      };
+    }>;
+  };
+}
+
+export interface PaginatedProductsWithDiscountsResponse {
+  data: ProductWithDiscount[];
   meta: {
     page: number;
     limit: number;
@@ -21,7 +49,7 @@ export interface PaginatedDiscountsResponse {
   };
 }
 
-export const getDiscounts = async (params?: GetDiscountsParams): Promise<PaginatedDiscountsResponse> => {
+export const getProductsWithDiscounts = async (params?: GetDiscountsParams): Promise<PaginatedProductsWithDiscountsResponse> => {
   const queryParams = new URLSearchParams();
   
   if (params?.type && params.type !== 'all') {
@@ -45,9 +73,9 @@ export const getDiscounts = async (params?: GetDiscountsParams): Promise<Paginat
   }
 
   const queryString = queryParams.toString();
-  const url = queryString ? `/discounts?${queryString}` : '/discounts';
+  const url = queryString ? `/discounts/products?${queryString}` : '/discounts/products';
 
-  const res = await apiFetch<PaginatedDiscountsResponse>(url, {
+  const res = await apiFetch<PaginatedProductsWithDiscountsResponse>(url, {
     method: HttpMethod.GET,
   });
 

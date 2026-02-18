@@ -11,7 +11,7 @@ export type DiscountCreateReq = {
     minimumPrice?: number;
     
     isTiedToProduct: boolean;
-    productId?: string;
+    productId?: string | null;
 
     buyQuantity?: number;
     freeQuantity?: number;
@@ -31,7 +31,7 @@ export type DiscountUpdateReq = {
     minimumPrice?: number;
     
     isTiedToProduct?: boolean;
-    productId?: string;
+    productId?: string | null;
 
     buyQuantity?: number;
     freeQuantity?: number;
@@ -85,6 +85,24 @@ export type  DiscountResponse = {
 
     createdAt: Date;
     updatedAt: Date;
+    
+    // Optional: included when queried with product relation
+    product?: {
+        id: string;
+        name: string;
+        description: string | null;
+        price: number;
+        weight: number;
+        categoryId: string;
+        category?: {
+            id: string;
+            category: string;
+        };
+        productImages?: Array<{
+            id: string;
+            url: string;
+        }>;
+    };
 }
     
 

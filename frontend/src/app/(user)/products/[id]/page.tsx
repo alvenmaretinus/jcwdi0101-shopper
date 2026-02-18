@@ -18,8 +18,8 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
   const nextHeaders = await headers();
 
   // Fetch single product by ID
-  const products = await getProducts({ id, withStock: true }, nextHeaders);
-  const product = products[0];
+  const response = await getProducts({ id, withStock: true }, nextHeaders);
+  const product = response.data[0];
 
   if (!product) {
     notFound();

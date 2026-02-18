@@ -6,6 +6,7 @@ import { z } from "zod";
  * Supports:
  * - Field-based filters: percentage, amount, type, productId, etc.
  * - Active date filter: Returns only discounts valid on the specified date
+ * - Pagination: page and limit for paginated results
  * 
  * When activeOnDate is provided, the system filters discounts where:
  * - startsAt is NULL OR startsAt <= activeOnDate
@@ -23,6 +24,8 @@ export const GetDiscountsByFilterSchema = z.strictObject({
     freeQuantity: z.coerce.number().int().min(0).optional(),
     /** Filter discounts that are active/valid on this specific date */
     activeOnDate: z.coerce.date().optional(),
+    page: z.coerce.number().int().min(1).optional().default(1),
+    limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 });
 
 export type GetDiscountsByFilterInput = z.infer<typeof GetDiscountsByFilterSchema>;

@@ -6,6 +6,7 @@ import ProductsCard from './_components/_products-card/products-card';
 import { apiFetch, ApiInit, HttpMethod } from '@/lib/apiFetch';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
+import { Pagination } from '@/components/Pagination/Pagination';
 
 export default function Products() {
   const { data } = authClient.useSession();
@@ -19,7 +20,12 @@ export default function Products() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
 
   const [categories, setCategories] = useState<any[]>([]);
 
@@ -59,7 +65,7 @@ export default function Products() {
       const apiInit: ApiInit = {
         method: HttpMethod.GET,
       };
-      let filterStrings = ['withStock=true']; // Include store information
+      let filterStrings = ['withStock=true', `page=${currentPage}`, 'limit=20']; // Include store information and pagination
       if (categoryFilter !== undefined && categoryFilter !== 'all') {
         filterStrings.push(`categoryId=${categoryFilter}`);
       }
@@ -67,9 +73,16 @@ export default function Products() {
         filterStrings.push(`name=${searchQuery}`);
       }
       const filterQuery = filterStrings.length > 0 ? `?${filterStrings.join('&')}` : '';
-      const data = await apiFetch<any[]>(`/product${filterQuery}`, apiInit);
-      console.log('Fetched products:', data);
-      setProducts(data);
+      const response = await apiFetch<any>(`/product${filterQuery}`, apiInit);
+      console.log('Fetched products:', response);
+      // Check if response has data and meta properties (paginated response)
+      if (response && 'data' in response && 'meta' in response) {
+        setProducts(response.data);
+        setPagination(response.meta);
+      } else {
+        // Fallback for non-paginated response
+        setProducts(Array.isArray(response) ? response : []);
+      }
     } catch (error) {
       console.error('Failed to fetch products:', error);
       setProducts([]);
@@ -88,6 +101,11 @@ export default function Products() {
       fetchProducts();
     }
   }, [searchQuery, fetchProducts]);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter]);
 
   const handleEdit = (product: any) => {
     setEditingProduct(product);
@@ -171,6 +189,12 @@ export default function Products() {
         handleDelete={handleDelete}
         currentPage={currentPage}
         onPageChange={handlePageChange}
+      />
+      <Pagination
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        total={pagination.total}
+        onChange={handlePageChange}
       />
     </div>
   );

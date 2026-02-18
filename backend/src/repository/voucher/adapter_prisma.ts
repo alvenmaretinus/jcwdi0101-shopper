@@ -1,5 +1,5 @@
 import { VoucherCreateReq, VoucherUpdateReq, VoucherResponse, VoucherFilter } from "./entity";
-import { VoucherRepo } from "./interface";
+import { VoucherRepo, PaginationParams, PaginatedResponse } from "./interface";
 import { PrismaClient, Prisma } from "../../../prisma/generated/client";
 import { DiscountType, VoucherType } from "../../../prisma/generated/enums";
 
@@ -161,20 +161,42 @@ export class PrismaVoucherRepository implements VoucherRepo {
         return formattedFilter;
     }
 
-    async getVouchersByFilter(filter: Partial<VoucherFilter>): Promise<VoucherResponse[]> {
+    async getVouchersByFilter(filter: Partial<VoucherFilter>, pagination?: PaginationParams): Promise<PaginatedResponse<VoucherResponse>> {
         const formattedFilter: Prisma.VoucherWhereInput = this.formatFilter(filter);
         formattedFilter.isSoftDeleted = false;
         formattedFilter.discount = {
             ...((formattedFilter.discount as any) || {}),
             isSoftDeleted: false,
         };
-        const vouchers = await this.prisma.voucher.findMany({
-            where: formattedFilter,
-            include: {
-                discount: true,
+        
+        // If pagination is provided, use it; otherwise default to page 1, limit 20
+        const page = pagination?.page ?? 1;
+        const limit = pagination?.limit ?? 20;
+        const skip = (page - 1) * limit;
+        
+        const [vouchers, total] = await Promise.all([
+            this.prisma.voucher.findMany({
+                where: formattedFilter,
+                include: {
+                    discount: true,
+                },
+                skip,
+                take: limit,
+            }),
+            this.prisma.voucher.count({
+                where: formattedFilter,
+            }),
+        ]);
+        
+        return {
+            data: vouchers as VoucherResponse[],
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
             },
-        });
-        return vouchers as VoucherResponse[];
+        };
     }
 
     async getVoucherById(id: string): Promise<VoucherResponse | null> {

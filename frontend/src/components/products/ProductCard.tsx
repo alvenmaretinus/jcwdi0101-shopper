@@ -26,6 +26,7 @@ export function ProductCard({ product }: ProductCardProps) {
     ? product.productStores.reduce((sum, ps) => sum + ps.quantity, 0)
     : 0;
   const isOutOfStock = totalStock === 0;
+  console.log("Product:", product)
   const primaryImage = product.productImages[0]?.url || "https://placehold.co/400x400?text=No+Image";
 
   return (

@@ -11,6 +11,7 @@ import type { MovementType } from '@/types/MovementType';
 import type { StockReport } from '@/types/StockReport';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
+import { Pagination } from '@/components/Pagination/Pagination';
 
 const movementTypeColors: Record<MovementType, string> = {
   PURCHASED: 'bg-green-100 text-green-800',
@@ -36,6 +37,13 @@ export default function StockReport() {
   const [selectedStoreId, setSelectedStoreId] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>(String(getMonth(new Date())));
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
 
   // Filter movements by store and month/year
   const [ filteredMovements, setFilteredMovements ] = useState<StockReport[]>([]);
@@ -70,17 +78,44 @@ export default function StockReport() {
   }, [])
 
   useEffect(() => {
-    // Mock fetch - replace with actual API call
+    // Fetch stock report with pagination
     const fetchMovements = async () => {
-      let query = ``
+      const limit = 20;
+      const skip = (currentPage - 1) * limit;
+      let query = `skip=${skip}&take=${limit}`
       if (selectedStoreId !== 'all') query += `&storeId=${selectedStoreId}`
-      query += `&monthAndYear=${selectedYear}-${String(Number(selectedMonth) + 1).padStart(2, '0')}`
+      // Parse month and year for the API
+      const monthNum = Number(selectedMonth) + 1; // API expects 1-12, state is 0-11
+      const yearNum = Number(selectedYear);
+      query += `&createdAtMonth=${monthNum}&createdAtYear=${yearNum}`
       fetch(`/api/stock-report?${query}`) // Adjust query params as needed
         .then(res => res.json())
-        .then(data => setFilteredMovements(data))
-        .catch(err => console.error('Failed to fetch stock movements:', err));
+        .then(response => {
+          // Check if response has data array and pagination info
+          if (response && 'data' in response) {
+            setFilteredMovements(response.data || []);
+            setPagination({
+              page: response.page || 1,
+              limit: limit,
+              total: response.total || 0,
+              totalPages: response.totalPages || 1,
+            });
+          } else {
+            // Fallback if response is just an array
+            setFilteredMovements(Array.isArray(response) ? response : []);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch stock movements:', err);
+          setFilteredMovements([]);
+        });
     };
     fetchMovements();
+  }, [selectedStoreId, selectedMonth, selectedYear, currentPage]);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
   }, [selectedStoreId, selectedMonth, selectedYear]);
 
   return (
@@ -181,6 +216,14 @@ export default function StockReport() {
             </Table>
           )}
         </CardContent>
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          onChange={(page) => {
+            setCurrentPage(page);
+          }}
+        />
       </Card>
     </div>
   );

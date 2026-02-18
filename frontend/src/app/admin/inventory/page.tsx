@@ -15,6 +15,7 @@ import { Product } from '@/types/Product';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
 import { getStores } from '@/services/store/getStores';
+import { Pagination } from '@/components/Pagination/Pagination';
 
 
 
@@ -29,6 +30,13 @@ export default function Inventory() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
 
   // Map mock data to the API shape
   const [stockRecords, setStockRecords] = useState<Product[]>([]);
@@ -77,7 +85,7 @@ export default function Inventory() {
     };
     const fetchStockRecords = async () => {
         try {
-            let url = `/product?withStock=true`
+            let url = `/product?withStock=true&page=${currentPage}&limit=20`
             console.log('Selected store ID for fetching stock records:', selectedStoreId);
             console.log('Session user:', sessionUser);
             if (selectedStoreId === '') {
@@ -90,9 +98,16 @@ export default function Inventory() {
                 url += `&name=${searchQuery}`;
             }
             console.log('Fetching stock records with URL:', url);
-            const data = await apiFetch<Product[]>(url, apiInit);
-            console.log('Stock records API response:', data);
-            setStockRecords(Array.isArray(data) ? data : []);
+            const response = await apiFetch<any>(url, apiInit);
+            console.log('Stock records API response:', response);
+            // Check if response has data and meta properties (paginated response)
+            if (response && 'data' in response && 'meta' in response) {
+                setStockRecords(Array.isArray(response.data) ? response.data : []);
+                setPagination(response.meta);
+            } else {
+                // Fallback for non-paginated response
+                setStockRecords(Array.isArray(response) ? response : []);
+            }
         }
         catch (error) {
             console.error('Failed to fetch stock records:', error);
@@ -100,7 +115,12 @@ export default function Inventory() {
         }
     };
     fetchStockRecords();
-  }, [selectedStoreId, searchQuery]);
+  }, [selectedStoreId, searchQuery, sessionUser, currentPage]);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedStoreId]);
             
 
   const startEditing = (productStoreId: string, quantity: number) => {
@@ -331,6 +351,12 @@ export default function Inventory() {
             </TableBody>
           </Table>
         </CardContent>
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          onChange={setCurrentPage}
+        />
       </Card>
     </div>
   );

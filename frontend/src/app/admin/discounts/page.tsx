@@ -15,10 +15,12 @@ import type { Discount } from '@/types/Discount';
 import type { Voucher } from '@/types/Voucher';
 import { getDiscounts, createDiscount, updateDiscount, deleteDiscount, CreateDiscountInput, UpdateDiscountInput } from '@/services/discount';
 import { getVouchers, createVoucher, deleteVoucher, CreateVoucherInput } from '@/services/voucher';
+import { getProducts, GetProductsResponse, ProductWithDetails } from '@/services/product/getProducts';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Pagination } from '@/components/Pagination/Pagination';
 
 const discountTypeIcons = {
   PERCENTAGE: Percent,
@@ -54,10 +56,23 @@ export default function Discounts() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState<Discount | null>(null);
+  const [selectedDiscountType, setSelectedDiscountType] = useState<'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY'>('PERCENTAGE');
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWithMinimumChecked, setIsWithMinimumChecked] = useState<boolean>(editingDiscount?.isWithMinimum ?? false);
+  
+  // Product selection states
+  const [products, setProducts] = useState<ProductWithDetails[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [productPage, setProductPage] = useState(1);
+  const [productsPagination, setProductsPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+  });
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   
   // Voucher states
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -65,6 +80,22 @@ export default function Discounts() {
   const [voucherTypeFilter, setVoucherTypeFilter] = useState<string>('all');
   const [isVoucherDialogOpen, setIsVoucherDialogOpen] = useState(false);
   const [isVouchersLoading, setIsVouchersLoading] = useState(false);
+  
+  // Pagination states
+  const [discountsPage, setDiscountsPage] = useState(1);
+  const [vouchersPage, setVouchersPage] = useState(1);
+  const [discountsPagination, setDiscountsPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
+  const [vouchersPagination, setVouchersPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -84,20 +115,54 @@ export default function Discounts() {
   // Fetch discounts on mount and when filters change
   useEffect(() => {
     fetchDiscounts();
-  }, [typeFilter]);
+  }, [typeFilter, discountsPage]);
 
   // Fetch vouchers on mount and when filters change
   useEffect(() => {
     fetchVouchers();
-  }, [voucherTypeFilter]);
+  }, [voucherTypeFilter, vouchersPage]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setDiscountsPage(1);
+  }, [searchQuery, typeFilter]);
+
+  useEffect(() => {
+    setVouchersPage(1);
+  }, [voucherSearch, voucherTypeFilter]);
+
+  // Fetch products for product selection
+  useEffect(() => {
+    fetchProducts();
+  }, [productSearch, productPage]);
+
+  const fetchProducts = async () => {
+    setIsLoadingProducts(true);
+    try {
+      const response = await getProducts({
+        name: productSearch || undefined,
+        page: productPage,
+        limit: 10,
+      });
+      setProducts(response.data);
+      setProductsPagination(response.meta);
+    } catch (error) {
+      console.error('Failed to load products:', error);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
 
   const fetchDiscounts = async () => {
     setIsLoading(true);
     try {
-      const data = await getDiscounts({ 
-        type: typeFilter !== 'all' ? typeFilter : undefined 
+      const response = await getDiscounts({ 
+        type: typeFilter !== 'all' ? typeFilter : undefined,
+        page: discountsPage,
+        limit: 20,
       });
-      setDiscounts(data);
+      setDiscounts(response.data);
+      setDiscountsPagination(response.meta);
     } catch (error) {
       toast.error('Failed to load discounts');
     } finally {
@@ -108,10 +173,13 @@ export default function Discounts() {
   const fetchVouchers = async () => {
     setIsVouchersLoading(true);
     try {
-      const data = await getVouchers({ 
-        voucherType: voucherTypeFilter !== 'all' ? voucherTypeFilter : undefined 
+      const response = await getVouchers({ 
+        voucherType: voucherTypeFilter !== 'all' ? voucherTypeFilter : undefined,
+        page: vouchersPage,
+        limit: 20,
       });
-      setVouchers(data);
+      setVouchers(response.data);
+      setVouchersPagination(response.meta);
     } catch (error) {
       toast.error('Failed to load vouchers');
     } finally {
@@ -147,6 +215,7 @@ export default function Discounts() {
 
   const handleEdit = (discount: Discount) => {
     setEditingDiscount(discount);
+    setSelectedDiscountType(discount.type);
     setIsDialogOpen(true);
   };
 
@@ -156,6 +225,7 @@ export default function Discounts() {
 
   const handleCreate = () => {
     setEditingDiscount(null);
+    setSelectedDiscountType('PERCENTAGE');
     setIsDialogOpen(true);
   };
 
@@ -168,27 +238,50 @@ export default function Discounts() {
       const type = formData.get('type') as 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
       const endsAt = formData.get('endsAt') as string;
       const startsAt = formData.get('startsAt') as string;
+      const rawValue = (formData.get('value') as string) ?? '';
       
       const discountData: any = {
         name: formData.get('name') as string,
         type,
-        isWithMinimum: formData.get('isWithMinimum') === 'true',
+        isVoucher: false,
+        isWithMinimum: formData.has('isWithMinimum'),
         isTiedToProduct: formData.get('productId') !== 'all',
-        productId: formData.get('productId') !== 'all' ? formData.get('productId') as string : undefined,
+        productId: formData.get('productId') !== 'all' ? formData.get('productId') as string : null,
       };
 
       // Add type-specific fields
       if (type === 'PERCENTAGE') {
-        discountData.percentage = Number(formData.get('value'));
+        discountData.percentage = Number(rawValue);
       } else if (type === 'FIXED_AMOUNT') {
-        discountData.amount = Number(formData.get('value'));
+        const amount = Number(rawValue);
+        if (!Number.isInteger(amount)) {
+          toast.error('Fixed amount must be a whole number');
+          setIsSubmitting(false);
+          return;
+        }
+        discountData.amount = amount;
       } else if (type === 'QUANTITY') {
-        discountData.buyQuantity = Number(formData.get('buyQuantity'));
-        discountData.freeQuantity = Number(formData.get('freeQuantity'));
+        const buyQuantity = Number(formData.get('buyQuantity'));
+        const freeQuantity = Number(formData.get('freeQuantity'));
+
+        if (!Number.isInteger(buyQuantity) || !Number.isInteger(freeQuantity)) {
+          toast.error('Buy and free quantities must be whole numbers');
+          setIsSubmitting(false);
+          return;
+        }
+
+        discountData.buyQuantity = buyQuantity;
+        discountData.freeQuantity = freeQuantity;
       }
 
       if (formData.get('minimumPrice')) {
-        discountData.minimumPrice = Number(formData.get('minimumPrice'));
+        const minimumPrice = Number(formData.get('minimumPrice'));
+        if (!Number.isInteger(minimumPrice)) {
+          toast.error('Minimum purchase must be a whole number');
+          setIsSubmitting(false);
+          return;
+        }
+        discountData.minimumPrice = minimumPrice;
       }
 
       if (startsAt) {
@@ -256,7 +349,7 @@ export default function Discounts() {
         name: formData.get('voucherName') as string,
         type,
         voucherType: formData.get('voucherType') as 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY',
-        isWithMinimum: formData.get('voucherIsWithMinimum') === 'true',
+        isWithMinimum: formData.has('voucherIsWithMinimum'),
       };
 
       // Add type-specific fields
@@ -372,7 +465,12 @@ export default function Discounts() {
 
               <div className="space-y-2">
                 <Label htmlFor="type">Discount Type</Label>
-                <Select name="type" defaultValue={editingDiscount?.type || 'PERCENTAGE'} required>
+                <Select
+                  name="type"
+                  value={selectedDiscountType}
+                  onValueChange={(value) => setSelectedDiscountType(value as 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY')}
+                  required
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -387,9 +485,9 @@ export default function Discounts() {
               {/* Conditional fields based on type */}
               <div className="space-y-2">
                 <Label htmlFor="value">
-                  {editingDiscount?.type === 'QUANTITY' ? 'Quantities' : 'Discount Value'}
+                  {selectedDiscountType === 'QUANTITY' ? 'Quantities' : 'Discount Value'}
                 </Label>
-                {editingDiscount?.type === 'QUANTITY' ? (
+                {selectedDiscountType === 'QUANTITY' ? (
                   <div className="grid grid-cols-2 gap-4">
                     <Input 
                       name="buyQuantity" 
@@ -410,8 +508,8 @@ export default function Discounts() {
                   <Input 
                     name="value" 
                     type="number" 
-                    step="0.01"
-                    placeholder={editingDiscount?.type === 'PERCENTAGE' ? '10' : '50000'} 
+                    step={selectedDiscountType === 'FIXED_AMOUNT' ? '1' : '0.01'}
+                    placeholder={selectedDiscountType === 'PERCENTAGE' ? '10' : '50000'} 
                     defaultValue={editingDiscount?.percentage || editingDiscount?.amount}
                     required 
                   />
@@ -446,14 +544,61 @@ export default function Discounts() {
 
               <div className="space-y-2">
                 <Label htmlFor="product">Apply to Product (Optional)</Label>
-                <Select name="productId" defaultValue={editingDiscount?.productId || 'all'}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All products" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Products</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <Input 
+                    placeholder="Search products..."
+                    value={productSearch}
+                    onChange={(e) => {
+                      setProductSearch(e.target.value);
+                      setProductPage(1);
+                    }}
+                    className="mb-2"
+                  />
+                  <Select name="productId" defaultValue={editingDiscount?.productId || 'all'}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All products" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Products</SelectItem>
+                      {isLoadingProducts ? (
+                        <div className="p-2 text-sm text-muted-foreground">Loading...</div>
+                      ) : products.length === 0 ? (
+                        <div className="p-2 text-sm text-muted-foreground">No products found</div>
+                      ) : (
+                        products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {productsPagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Page {productsPagination.page} of {productsPagination.totalPages}</span>
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setProductPage(p => Math.max(1, p - 1))}
+                          disabled={productPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setProductPage(p => Math.min(productsPagination.totalPages, p + 1))}
+                          disabled={productPage === productsPagination.totalPages}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -566,6 +711,12 @@ export default function Discounts() {
             </Table>
           )}
         </CardContent>
+        <Pagination
+          page={discountsPagination.page}
+          totalPages={discountsPagination.totalPages}
+          total={discountsPagination.total}
+          onChange={setDiscountsPage}
+        />
       </Card>
       </TabsContent>
 
@@ -745,6 +896,12 @@ export default function Discounts() {
               </Table>
               )}
             </CardContent>
+            <Pagination
+              page={vouchersPagination.page}
+              totalPages={vouchersPagination.totalPages}
+              total={vouchersPagination.total}
+              onChange={setVouchersPage}
+            />
           </Card>
         </TabsContent>
       </Tabs> 
