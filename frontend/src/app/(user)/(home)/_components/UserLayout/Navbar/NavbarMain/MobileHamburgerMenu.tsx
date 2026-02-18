@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { authClient } from "@/lib/authClient";
-import { Menu, ShoppingCart, User } from "lucide-react";
+import { Menu, User, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -30,7 +30,7 @@ export const MobileHamburgerMenu = () => {
 
       <SheetContent side="right" className="w-3/4">
         <div className="flex flex-col gap-6 mt-8">
-          <hr className="border-border mt-3" />
+          {/* Main Navigation */}
           <nav className="flex flex-col gap-2">
             {navLinks.map((link) => (
               <Link
@@ -50,28 +50,49 @@ export const MobileHamburgerMenu = () => {
 
           <hr className="border-border" />
 
-          <div className="flex flex-col gap-2">
+          {/* Account Links - for very small screens where these are hidden */}
+          <div className="flex flex-col gap-2 sm:hidden">
             <Link
-              href="/profile/profile"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="py-3 px-4 rounded-lg font-medium text-foreground hover:bg-muted flex items-center gap-3"
-            >
-              <User className="h-5 w-5" />
-              My Account
-            </Link>
-            <Link
-              href="/profile/order"
+              href="/cart"
               onClick={() => setIsMobileMenuOpen(false)}
               className="py-3 px-4 rounded-lg font-medium text-foreground hover:bg-muted flex items-center gap-3"
             >
               <ShoppingCart className="h-5 w-5" />
-              My Orders
+              My Cart
             </Link>
+            {data ? (
+              <Link
+                href="/profile/profile"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="py-3 px-4 rounded-lg font-medium text-foreground hover:bg-muted flex items-center gap-3"
+              >
+                <User className="h-5 w-5" />
+                My Profile
+              </Link>
+            ) : (
+              <Button 
+                asChild
+                className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full"
+              >
+                <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                  Sign In
+                </Link>
+              </Button>
+            )}
           </div>
+
+          {/* Sign In for larger mobile screens */}
           {!data && (
-            <Button className="bg-primary md:hidden hover:bg-primary/90 text-primary-foreground rounded-full mt-4">
-              Sign In
-            </Button>
+            <div className="hidden sm:block">
+              <Button 
+                asChild
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-full"
+              >
+                <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                  Sign In
+                </Link>
+              </Button>
+            </div>
           )}
         </div>
       </SheetContent>

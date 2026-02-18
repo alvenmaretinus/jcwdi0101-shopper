@@ -61,7 +61,7 @@ const categories = [
 
 export const CategorySectionGrid = () => {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
       {categories.map((category) => (
         <Link
           key={category.id}
@@ -71,7 +71,7 @@ export const CategorySectionGrid = () => {
           <div
             className={`aspect-square rounded-2xl bg-gradient-to-br ${category.color} flex flex-col items-center justify-center p-4 transition-all duration-300 group-hover:shadow-medium group-hover:-translate-y-1`}
           >
-            <span className="text-4xl md:text-5xl mb-2 group-hover:scale-110 transition-transform duration-300">
+            <span className="text-3xl sm:text-4xl md:text-5xl mb-2 group-hover:scale-110 transition-transform duration-300">
               {category.icon}
             </span>
             <h3 className="font-semibold text-foreground text-center text-sm mt-2">

@@ -115,7 +115,7 @@ export const LocationForm = ({
       </Button>
 
       {/* Search Bar */}
-      <div className="max-h-3.5">
+      <div className="mb-3.5">
         <SearchBarLocation
           setCoords={setCoords}
           isShouldFly={isShouldFly}
@@ -123,7 +123,7 @@ export const LocationForm = ({
         />
       </div>
 
-      <div className="w-full mt-10 h-[400px] sm:h-[500px] lg:h-[600px] xl:h-[700px]">
+      <div className="w-full mt-6 sm:mt-10 h-[300px] sm:h-[400px] lg:h-[500px] xl:h-[600px]">
         <ReactMap
           isShouldFly={isShouldFly}
           coords={coords}

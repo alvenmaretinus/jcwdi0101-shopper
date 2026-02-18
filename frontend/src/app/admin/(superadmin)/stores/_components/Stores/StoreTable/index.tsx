@@ -125,7 +125,7 @@ export const StoreTable = () => {
           No stores found
         </div>
       ) : (
-        <div className="relative">
+        <div className="relative overflow-x-auto -mx-2 px-2">
           {isLoading && (
             <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -145,7 +145,7 @@ export const StoreTable = () => {
               {stores.map((store) => (
                 <TableRow
                   key={store.id}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="cursor-pointer hover:bg-muted/50 h-12 sm:h-auto"
                   onClick={() => handleRowClick(store.id)}
                 >
                   <TableCell className="font-medium">
@@ -157,7 +157,7 @@ export const StoreTable = () => {
                   <TableCell>
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <MapPin className="h-3.5 w-3.5 shrink-0" />
-                      <span className="text-sm truncate max-w-64">
+                      <span className="text-sm truncate max-w-[120px] sm:max-w-48 md:max-w-64">
                         {store.addressName}
                       </span>
                     </div>
