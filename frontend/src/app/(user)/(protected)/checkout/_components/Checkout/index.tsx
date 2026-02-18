@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { AlertCircle } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { getUserAddresses } from "@/services/user-address/getUserAddresses";
 import {
@@ -11,22 +9,23 @@ import {
   CalculateVoucherResponse,
 } from "@/services/voucher/calculateVoucher";
 import { createOrder } from "@/services/order/createOrder";
+import {
+  getCheckoutShippingInfo,
+  CheckoutShippingInfo,
+} from "@/services/order/getCheckoutShippingInfo";
 import { UserAddress } from "@/types/UserAddress";
+import { ShippingCost } from "@/types/ShippingCost";
 import CheckoutHeader from "./CheckoutHeader";
 import { AddressSelection } from "./AddressSelection";
 import SummarySidebar from "./SummarySidebar";
 import VoucherInput from "./VoucherInput";
 import PaymentMethod from "./PaymentMethod";
 import ShippingInfo from "./ShippingInfo";
+import { ShippingMethodSelection } from "./ShippingMethodSelection";
 
 export default function CheckoutShell() {
   const router = useRouter();
-  const {
-    cartItems,
-    loading: isCartLoading,
-    subtotal,
-    deliveryFee,
-  } = useCart();
+  const { cartItems, loading: isCartLoading, subtotal } = useCart();
 
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(
@@ -35,17 +34,58 @@ export default function CheckoutShell() {
   const [paymentType, setPaymentType] = useState<
     "BANK_TRANSFER" | "PAYMENT_GATEWAY"
   >("BANK_TRANSFER");
-  const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
   const [voucherInput, setVoucherInput] = useState("");
   const [appliedVouchers, setAppliedVouchers] = useState<string[]>([]);
   const [voucherDiscount, setVoucherDiscount] = useState(0);
 
+  // Early Store Selection state
+  const [shippingData, setShippingData] = useState<ShippingCost | null>(null);
+  const [shippingInfo, setShippingInfo] = useState<CheckoutShippingInfo | null>(
+    null
+  );
+  const [selectedShippingMethod, setSelectedShippingMethod] = useState("");
+  const [selectedShippingCost, setSelectedShippingCost] = useState(0);
+  const [isLoadingShipping, setIsLoadingShipping] = useState(false);
+  const [shippingError, setShippingError] = useState<string | null>(null);
+
+  // Fetch shipping info when address changes (Early Store Selection)
+  const fetchShippingInfo = useCallback(async (addressId: string) => {
+    setIsLoadingShipping(true);
+    setShippingError(null);
+    setShippingData(null);
+    setShippingInfo(null);
+    setSelectedShippingMethod("");
+    setSelectedShippingCost(0);
+
+    try {
+      const info = await getCheckoutShippingInfo(addressId);
+      setShippingInfo(info);
+      setShippingData(info.shippingMethods);
+
+      // Auto-select Economy (reguler) as default shipping method
+      const reguler = info.shippingMethods?.calculate_reguler;
+      if (reguler && reguler.length > 0) {
+        const cheapest = [...reguler].sort(
+          (a, b) => a.shipping_cost - b.shipping_cost
+        )[0];
+        setSelectedShippingMethod("regular");
+        setSelectedShippingCost(cheapest.shipping_cost_net);
+      }
+    } catch (err) {
+      console.error("[CheckoutShell] Failed to fetch shipping info:", err);
+      const msg =
+        err instanceof Error ? err.message : "Gagal memuat opsi pengiriman";
+      setShippingError(msg);
+    } finally {
+      setIsLoadingShipping(false);
+    }
+  }, []);
+
   useEffect(() => {
     const fetchAddresses = async () => {
       try {
-        setIsLoadingAddresses(true);
         const data = await getUserAddresses();
         const isWrapper = (v: unknown): v is { data: UserAddress[] } =>
           typeof v === "object" && v !== null && "data" in v;
@@ -59,45 +99,47 @@ export default function CheckoutShell() {
         }
       } catch (err) {
         console.error("[CheckoutShell] Failed to fetch addresses:", err);
-        toast.error("Gagal memuat alamat pengiriman");
-      } finally {
-        setIsLoadingAddresses(false);
       }
     };
 
     fetchAddresses();
   }, []);
 
+  // Trigger shipping fetch when address changes
+  useEffect(() => {
+    if (selectedAddress?.id) {
+      fetchShippingInfo(selectedAddress.id);
+    }
+  }, [selectedAddress?.id, fetchShippingInfo]);
+
   useEffect(() => {
     if (!isCartLoading && (!cartItems || cartItems.length === 0))
       router.push("/cart");
   }, [cartItems, isCartLoading, router]);
 
+  // Handle shipping method selection — extract cost from selected method
+  const handleShippingMethodSelect = (methodKey: string, cost: number) => {
+    setSelectedShippingMethod(methodKey);
+    setSelectedShippingCost(cost);
+  };
+
   const handlePlaceOrder = async () => {
-    if (!selectedAddress) {
-      toast.error("Pilih alamat pengiriman terlebih dahulu");
-      return;
-    }
+    if (!selectedAddress || !selectedShippingMethod) return;
     try {
       setIsCreatingOrder(true);
       const order = await createOrder({
         addressId: selectedAddress.id,
         paymentType,
         voucherIds: appliedVouchers.length > 0 ? appliedVouchers : undefined,
+        shippingCost: selectedShippingCost,
+        shippingMethod: selectedShippingMethod,
       });
 
-      if (!order) {
-        toast.error("Gagal membuat pesanan");
-        return;
-      }
+      if (!order) return;
 
-      toast.success("Pesanan berhasil dibuat! Lanjut ke pembayaran...");
-      setTimeout(() => router.push(`/order/${order.id}/payment`), 1200);
+      router.push(`/order/${order.id}/payment`);
     } catch (err) {
       console.error("[CheckoutShell] Error creating order:", err);
-      const errorMsg =
-        err instanceof Error ? err.message : "Gagal membuat pesanan";
-      toast.error(errorMsg);
     } finally {
       setIsCreatingOrder(false);
     }
@@ -105,14 +147,11 @@ export default function CheckoutShell() {
 
   const cartSubtotal = subtotal || 0;
   const discount = voucherDiscount;
-  const shippingCost = deliveryFee || 0;
+  const shippingCost = selectedShippingCost;
   const total = cartSubtotal - discount + shippingCost;
 
   const applyVoucher = async (): Promise<void> => {
-    if (!voucherInput) {
-      toast.error("Masukkan kode voucher atau ID");
-      return;
-    }
+    if (!voucherInput) return;
     try {
       const ids = [...appliedVouchers, voucherInput.trim()];
       const resp = await calculateVoucher({
@@ -130,12 +169,8 @@ export default function CheckoutShell() {
       setAppliedVouchers(ids);
       setVoucherDiscount(totalDiscount);
       setVoucherInput("");
-      toast.success("Voucher applied");
     } catch (err) {
       console.error("[CheckoutShell] Apply voucher failed:", err);
-      const msg =
-        err instanceof Error ? err.message : "Gagal menerapkan voucher";
-      toast.error(msg);
     }
   };
 
@@ -180,6 +215,14 @@ export default function CheckoutShell() {
               setSelectedAddress={setSelectedAddress}
             />
 
+            <ShippingMethodSelection
+              shippingData={shippingData}
+              selectedMethod={selectedShippingMethod}
+              onSelect={handleShippingMethodSelect}
+              isLoading={isLoadingShipping}
+              error={shippingError}
+            />
+
             <VoucherInput
               voucherInput={voucherInput}
               setVoucherInput={setVoucherInput}
@@ -193,17 +236,7 @@ export default function CheckoutShell() {
               setPaymentType={setPaymentType}
             />
 
-            {/* <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex gap-3">
-              <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-800 dark:text-blue-200">
-                <p className="font-semibold mb-1">Informasi Pengiriman</p>
-                <p>
-                  Sistem akan otomatis memilih toko terdekat (dalam radius 5 km)
-                  dari alamat pengiriman Anda untuk memproses pesanan ini.
-                </p>
-              </div>
-            </div> */}
-            <ShippingInfo />
+            <ShippingInfo storeName={shippingInfo?.store.name} />
           </div>
 
           <div>
@@ -217,7 +250,9 @@ export default function CheckoutShell() {
               isCreatingOrder={isCreatingOrder}
               isCartLoading={isCartLoading}
               disablePlace={
-                !selectedAddress || (cartItems && cartItems.length === 0)
+                !selectedAddress ||
+                !selectedShippingMethod ||
+                (cartItems && cartItems.length === 0)
               }
             />
           </div>

@@ -5,6 +5,8 @@ export interface CreateOrderRequest {
   addressId: string;
   paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY";
   voucherIds?: string[];
+  shippingCost?: number;
+  shippingMethod?: string;
 }
 
 export interface OrderItem {

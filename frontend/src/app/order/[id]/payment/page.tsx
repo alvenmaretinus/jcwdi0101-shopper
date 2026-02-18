@@ -253,18 +253,27 @@ export default function PaymentPage({ params }: { params: unknown }) {
     try {
       setIsProcessing(true);
       const resp = await apiFetch<
-        ApiWrapper<{ success?: boolean; message?: string }>
+        ApiWrapper<CreateOrderResponse> & {
+          success?: boolean;
+          message?: string;
+        }
       >(`/order/${orderId}/cancel`, { method: "POST" });
-      const body = isApiWrapper<{ success?: boolean; message?: string }>(resp)
-        ? resp.data
-        : (resp as { success?: boolean; message?: string } | null);
 
-      const bodyRecord = body as Record<string, unknown> | null;
-      if (
-        bodyRecord &&
-        (bodyRecord.success === true || bodyRecord.ok === true)
-      ) {
-        toast.success("Order canceled");
+      // Backend returns { success: true, data: order, message: "..." }
+      // apiFetch returns the full body, so check success on the top-level
+      const topLevel = resp as Record<string, unknown>;
+      if (topLevel.success === true) {
+        toast.success("Order berhasil dibatalkan");
+
+        // Update order state immediately so UI reflects CANCELLED
+        const cancelled = isApiWrapper<CreateOrderResponse>(resp)
+          ? (resp.data ?? null)
+          : null;
+        if (cancelled) {
+          setOrder(cancelled);
+        } else {
+          setOrder((prev) => (prev ? { ...prev, status: "CANCELLED" } : prev));
+        }
 
         // stop timers/polling
         if (timerRef.current) {
@@ -275,13 +284,11 @@ export default function PaymentPage({ params }: { params: unknown }) {
           window.clearInterval(pollRef.current);
           pollRef.current = null;
         }
-
-        router.push("/profile/order");
         return;
       }
 
       // fallback: show message from server
-      const msg = (body && body.message) || "Failed to cancel order";
+      const msg = (topLevel.message as string) || "Failed to cancel order";
       toast.error(msg);
     } catch (err: unknown) {
       console.error("[Payment] cancel error:", err);
