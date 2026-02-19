@@ -182,13 +182,25 @@ export async function seedVouchers() {
     "user@example.com": userReferralDiscount,
   };
 
-  const addReferralVoucherPair = (
+  const addReferralVoucherPair = async (
     referrer: { id: string; email: string },
     referred: { id: string; email: string }
   ) => {
     const referrerDiscount = userDiscountByEmail[referrer.email];
     const referredDiscount = userDiscountByEmail[referred.email];
     if (!referrerDiscount || !referredDiscount) return;
+
+    const assigned = await prisma.user.updateMany({
+      where: {
+        id: referred.id,
+        referredById: null,
+      },
+      data: {
+        referredById: referrer.id,
+      },
+    });
+
+    if (assigned.count !== 1) return;
 
     const pairToken = `${referrer.id.substring(0, 4).toUpperCase()}${referred.id.substring(0, 4).toUpperCase()}`;
 
@@ -213,9 +225,9 @@ export async function seedVouchers() {
   };
 
   if (adminUser && storeAdminUser && normalUser) {
-    addReferralVoucherPair(adminUser, storeAdminUser);
-    addReferralVoucherPair(storeAdminUser, normalUser);
-    addReferralVoucherPair(normalUser, adminUser);
+    await addReferralVoucherPair(adminUser, storeAdminUser);
+    await addReferralVoucherPair(storeAdminUser, normalUser);
+    await addReferralVoucherPair(normalUser, adminUser);
   }
 
   for (const voucher of vouchers) {

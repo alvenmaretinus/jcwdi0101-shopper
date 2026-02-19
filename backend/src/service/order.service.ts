@@ -117,62 +117,44 @@ export class OrderService {
     );
   }
 
-  /**
-   * Create a pending order (checkout)
-   * @param userId User ID
-   * @param addressId Shipping address ID
-   * @param paymentType Payment method (BANK_TRANSFER or PAYMENT_GATEWAY)
-   * @param voucherIds Optional array of voucher IDs to apply discounts
-   * @param discountIds Optional array of discount IDs to apply before vouchers
-   * @returns Created order
-   * @throws BadRequestError if address invalid, cart empty, or no store within 5km can fulfill
-   * @note Sets payment deadline based on PAYMENT_DUE_HOURS env variable (default: 1 hour)
-   * @note Discounts are applied first (best percentage vs amount), then vouchers
-   */
-  static async createPendingOrder(userId: string, addressId: string, paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY" = "BANK_TRANSFER", voucherIds?: string[], discountIds?: string[]) {
-    const address = await prisma.userAddress.findUnique({ where: { id: addressId } });
-    if (!address || address.userId !== userId) {
-      throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
-    }
-/** Shared helper: find nearby stores sorted by distance */
-function findNearbyStores(stores: Store[], lat: number, lon: number): StoreWithDistance[] {
-  return stores
-    .map((store) => {
-      const sLat = Number(store.latitude);
-      const sLon = Number(store.longitude);
-      if (!Number.isFinite(sLat) || !Number.isFinite(sLon)) return null;
-      const distanceKm = getDistance({ latitude: lat, longitude: lon }, { latitude: sLat, longitude: sLon }) / 1000;
-      return { store, distanceKm } as StoreWithDistance;
-    })
-    .filter((s): s is StoreWithDistance => s !== null)
-    .filter((s) => s.distanceKm <= 5)
-    .sort((a, b) => a.distanceKm - b.distanceKm);
-}
-
-/** Shared helper: find first store that can fulfill all items */
-async function findFulfillableStore(db: PrismaClient, storesWithDistance: StoreWithDistance[], items: { productId: string; quantity: number }[]): Promise<StoreWithDistance | null> {
-  const productIds = items.map((i) => i.productId);
-  for (const s of storesWithDistance) {
-    const storeProducts = await db.productStore.findMany({
-      where: { storeId: s.store.id, productId: { in: productIds } },
-    });
-    const psMap: Record<string, { quantity: number }> = {};
-    for (const ps of storeProducts) psMap[ps.productId] = ps as any;
-
-    let canFulfill = true;
-    for (const it of items) {
-      const ps = psMap[it.productId];
-      if (!ps || ps.quantity < it.quantity) {
-        canFulfill = false;
-        break;
-      }
-    }
-    if (canFulfill) return s;
+  /** Shared helper: find nearby stores sorted by distance */
+  private static findNearbyStores(stores: Store[], lat: number, lon: number): StoreWithDistance[] {
+    return stores
+      .map((store) => {
+        const sLat = Number(store.latitude);
+        const sLon = Number(store.longitude);
+        if (!Number.isFinite(sLat) || !Number.isFinite(sLon)) return null;
+        const distanceKm = getDistance({ latitude: lat, longitude: lon }, { latitude: sLat, longitude: sLon }) / 1000;
+        return { store, distanceKm } as StoreWithDistance;
+      })
+      .filter((s): s is StoreWithDistance => s !== null)
+      .filter((s) => s.distanceKm <= 5)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
   }
-  return null;
-}
 
-export class OrderService {
+  /** Shared helper: find first store that can fulfill all items */
+  private static async findFulfillableStore(db: PrismaClient, storesWithDistance: StoreWithDistance[], items: { productId: string; quantity: number }[]): Promise<StoreWithDistance | null> {
+    const productIds = items.map((i) => i.productId);
+    for (const s of storesWithDistance) {
+      const storeProducts = await db.productStore.findMany({
+        where: { storeId: s.store.id, productId: { in: productIds } },
+      });
+      const psMap: Record<string, { quantity: number }> = {};
+      for (const ps of storeProducts) psMap[ps.productId] = ps as any;
+
+      let canFulfill = true;
+      for (const it of items) {
+        const ps = psMap[it.productId];
+        if (!ps || ps.quantity < it.quantity) {
+          canFulfill = false;
+          break;
+        }
+      }
+      if (canFulfill) return s;
+    }
+    return null;
+  }
+
   /**
    * Get checkout shipping info: find nearest store + return shipping methods
    * Called when user selects address on checkout page (Early Store Selection)
@@ -191,10 +173,10 @@ export class OrderService {
     const addrLon = Number(address.longitude);
 
     const stores = await db.store.findMany();
-    const storesWithDistance = findNearbyStores(stores, addrLat, addrLon);
+    const storesWithDistance = this.findNearbyStores(stores, addrLat, addrLon);
     if (storesWithDistance.length === 0) throw new BadRequestError("No store within 5 km of the shipping address.");
 
-    const candidate = await findFulfillableStore(db, storesWithDistance, items);
+    const candidate = await this.findFulfillableStore(db, storesWithDistance, items);
     if (!candidate) throw new BadRequestError("No store within 5 km can fulfill the entire order.");
 
     const { store } = candidate;
@@ -277,12 +259,12 @@ export class OrderService {
       const addrLat = Number(address.latitude);
       const addrLon = Number(address.longitude);
       const stores = await db.store.findMany();
-      const storesWithDistance = findNearbyStores(stores, addrLat, addrLon);
+      const storesWithDistance = this.findNearbyStores(stores, addrLat, addrLon);
 
       if (storesWithDistance.length === 0) throw new BadRequestError("No store within 5 km of the shipping address.");
 
       // pick nearest store that can fulfill all items
-      const candidate = await findFulfillableStore(db, storesWithDistance, items);
+      const candidate = await this.findFulfillableStore(db, storesWithDistance, items);
       if (!candidate) throw new BadRequestError("No store within 5 km can fulfill the entire order.");
 
       const candidateStore = candidate.store;
@@ -317,7 +299,7 @@ export class OrderService {
         }
       }
 
-      const totalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotal, discountIds, voucherIds, db);
+      const totalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotal, discountIds, voucherIds, db, userId);
       const grandTotal = subtotal + shippingCost - totalDiscount;
 
       const paymentDueHours = Number.isFinite(Number(process.env.PAYMENT_DUE_HOURS)) ? Number(process.env.PAYMENT_DUE_HOURS) : 1;

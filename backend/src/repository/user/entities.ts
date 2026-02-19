@@ -6,6 +6,7 @@ export type UserReq = {
   role: UserRole;
   image: string;
   referralCode?: string;
+  referredById?: string;
   storeId?: string;
 };
 

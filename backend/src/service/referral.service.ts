@@ -32,6 +32,16 @@ export class ReferralService {
     newUserId: string,
     referralCode: string
   ): Promise<{ referrerVoucher: VoucherResponse; refereeVoucher: VoucherResponse }> {
+    const users = await this.usersRepo.getUsersByFilter({ id: newUserId });
+    if (users.length === 0) {
+      throw new NotFoundError("User not found");
+    }
+
+    const newUser = users[0];
+    if (newUser.referredById) {
+      throw new BadRequestError("Referral code can only be used once");
+    }
+
     // Find the referrer by referral code
     const referrers = await this.usersRepo.getUsersByFilter({ referralCode });
     if (referrers.length === 0) {
@@ -44,11 +54,11 @@ export class ReferralService {
       throw new BadRequestError("Cannot use your own referral code");
     }
 
-    // Update the new user to link them to the referrer
-    // Note: Ensure the UserReq interface includes referredById property
-    await this.usersRepo.updateUser(newUserId, {
-      referredById: referrer.id,
-    } as any);
+    // Atomically link user to referrer once (prevents switching/race duplicates)
+    const didAssignReferral = await this.usersRepo.setReferredByOnce(newUserId, referrer.id);
+    if (!didAssignReferral) {
+      throw new BadRequestError("Referral code can only be used once");
+    }
 
     // Get referral discount configuration from environment variables
     const discountConfig = {

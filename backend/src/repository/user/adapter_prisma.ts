@@ -51,6 +51,21 @@ export class PostgresRepository implements UsersRepo {
     return toDomainModel(updatedUser);
   }
 
+  async setReferredByOnce(userId: string, referrerId: string): Promise<boolean> {
+    const result = await this.prisma.user.updateMany({
+      where: {
+        id: userId,
+        referredById: null,
+      },
+      data: {
+        referredById: referrerId,
+        updatedAt: new Date(),
+      },
+    });
+
+    return result.count === 1;
+  }
+
   async deleteUser(id: string): Promise<void> {
     await this.prisma.user.delete({
       where: { id: id },
