@@ -12,6 +12,8 @@ export const UpdateDiscountSchema = z.strictObject({
     isVoucher: z.boolean().optional(),
     isWithMinimum: z.boolean().optional(),
     minimumPrice: z.number().int().min(0, "Minimum price must be at least 0").optional(),
+    isLimited: z.boolean().optional(),
+    limit: z.number().int().min(1, "Limit must be at least 1").optional(),
     isTiedToProduct: z.boolean().optional(),
     productId: z.uuid("Invalid product ID").optional().nullable(),
     buyQuantity: z.number().int().min(0, "Buy quantity must be at least 0").optional(),

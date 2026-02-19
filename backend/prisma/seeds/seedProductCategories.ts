@@ -12,6 +12,18 @@ export async function seedProductCategories() {
     { category: "Melons" },
     { category: "Apples & Pears" },
     { category: "Dried Fruits" },
+    { category: "Leafy Greens" },
+    { category: "Root Vegetables" },
+    { category: "Cruciferous Vegetables" },
+    { category: "Herbs" },
+    { category: "Alliums" },
+    { category: "Legumes" },
+    { category: "Mushrooms" },
+    { category: "Nuts & Seeds" },
+    { category: "Fresh Juices" },
+    { category: "Salad Mixes" },
+    { category: "Organic Produce" },
+    { category: "Seasonal Picks" },
   ];
 
   for (const cat of categories) {

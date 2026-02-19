@@ -49,7 +49,14 @@ export async function seedVouchers() {
     return;
   }
 
-  const vouchers = [
+  const vouchers: Array<{
+    code: string;
+    discountId: string;
+    userId?: string;
+    referralRole?: "REFERRER" | "REFEREE";
+    voucherType: "REFERRAL" | "TRANSACTIONAL" | "FREEDELIVERY";
+    isRedeemed: boolean;
+  }> = [
     {
       code: "FRESH30",
       discountId: freshProduceDiscount.id,
@@ -123,6 +130,92 @@ export async function seedVouchers() {
       voucherType: "FREEDELIVERY",
       isRedeemed: false,
     });
+  }
+
+  const ensureReferralDiscount = async (
+    name: string,
+    percentage: number,
+    minimumPrice?: number
+  ) => {
+    const existingDiscount = await prisma.discount.findFirst({
+      where: {
+        name,
+        isVoucher: true,
+        type: "PERCENTAGE",
+        isTiedToProduct: false,
+        isSoftDeleted: false,
+      },
+    });
+
+    if (existingDiscount) return existingDiscount;
+
+    return prisma.discount.create({
+      data: {
+        name,
+        percentage,
+        type: "PERCENTAGE",
+        isVoucher: true,
+        isWithMinimum: minimumPrice !== undefined,
+        minimumPrice,
+        isLimited: true,
+        limit: 1,
+        isTiedToProduct: false,
+      },
+    });
+  };
+
+  const [adminReferralDiscount, storeAdminReferralDiscount, userReferralDiscount] = await Promise.all([
+    ensureReferralDiscount("Admin Referral Reward", 18, 100000),
+    ensureReferralDiscount("Store Admin Referral Reward", 15, 75000),
+    ensureReferralDiscount("User Referral Reward", 12, 50000),
+  ]);
+
+  const [adminUser, storeAdminUser, normalUser] = await Promise.all([
+    prisma.user.findUnique({ where: { email: "admin@example.com" } }),
+    prisma.user.findUnique({ where: { email: "storeadmin@example.com" } }),
+    prisma.user.findUnique({ where: { email: "user@example.com" } }),
+  ]);
+
+  const userDiscountByEmail: Record<string, { id: string }> = {
+    "admin@example.com": adminReferralDiscount,
+    "storeadmin@example.com": storeAdminReferralDiscount,
+    "user@example.com": userReferralDiscount,
+  };
+
+  const addReferralVoucherPair = (
+    referrer: { id: string; email: string },
+    referred: { id: string; email: string }
+  ) => {
+    const referrerDiscount = userDiscountByEmail[referrer.email];
+    const referredDiscount = userDiscountByEmail[referred.email];
+    if (!referrerDiscount || !referredDiscount) return;
+
+    const pairToken = `${referrer.id.substring(0, 4).toUpperCase()}${referred.id.substring(0, 4).toUpperCase()}`;
+
+    vouchers.push(
+      {
+        code: `REFR-${pairToken}-${Date.now().toString().slice(-6)}`,
+        discountId: referrerDiscount.id,
+        userId: referrer.id,
+        referralRole: "REFERRER",
+        voucherType: "REFERRAL",
+        isRedeemed: false,
+      },
+      {
+        code: `REFE-${pairToken}-${Date.now().toString().slice(-6)}`,
+        discountId: referredDiscount.id,
+        userId: referred.id,
+        referralRole: "REFEREE",
+        voucherType: "REFERRAL",
+        isRedeemed: false,
+      }
+    );
+  };
+
+  if (adminUser && storeAdminUser && normalUser) {
+    addReferralVoucherPair(adminUser, storeAdminUser);
+    addReferralVoucherPair(storeAdminUser, normalUser);
+    addReferralVoucherPair(normalUser, adminUser);
   }
 
   for (const voucher of vouchers) {

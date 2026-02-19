@@ -83,6 +83,7 @@ model User {
   orders    Order[]
   sessions  Session[]
   accounts  Account[]
+  vouchers  Voucher[]
 
   @@unique([email])
   @@map("user")
@@ -324,8 +325,11 @@ model Voucher {
   id        String  @id @default(uuid())
   code      String  @unique
   discountId String
+  userId    String?
   voucherType VoucherType
+  referralRole ReferralVoucherRole?
   discount   Discount @relation(fields: [discountId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
 
   isRedeemed Boolean @default(false)
   redeemedAt DateTime?
@@ -339,6 +343,11 @@ enum VoucherType {
   REFERRAL
   TRANSACTIONAL
   FREEDELIVERY
+}
+
+enum ReferralVoucherRole {
+  REFERRER
+  REFEREE
 }
 
 model Discount {
@@ -356,6 +365,7 @@ model Discount {
   //This field is for future use when business wants to limit the number of uses for a discount
   isLimited   Boolean @default(false)
   limit       Int?
+  useCounter  Int @default(0)
 
   isTiedToProduct Boolean @default(false)
   productId   String?

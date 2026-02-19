@@ -11,6 +11,7 @@ import { Search } from 'lucide-react';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
 import { Pagination } from '@/components/Pagination/Pagination';
+import { apiFetch, HttpMethod } from '@/lib/apiFetch';
 
 interface SalesReportEntity {
   number: number;
@@ -75,8 +76,27 @@ export default function SalesReport() {
 
   useEffect(() => {
     const fetchStoresAndCategories = async () => {
-      fetch('/api/stores').then(res => res.json()).then(data => setStores(data)).catch(err => console.error('Failed to fetch stores:', err));
-      fetch('/api/categories').then(res => res.json()).then(data => setCategories(data)).catch(err => console.error('Failed to fetch categories:', err)); 
+      try {
+        const storesData = await apiFetch<{ id: string; name: string }[] | { data?: { id: string; name: string }[] }>('/stores', {
+          method: HttpMethod.GET,
+        });
+        const storesArray = Array.isArray(storesData) ? storesData : storesData?.data || [];
+        setStores(storesArray);
+      } catch (err) {
+        console.error('Failed to fetch stores:', err);
+        setStores([]);
+      }
+
+      try {
+        const categoriesData = await apiFetch<{ id: string; category: string }[] | { data?: { id: string; category: string }[] }>('/product-category', {
+          method: HttpMethod.GET,
+        });
+        const categoriesArray = Array.isArray(categoriesData) ? categoriesData : categoriesData?.data || [];
+        setCategories(categoriesArray);
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+        setCategories([]);
+      }
     };
     fetchStoresAndCategories(); 
   }, [])
@@ -92,30 +112,29 @@ export default function SalesReport() {
       if (selectedStoreId !== 'all') query += `&storeId=${selectedStoreId}`
       if (productSearch.trim() !== '') query += `&productName=${encodeURIComponent(productSearch.trim())}`
       query += `&monthAndYear=${selectedYear}-${String(Number(selectedMonth) + 1).padStart(2, '0')}`
-      fetch(`/api/sales-report?${query}`) // Adjust query params as needed
-        .then(res => res.json())
-        .then(response => {
-          // Check if response has data array and count
-          if (response && 'data' in response) {
-            setAllSalesRecords(response.data || []);
-            // Calculate pagination from response
-            const total = response.count || 0;
-            const totalPages = Math.ceil(total / limit);
-            setPagination({
-              page: response.page || 1,
-              limit: limit,
-              total: total,
-              totalPages: totalPages,
-            });
-          } else {
-            // Fallback if response is just an array
-            setAllSalesRecords(Array.isArray(response) ? response : []);
-          }
-        })
-        .catch(err => {
-          console.error('Failed to fetch sales records:', err);
-          setAllSalesRecords([]);
-        });
+      try {
+        const response = await apiFetch<
+          | { data?: SalesReportEntity[]; count?: number; page?: number }
+          | SalesReportEntity[]
+        >(`/sales-report?${query}`, { method: HttpMethod.GET });
+
+        if (response && typeof response === 'object' && 'data' in response) {
+          setAllSalesRecords(response.data || []);
+          const total = response.count || 0;
+          const totalPages = Math.ceil(total / limit);
+          setPagination({
+            page: response.page || 1,
+            limit,
+            total,
+            totalPages,
+          });
+        } else {
+          setAllSalesRecords(Array.isArray(response) ? response : []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch sales records:', err);
+        setAllSalesRecords([]);
+      }
     };
     fetchSalesRecords();
   }, [selectedCategory, selectedStoreId, selectedMonth, selectedYear, productSearch, currentPage]);
@@ -127,79 +146,83 @@ export default function SalesReport() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Sales Report</h1>
           <p className="text-muted-foreground">Completed sales records</p>
         </div>
         {isSuperAdmin && (
-          <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select store" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Stores</SelectItem>
-              {stores.map(store => (
-                <SelectItem key={store.id} value={store.id}>
-                  {store.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="ml-auto sm:w-auto">
+            <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select store" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stores</SelectItem>
+                {stores.map(store => (
+                  <SelectItem key={store.id} value={store.id}>
+                    {store.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
       </div>
 
       <Card>
         <CardHeader className="space-y-4 pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-4">
             <div>
               <CardTitle>Sales Records</CardTitle>
               <CardDescription>Sales for {months[Number(selectedMonth)]} {selectedYear}</CardDescription>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search product..."
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                className="pl-8 w-44"
-              />
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="relative w-full sm:min-w-[220px] sm:max-w-md sm:grow">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search product..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  className="w-full pl-8"
+                />
+              </div>
+              <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-full sm:w-44">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map(cat => (
+                      <SelectItem key={cat.id} value={cat.category}>
+                        {cat.category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-full sm:w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month, i) => (
+                      <SelectItem key={i} value={String(i)}>{month}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-full sm:w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map(year => (
+                      <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-36 sm:w-44">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(cat => (
-                  <SelectItem key={cat.id} value={cat.category}>
-                    {cat.category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((month, i) => (
-                  <SelectItem key={i} value={String(i)}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-24">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map(year => (
-                  <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           </div>
         </CardHeader>
         <CardContent>

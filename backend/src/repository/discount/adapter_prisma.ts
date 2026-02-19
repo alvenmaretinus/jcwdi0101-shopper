@@ -12,6 +12,12 @@ export class PrismaRepository implements DiscountRepo {
         this.prisma = prismaClient;
     }
 
+    private isDiscountAvailable(discount: DiscountResponse): boolean {
+        if (!discount.isLimited) return true;
+        if (discount.limit === null) return false;
+        return discount.useCounter < discount.limit;
+    }
+
     async createDiscount(data: DiscountCreateReq): Promise<DiscountResponse> {
         const discountCreateData: DiscountCreateInput = {
             ...data,
@@ -144,8 +150,10 @@ export class PrismaRepository implements DiscountRepo {
             }),
         ]);
         
+        const availableDiscounts = (discounts as DiscountResponse[]).filter((discount) => this.isDiscountAvailable(discount));
+
         return {
-            data: discounts as DiscountResponse[],
+            data: availableDiscounts,
             meta: {
                 page,
                 limit,
@@ -195,8 +203,10 @@ export class PrismaRepository implements DiscountRepo {
             }),
         ]);
         
+        const availableDiscounts = (discounts as DiscountResponse[]).filter((discount) => this.isDiscountAvailable(discount));
+
         return {
-            data: discounts as DiscountResponse[],
+            data: availableDiscounts,
             meta: {
                 page,
                 limit,
@@ -231,7 +241,10 @@ export class PrismaRepository implements DiscountRepo {
                 },
             },
         });
-        return discount as DiscountResponse | null;
+        if (!discount) return null;
+
+        const castedDiscount = discount as DiscountResponse;
+        return this.isDiscountAvailable(castedDiscount) ? castedDiscount : null;
     }
 
     async deleteDiscount(id: string): Promise<void> {

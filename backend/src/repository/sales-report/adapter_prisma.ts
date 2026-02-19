@@ -28,7 +28,7 @@ export class PrismaRepository implements SalesReportRepository {
         };
     }
 
-    async execute(params: OrderWhereInput,  orderInclude: OrderInclude,take: number, skip: number, orderBy: OrderOrderByWithRelationInput): Promise<[OrderItemSalesReportEntity[], number]> {
+    async execute(params: OrderWhereInput,  orderInclude: OrderInclude,take: number, skip: number, orderBy: OrderOrderByWithRelationInput[]): Promise<[OrderItemSalesReportEntity[], number]> {
         const orderFindManyArgs: OrderFindManyArgs = {
             where: params,
             include: orderInclude,
@@ -65,7 +65,7 @@ export class PrismaRepository implements SalesReportRepository {
         return completionDateFilter;
     }
 
-    prepareOrderWhereInput(storeId: string, completionDateFilter: DateTimeFilter, orderItemsFilter: OrderItemListRelationFilter | undefined): OrderWhereInput {
+    prepareOrderWhereInput(storeId: string | undefined, completionDateFilter: DateTimeFilter, orderItemsFilter: OrderItemListRelationFilter | undefined): OrderWhereInput {
         const where: OrderWhereInput = {
             storeId: storeId,
             deliveredAt: completionDateFilter,
@@ -79,7 +79,7 @@ export class PrismaRepository implements SalesReportRepository {
         const optionalOrderItemsFilter: OrderItemListRelationFilter | undefined = this.generateOptionalOrderItemsFilter(params.categoryId, params.productName);
         const orderWhereInput: OrderWhereInput = this.prepareOrderWhereInput(params.storeId, completionDateFilter, optionalOrderItemsFilter);
         const orderInclude: OrderInclude = this.prepareOrderInclude();
-        const orderBy: OrderOrderByWithRelationInput = { deliveredAt: 'desc', id: 'asc' };
+        const orderBy: OrderOrderByWithRelationInput[] = [{ deliveredAt: 'desc' }, { id: 'asc' }];
         
         const [results, totalRowsInDBCount] = await this.execute(orderWhereInput, orderInclude, params.take, params.skip, orderBy);
         return [toDomainModels(results), totalRowsInDBCount];

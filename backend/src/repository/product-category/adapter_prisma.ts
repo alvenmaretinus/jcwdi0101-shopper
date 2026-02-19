@@ -2,7 +2,7 @@ import { Prisma, PrismaClient } from "../../../prisma/generated/client";
 import { ConflictError } from "../../error/ConflictError";
 import { NotFoundError } from "../../error/NotFoundError";
 import { CreateProductCategoryReq, GetProductCategoryReq, ProductCategory, UpdateProductCategoryReq } from "./entities";
-import { ProductCategoryRepo } from "./interface";
+import { PaginationParams, PaginatedResponse, ProductCategoryRepo } from "./interface";
 
 export class PrismaRepository implements ProductCategoryRepo {
     private prisma: PrismaClient;
@@ -10,11 +10,40 @@ export class PrismaRepository implements ProductCategoryRepo {
     constructor(prisma: PrismaClient) {
         this.prisma = prisma;
     }
-    async getCategoriesByFilter(filter: Partial<GetProductCategoryReq>): Promise<ProductCategory[]> {
-        const categories = await this.prisma.productCategory.findMany({
-            where: filter,
-        });
-        return categories;
+    async getCategoriesByFilter(
+        filter: Partial<GetProductCategoryReq>,
+        pagination: PaginationParams = { page: 1, limit: 20 },
+    ): Promise<PaginatedResponse<ProductCategory>> {
+        const page = Math.max(1, pagination.page);
+        const limit = Math.max(1, pagination.limit);
+        const skip = (page - 1) * limit;
+
+        const where = {
+            id: filter.id,
+            category: filter.category
+                ? { contains: filter.category, mode: 'insensitive' as const }
+                : undefined,
+        };
+
+        const [categories, total] = await Promise.all([
+            this.prisma.productCategory.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { category: 'asc' },
+            }),
+            this.prisma.productCategory.count({ where }),
+        ]);
+
+        return {
+            data: categories,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.max(1, Math.ceil(total / limit)),
+            },
+        };
     }
     async getCategoryById(id: string): Promise<ProductCategory | null> {
         const category = await this.prisma.productCategory.findUnique({

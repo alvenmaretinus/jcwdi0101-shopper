@@ -8,8 +8,39 @@ export interface ProductCategory {
   updatedAt: string;
 }
 
-export const getProductCategories = async (headers?: ReadonlyHeaders) => {
-  const res = await apiFetch<ProductCategory[]>("/product-category", {
+export interface ProductCategoryPaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface ProductCategoryPaginatedResponse {
+  data: ProductCategory[];
+  meta: ProductCategoryPaginationMeta;
+}
+
+export interface GetProductCategoriesParams {
+  id?: string;
+  category?: string;
+  page?: number;
+  limit?: number;
+}
+
+export const getProductCategories = async (
+  params: GetProductCategoriesParams = {},
+  headers?: ReadonlyHeaders,
+) => {
+  const query = new URLSearchParams();
+
+  if (params.id) query.set("id", params.id);
+  if (params.category) query.set("category", params.category);
+  if (params.page) query.set("page", params.page.toString());
+  if (params.limit) query.set("limit", params.limit.toString());
+
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  const res = await apiFetch<ProductCategoryPaginatedResponse>(`/product-category${suffix}`, {
     method: HttpMethod.GET,
     headers,
   });

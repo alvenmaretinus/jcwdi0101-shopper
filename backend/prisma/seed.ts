@@ -5,6 +5,7 @@ import { seedProducts } from "./seeds/seedProducts";
 import { seedStoresWithProducts } from "./seeds/seedStoresWithProducts";
 import { seedDiscounts } from "./seeds/seedDiscounts";
 import { seedVouchers } from "./seeds/seedVouchers";
+import { seedOrders } from "./seeds/seedOrders";
 
 async function main() {
   await seedAccounts();
@@ -13,6 +14,7 @@ async function main() {
   await seedStoresWithProducts();
   await seedDiscounts();
   await seedVouchers();
+  await seedOrders();
 }
 main()
   .then(async () => {

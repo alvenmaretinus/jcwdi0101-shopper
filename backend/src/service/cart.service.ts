@@ -52,7 +52,8 @@ export class CartService {
       subtotal,
       discountIds,
       voucherIds,
-      prisma
+      prisma,
+      userId,
     );
 
     // Shipping cost is estimated as 0 in cart (calculated during checkout)

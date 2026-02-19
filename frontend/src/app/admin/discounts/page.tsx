@@ -394,6 +394,13 @@ export default function Discounts() {
     }
   };
 
+  const getRemainingUsesLabel = (discount: Discount) => {
+    if (!discount.isLimited) return 'Unlimited';
+    const totalLimit = typeof discount.limit === 'number' ? discount.limit : 0;
+    const used = typeof discount.useCounter === 'number' ? discount.useCounter : 0;
+    return String(Math.max(0, totalLimit - used));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -653,6 +660,7 @@ export default function Discounts() {
                   <TableHead>Type</TableHead>
                   <TableHead>Value</TableHead>
                   <TableHead>Min. Purchase</TableHead>
+                  <TableHead>Remaining Uses</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -679,6 +687,7 @@ export default function Discounts() {
                           ? `Rp ${discount.minimumPrice.toLocaleString('id-ID')}` 
                           : '-'}
                       </TableCell>
+                      <TableCell>{getRemainingUsesLabel(discount)}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {discount.endsAt ? format(new Date(discount.endsAt), 'MMM dd, yyyy') : 'No expiry'}
                       </TableCell>
@@ -844,6 +853,7 @@ export default function Discounts() {
                       <TableHead>Type</TableHead>
                       <TableHead>Linked Discount</TableHead>
                       <TableHead>Value</TableHead>
+                      <TableHead>Remaining Uses</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -871,6 +881,7 @@ export default function Discounts() {
                         </TableCell>
                         <TableCell className="font-medium">{linkedDiscount?.name ?? '-'}</TableCell>
                         <TableCell>{linkedDiscount ? getDiscountValue(linkedDiscount) : '-'}</TableCell>
+                        <TableCell>{linkedDiscount ? getRemainingUsesLabel(linkedDiscount) : '-'}</TableCell>
                         <TableCell>
                           {voucher.isRedeemed ? (
                             <Badge variant="secondary">Redeemed</Badge>

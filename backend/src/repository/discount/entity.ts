@@ -9,6 +9,9 @@ export type DiscountCreateReq = {
     isVoucher?: boolean;
     isWithMinimum: boolean;
     minimumPrice?: number;
+    isLimited?: boolean;
+    limit?: number;
+    useCounter?: number;
     
     isTiedToProduct: boolean;
     productId?: string | null;
@@ -29,6 +32,9 @@ export type DiscountUpdateReq = {
     isVoucher?: boolean;
     isWithMinimum?: boolean;
     minimumPrice?: number;
+    isLimited?: boolean;
+    limit?: number;
+    useCounter?: number;
     
     isTiedToProduct?: boolean;
     productId?: string | null;
@@ -49,6 +55,9 @@ export type DiscountFilter = {
     isVoucher?: boolean;
     isWithMinimum?: boolean;
     minimumPrice?: number;
+    isLimited?: boolean;
+    limit?: number;
+    useCounter?: number;
     
     isTiedToProduct?: boolean;
     productId?: string;
@@ -73,6 +82,7 @@ export type  DiscountResponse = {
 
     isLimited: boolean;
     limit: number | null;
+    useCounter: number;
     
     isTiedToProduct: boolean;
     productId: string | null;

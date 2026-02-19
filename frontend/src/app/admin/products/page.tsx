@@ -47,9 +47,10 @@ export default function Products() {
     };
     const fetchCategories = async () => {
       try {
-        const data = await apiFetch<any[]>(`/product-category`, apiInit);
-        console.log('Fetched categories:', data);
-        setCategories(data);
+        const data = await apiFetch<any>(`/product-category?page=1&limit=100`, apiInit);
+        const categoriesArray = Array.isArray(data) ? data : data?.data || [];
+        console.log('Fetched categories:', categoriesArray);
+        setCategories(categoriesArray);
       } catch (error) {
         console.error('Failed to fetch categories:', error);
         setCategories([]);

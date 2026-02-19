@@ -1,11 +1,11 @@
 import { Layout } from "@/components/layout/Layout";
 import { getProducts } from "@/services/product/getProducts";
+import { getProductsWithDiscounts } from "@/services/discount";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Store, Package, ArrowLeft } from "lucide-react";
+import { Store, Package, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { AddToCartSection } from "./_components/AddToCartSection";
 
@@ -17,8 +17,11 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
   const { id } = await params;
   const nextHeaders = await headers();
 
-  // Fetch single product by ID
-  const response = await getProducts({ id, withStock: true }, nextHeaders);
+  const [response, productDiscountsResponse] = await Promise.all([
+    getProducts({ id, withStock: true }, nextHeaders),
+    getProductsWithDiscounts({ productId: id, isActive: true, limit: 100 }),
+  ]);
+
   const product = response.data[0];
 
   if (!product) {
@@ -41,6 +44,125 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
       minimumFractionDigits: 0,
     }).format(price);
   };
+
+  const getDiscountedPrice = (price: number) => {
+    const applicableDiscounts = productDiscountsResponse.data.filter((discount) => {
+      if (!discount.isTiedToProduct || discount.productId !== product.id) return false;
+      if (discount.isWithMinimum && discount.minimumPrice && price < discount.minimumPrice) {
+        return false;
+      }
+      return discount.type === "PERCENTAGE" || discount.type === "FIXED_AMOUNT";
+    });
+
+    if (applicableDiscounts.length === 0) {
+      return null;
+    }
+
+    const percentageDiscounts = applicableDiscounts
+      .filter((discount) => discount.type === "PERCENTAGE")
+      .sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
+
+    const amountDiscounts = applicableDiscounts
+      .filter((discount) => discount.type === "FIXED_AMOUNT")
+      .sort((a, b) => Number(b.amount ?? 0) - Number(a.amount ?? 0));
+
+    let totalDiscount = 0;
+    let remainingPrice = price;
+    let appliedCount = 0;
+    const appliedDiscounts: Array<{
+      id: string;
+      name: string;
+      label: string;
+      savedAmount: number;
+    }> = [];
+
+    const trackAppliedDiscount = (
+      discount: (typeof applicableDiscounts)[number],
+      actualDiscount: number
+    ) => {
+      if (actualDiscount <= 0) return;
+      const label =
+        discount.type === "PERCENTAGE"
+          ? `${Number(discount.percentage ?? 0)}%`
+          : formatPrice(Number(discount.amount ?? 0));
+
+      appliedDiscounts.push({
+        id: discount.id,
+        name: discount.name,
+        label,
+        savedAmount: Math.round(actualDiscount),
+      });
+    };
+
+    while (percentageDiscounts.length > 0 && amountDiscounts.length > 0 && remainingPrice > 0) {
+      const pctDiscount = percentageDiscounts[0];
+      const amtDiscount = amountDiscounts[0];
+
+      const pctAmount = remainingPrice * (Number(pctDiscount.percentage ?? 0) / 100);
+      const amtAmount = Number(amtDiscount.amount ?? 0);
+
+      if (pctAmount >= amtAmount) {
+        const actualDiscount = Math.min(pctAmount, remainingPrice);
+        if (actualDiscount > 0) {
+          totalDiscount += actualDiscount;
+          remainingPrice -= actualDiscount;
+          appliedCount += 1;
+          trackAppliedDiscount(pctDiscount, actualDiscount);
+        }
+        percentageDiscounts.shift();
+      } else {
+        const actualDiscount = Math.min(amtAmount, remainingPrice);
+        if (actualDiscount > 0) {
+          totalDiscount += actualDiscount;
+          remainingPrice -= actualDiscount;
+          appliedCount += 1;
+          trackAppliedDiscount(amtDiscount, actualDiscount);
+        }
+        amountDiscounts.shift();
+      }
+    }
+
+    while (percentageDiscounts.length > 0 && remainingPrice > 0) {
+      const pctDiscount = percentageDiscounts.shift();
+      if (!pctDiscount) break;
+      const pctAmount = remainingPrice * (Number(pctDiscount.percentage ?? 0) / 100);
+      const actualDiscount = Math.min(pctAmount, remainingPrice);
+      if (actualDiscount > 0) {
+        totalDiscount += actualDiscount;
+        remainingPrice -= actualDiscount;
+        appliedCount += 1;
+        trackAppliedDiscount(pctDiscount, actualDiscount);
+      }
+    }
+
+    while (amountDiscounts.length > 0 && remainingPrice > 0) {
+      const amtDiscount = amountDiscounts.shift();
+      if (!amtDiscount) break;
+      const amtAmount = Number(amtDiscount.amount ?? 0);
+      const actualDiscount = Math.min(amtAmount, remainingPrice);
+      if (actualDiscount > 0) {
+        totalDiscount += actualDiscount;
+        remainingPrice -= actualDiscount;
+        appliedCount += 1;
+        trackAppliedDiscount(amtDiscount, actualDiscount);
+      }
+    }
+
+    const discountedPrice = Math.max(0, Math.round(price - totalDiscount));
+
+    if (discountedPrice >= price || appliedCount === 0) {
+      return null;
+    }
+
+    return {
+      discountedPrice,
+      totalDiscount: Math.round(totalDiscount),
+      appliedCount,
+      appliedDiscounts,
+    };
+  };
+
+  const bestDiscount = getDiscountedPrice(product.price);
 
   return (
     <Layout>
@@ -91,9 +213,40 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
 
               {/* Price */}
               <div className="border-y py-4">
-                <div className="text-3xl font-bold text-primary">
-                  {formatPrice(product.price)}
-                </div>
+                {bestDiscount ? (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="text-3xl font-bold text-primary">
+                        {formatPrice(bestDiscount.discountedPrice)}
+                      </div>
+                      <Badge variant="secondary">
+                        {bestDiscount.appliedCount} discount{bestDiscount.appliedCount > 1 ? "s" : ""} applied
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground line-through">
+                      {formatPrice(product.price)}
+                    </div>
+                    <div className="text-sm text-green-700">
+                      You save {formatPrice(bestDiscount.totalDiscount)}
+                    </div>
+                    <div className="pt-2 space-y-1">
+                      <p className="text-xs text-muted-foreground">Applied discounts:</p>
+                      {bestDiscount.appliedDiscounts.map((discount) => (
+                        <div
+                          key={discount.id}
+                          className="text-xs text-muted-foreground flex items-center justify-between"
+                        >
+                          <span>{discount.name} ({discount.label})</span>
+                          <span>-{formatPrice(discount.savedAmount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-3xl font-bold text-primary">
+                    {formatPrice(product.price)}
+                  </div>
+                )}
               </div>
 
               {/* Stock Info */}
@@ -185,7 +338,9 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Price</dt>
-                <dd className="font-semibold">{formatPrice(product.price)}</dd>
+                <dd className="font-semibold">
+                  {bestDiscount ? formatPrice(bestDiscount.discountedPrice) : formatPrice(product.price)}
+                </dd>
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Total Stock</dt>

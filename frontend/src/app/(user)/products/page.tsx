@@ -12,6 +12,8 @@ const Products = async ({
     categoryId?: string; 
     page?: string; 
     limit?: string; 
+    categoryPage?: string;
+    categoryLimit?: string;
     search?: string;
     inStockOnly?: string;
     sort?: string;
@@ -22,6 +24,8 @@ const Products = async ({
   const categoryId = params.categoryId;
   const page = params.page ? parseInt(params.page, 10) : 1;
   const limit = params.limit ? parseInt(params.limit, 10) : 20;
+  const categoryPage = params.categoryPage ? parseInt(params.categoryPage, 10) : 1;
+  const categoryLimit = params.categoryLimit ? parseInt(params.categoryLimit, 10) : 8;
   const search = params.search;
   const inStockOnly = params.inStockOnly === 'true';
   const sort = params.sort || 'featured';
@@ -35,7 +39,7 @@ const Products = async ({
       name: search,
       inStockOnly,
     }, nextHeaders),
-    getProductCategories(nextHeaders),
+    getProductCategories({ page: categoryPage, limit: categoryLimit }, nextHeaders),
     categoryId ? getProductCategoryById(categoryId, nextHeaders) : Promise.resolve(null),
   ]);
 
@@ -43,7 +47,8 @@ const Products = async ({
     <Layout>
       <ProductsList
         initialProducts={productsResponse.data}
-        categories={categories}
+        categories={categories.data}
+        categoryPagination={categories.meta}
         selectedCategoryId={categoryId}
         selectedCategoryName={selectedCategory?.category}
         pagination={productsResponse.meta}

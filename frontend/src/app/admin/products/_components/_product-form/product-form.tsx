@@ -12,6 +12,7 @@ import { apiFetch, ApiInit, HttpMethod } from '@/lib/apiFetch';
 
 export default function ProductForm(props: { isDialogOpen: boolean;
   setIsDialogOpen: (open: boolean) => void;
+  editingProduct?: { id?: string; name?: string; description?: string; price?: number; categoryId?: string } | null;
   handleCreate?: () => void; // opens the dialog (used by CreateButton)
   onCreated?: () => void; // called after successful creation to notify parent
   categories: { id: string; category: string }[]; }) {

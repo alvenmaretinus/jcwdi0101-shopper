@@ -15,8 +15,8 @@ const router = Router();
 
 // All get routes are public
 router.get("/", async (req, res) => {
-  const filter = GetProductCategoriesByFilterSchema.parse(req.query);
-  const categories = await productCategoryService.getProductCategoriesByFilter(filter);
+  const { filter, pagination } = GetProductCategoriesByFilterSchema.parse(req.query);
+  const categories = await productCategoryService.getProductCategoriesByFilter(filter, pagination);
   return res.json(categories);
 });
 

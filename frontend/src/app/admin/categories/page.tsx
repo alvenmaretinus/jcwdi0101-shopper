@@ -11,9 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 import { Plus, Pencil, Trash2, Search, FolderTree } from 'lucide-react';
 import { format } from 'date-fns';
-import type { ProductCategory } from '@/types/admin';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
+import { Pagination } from '@/components/Pagination/Pagination';
 
 type Categories = {
   id: string;
@@ -22,9 +22,17 @@ type Categories = {
   createdAt?: string | number | null;
 }
 
+type CategoriesResponse = {
+  data: Categories[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
 
-const mockCategories: Categories[] = []
-const mockProducts = []
+const ITEMS_PER_PAGE = 10;
 
 export default function Categories() {
   const { data } = authClient.useSession();
@@ -33,10 +41,17 @@ export default function Categories() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Categories | null>(null);
   const [categories, setCategories] = useState<Categories[]>([]);
   const [categoryName, setCategoryName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [paginationMeta, setPaginationMeta] = useState({
+    page: 1,
+    limit: ITEMS_PER_PAGE,
+    total: 0,
+    totalPages: 1,
+  });
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -54,15 +69,36 @@ export default function Categories() {
     const fetchCategories = async () => {
       const apiInit: ApiInit = { method: HttpMethod.GET };
       try {
-        const data = await apiFetch<Categories[]>(`/product-category`, apiInit);
-        setCategories(Array.isArray(data) ? data : []);
+        const query = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: ITEMS_PER_PAGE.toString(),
+        });
+
+        if (searchQuery.trim()) {
+          query.set('category', searchQuery.trim());
+        }
+
+        const data = await apiFetch<CategoriesResponse>(`/product-category?${query.toString()}`, apiInit);
+        setCategories(Array.isArray(data?.data) ? data.data : []);
+        setPaginationMeta(data?.meta ?? {
+          page: 1,
+          limit: ITEMS_PER_PAGE,
+          total: 0,
+          totalPages: 1,
+        });
       } catch (err) {
         console.error('Failed to load categories', err);
         setCategories([]);
+        setPaginationMeta({
+          page: 1,
+          limit: ITEMS_PER_PAGE,
+          total: 0,
+          totalPages: 1,
+        });
       }
     };
     fetchCategories();
-  }, []);
+  }, [currentPage, searchQuery]);
 
   const categoriesWithCount = categories.map(cat => ({
     ...cat,
@@ -70,11 +106,14 @@ export default function Categories() {
     createdAt: cat.createdAt ?? null,
   }));
 
-  const filteredCategories = categoriesWithCount.filter(cat =>
-    cat.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const safeCurrentPage = Math.min(paginationMeta.page, paginationMeta.totalPages);
+  const totalPages = paginationMeta.totalPages;
 
-  const handleEdit = (category: ProductCategory) => {
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const handleEdit = (category: Categories) => {
     setEditingCategory(category);
     setCategoryName(category.category);
     setIsDialogOpen(true);
@@ -101,8 +140,22 @@ export default function Categories() {
       }
       // refresh
       const apiInit2: ApiInit = { method: HttpMethod.GET };
-      const data = await apiFetch<Categories[]>(`/product-category`, apiInit2);
-      setCategories(Array.isArray(data) ? data : []);
+      const query = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: ITEMS_PER_PAGE.toString(),
+      });
+      if (searchQuery.trim()) {
+        query.set('category', searchQuery.trim());
+      }
+
+      const data = await apiFetch<CategoriesResponse>(`/product-category?${query.toString()}`, apiInit2);
+      setCategories(Array.isArray(data?.data) ? data.data : []);
+      setPaginationMeta(data?.meta ?? {
+        page: 1,
+        limit: ITEMS_PER_PAGE,
+        total: 0,
+        totalPages: 1,
+      });
       setIsDialogOpen(false);
     } catch (err) {
       console.error('Failed to save category', err);
@@ -182,7 +235,7 @@ export default function Categories() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCategories.map((category) => (
+              {categoriesWithCount.map((category) => (
                 <TableRow key={category.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -214,6 +267,12 @@ export default function Categories() {
               ))}
             </TableBody>
           </Table>
+          <Pagination
+            page={safeCurrentPage}
+            totalPages={totalPages}
+            total={paginationMeta.total}
+            onChange={setCurrentPage}
+          />
         </CardContent>
       </Card>
     </div>

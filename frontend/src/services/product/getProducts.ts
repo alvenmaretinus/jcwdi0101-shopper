@@ -21,6 +21,8 @@ export interface ProductWithDetails {
   name: string;
   description: string | null;
   price: number;
+  originalPrice?: number;
+  savingsAmount?: number;
   createAt: string;
   updatedAt: string;
   categoryId: string;
@@ -86,10 +88,13 @@ export const getProducts = async (
   const queryString = queryParams.toString();
   const url = queryString ? `/product?${queryString}` : "/product";
 
+  
   const res = await apiFetch<GetProductsResponse>(url, {
     method: HttpMethod.GET,
     headers,
   });
+
+  console.log(res)
   
   return res;
 };

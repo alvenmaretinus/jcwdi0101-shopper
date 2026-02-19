@@ -9,6 +9,7 @@ import { SalesReportEntity } from "../repository/sales-report/entities"
 import { isAuth } from "../middleware/isAuth"
 import { isAdmin } from "../middleware/isAdmin"
 import { UserRole } from "../../prisma/generated/enums"
+import { ZodError } from "zod"
 
 const router = Router()
 
@@ -16,10 +17,23 @@ const salesReportRepository: SalesReportRepository= new PrismaRepository(prisma)
 const salesReportService: Service = new SalesReportService(salesReportRepository)
 
 router.get("/", isAuth, isAdmin, async (req, res) => {
-    const inputData: GetSalesReportByFilterInput = GetSalesReportByFilterSchema.parse(req.query)
-    if (req.user!.role === UserRole.ADMIN && inputData.storeId !== req.user!.storeId) {
-        return res.status(403).json({ message: "Forbidden" })
+    const parseResult = GetSalesReportByFilterSchema.safeParse(req.query)
+    if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid query parameters", errors: parseResult.error})
     }
+    const inputData = parseResult.data
+
+    if (req.user!.role === UserRole.ADMIN) {
+        const adminStoreId = req.user!.storeId
+        if (!adminStoreId) {
+            return res.status(403).json({ message: "Forbidden" })
+        }
+        if (inputData.storeId && inputData.storeId !== adminStoreId) {
+            return res.status(403).json({ message: "Forbidden" })
+        }
+        inputData.storeId = adminStoreId
+    }
+
     const [data, count]: [SalesReportEntity[], number] = await salesReportService.getSalesReportByFilter(inputData)
     return res.json({
         data: data,

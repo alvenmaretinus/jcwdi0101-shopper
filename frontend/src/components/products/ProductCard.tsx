@@ -26,6 +26,14 @@ export function ProductCard({ product }: ProductCardProps) {
     ? product.productStores.reduce((sum, ps) => sum + ps.quantity, 0)
     : 0;
   const isOutOfStock = totalStock === 0;
+  const hasDiscountedPrice =
+    typeof product.originalPrice === "number" && product.originalPrice > product.price;
+  const savingsAmount =
+    typeof product.savingsAmount === "number"
+      ? product.savingsAmount
+      : hasDiscountedPrice
+        ? product.originalPrice - product.price
+        : 0;
   console.log("Product:", product)
   const primaryImage = product.productImages[0]?.url || "https://placehold.co/400x400?text=No+Image";
 
@@ -80,9 +88,19 @@ export function ProductCard({ product }: ProductCardProps) {
         {/* Price and CTA */}
         <div className="flex items-end justify-between mt-3">
           <div>
+            {hasDiscountedPrice && (
+              <span className="text-xs text-muted-foreground line-through block">
+                {formatPrice(product.originalPrice)}
+              </span>
+            )}
             <span className="text-lg font-bold text-foreground">
               {formatPrice(product.price)}
             </span>
+            {hasDiscountedPrice && savingsAmount > 0 && (
+              <p className="text-xs text-green-700 font-medium mt-1">
+                You saved {formatPrice(savingsAmount)}
+              </p>
+            )}
           </div>
           
           <Button

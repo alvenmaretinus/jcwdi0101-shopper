@@ -70,6 +70,8 @@ export class ReferralService {
       endsAt: process.env.REFERRAL_DISCOUNT_ENDS_AT 
         ? new Date(process.env.REFERRAL_DISCOUNT_ENDS_AT) 
         : undefined,
+      isLimited: true,
+      limit: 1,
     };
 
     // Create vouchers for both referrer and referee
@@ -79,12 +81,16 @@ export class ReferralService {
 
     const referrerVoucher = await this.voucherRepo.createVoucher({
       code: referrerVoucherCode,
+      userId: referrer.id,
+      referralRole: "REFERRER",
       ...discountConfig,
       voucherType: VoucherType.REFERRAL,
     });
 
     const refereeVoucher = await this.voucherRepo.createVoucher({
       code: refereeVoucherCode,
+      userId: newUserId,
+      referralRole: "REFEREE",
       ...discountConfig,
       voucherType: VoucherType.REFERRAL,
     });

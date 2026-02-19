@@ -1,13 +1,19 @@
 import { VoucherCreateReq, VoucherUpdateReq, VoucherResponse, VoucherFilter } from "./entity";
-import { VoucherRepo, PaginationParams, PaginatedResponse } from "./interface";
+import { VoucherRepo, PaginationParams, PaginatedResponse, VoucherQueryOptions } from "./interface";
 import { PrismaClient, Prisma } from "../../../prisma/generated/client";
-import { DiscountType, VoucherType } from "../../../prisma/generated/enums";
+import { DiscountType, VoucherType, ReferralVoucherRole } from "../../../prisma/generated/enums";
 
 export class PrismaVoucherRepository implements VoucherRepo {
     private prisma: PrismaClient;
 
     constructor(prismaClient: PrismaClient) {
         this.prisma = prismaClient;
+    }
+
+    private isDiscountAvailable(voucher: VoucherResponse): boolean {
+        if (!voucher.discount.isLimited) return true;
+        if (voucher.discount.limit === null) return false;
+        return voucher.discount.useCounter < voucher.discount.limit;
     }
 
     async createVoucher(data: VoucherCreateReq): Promise<VoucherResponse> {
@@ -23,6 +29,8 @@ export class PrismaVoucherRepository implements VoucherRepo {
                     isVoucher: true,
                     isWithMinimum: data.isWithMinimum,
                     minimumPrice: data.minimumPrice,
+                    isLimited: data.isLimited,
+                    limit: data.limit,
                     isTiedToProduct: false,
                     startsAt: data.startsAt,
                     endsAt: data.endsAt,
@@ -34,7 +42,9 @@ export class PrismaVoucherRepository implements VoucherRepo {
                 data: {
                     code: data.code,
                     discountId: discount.id,
+                    userId: data.userId,
                     voucherType: data.voucherType as VoucherType,
+                    referralRole: data.referralRole as ReferralVoucherRole | undefined,
                 },
                 include: {
                     discount: true,
@@ -64,6 +74,8 @@ export class PrismaVoucherRepository implements VoucherRepo {
             if (data.type !== undefined) discountUpdateData.type = data.type as DiscountType;
             if (data.isWithMinimum !== undefined) discountUpdateData.isWithMinimum = data.isWithMinimum;
             if (data.minimumPrice !== undefined) discountUpdateData.minimumPrice = data.minimumPrice;
+            if (data.isLimited !== undefined) discountUpdateData.isLimited = data.isLimited;
+            if (data.limit !== undefined) discountUpdateData.limit = data.limit;
             if (data.startsAt !== undefined) discountUpdateData.startsAt = data.startsAt;
             if (data.endsAt !== undefined) discountUpdateData.endsAt = data.endsAt;
 
@@ -81,6 +93,12 @@ export class PrismaVoucherRepository implements VoucherRepo {
             }
             if (data.code !== undefined) {
                 voucherUpdateData.code = data.code;
+            }
+            if (data.userId !== undefined) {
+                voucherUpdateData.userId = data.userId;
+            }
+            if (data.referralRole !== undefined) {
+                voucherUpdateData.referralRole = data.referralRole as ReferralVoucherRole;
             }
 
             const voucher = await tx.voucher.update({
@@ -130,13 +148,34 @@ export class PrismaVoucherRepository implements VoucherRepo {
 
     /**
      * Format filter to support both regular field filtering AND active date filtering.
+     * Special handling: Referral vouchers are only visible to their designated user.
      */
-    private formatFilter(filter: Partial<VoucherFilter>): Prisma.VoucherWhereInput {
-        const { activeOnDate, name, percentage, amount, type, isWithMinimum, minimumPrice, ...voucherFields } = filter;
+    private formatFilter(filter: Partial<VoucherFilter>, options?: VoucherQueryOptions): Prisma.VoucherWhereInput {
+        const { activeOnDate, name, percentage, amount, type, isWithMinimum, minimumPrice, userId, ...voucherFields } = filter;
+        const includeAllReferral = options?.includeAllReferral === true;
 
         const formattedFilter: Prisma.VoucherWhereInput = {
             ...voucherFields,
         };
+
+        // Filter referral vouchers to only show to their designated user
+        // Non-referral vouchers are always visible
+        if (!includeAllReferral) {
+            if (userId) {
+                formattedFilter.OR = [
+                    // Non-referral vouchers visible to everyone
+                    { voucherType: { not: 'REFERRAL' } },
+                    // Referral vouchers only visible to designated user
+                    {
+                        voucherType: 'REFERRAL',
+                        userId: userId,
+                    },
+                ];
+            } else {
+                // If no userId provided, only show non-referral vouchers
+                formattedFilter.voucherType = { not: 'REFERRAL' };
+            }
+        }
 
         // Build discount filters
         const discountFilter: Prisma.DiscountWhereInput = {};
@@ -161,8 +200,12 @@ export class PrismaVoucherRepository implements VoucherRepo {
         return formattedFilter;
     }
 
-    async getVouchersByFilter(filter: Partial<VoucherFilter>, pagination?: PaginationParams): Promise<PaginatedResponse<VoucherResponse>> {
-        const formattedFilter: Prisma.VoucherWhereInput = this.formatFilter(filter);
+    async getVouchersByFilter(
+        filter: Partial<VoucherFilter>,
+        pagination?: PaginationParams,
+        options?: VoucherQueryOptions
+    ): Promise<PaginatedResponse<VoucherResponse>> {
+        const formattedFilter: Prisma.VoucherWhereInput = this.formatFilter(filter, options);
         formattedFilter.isSoftDeleted = false;
         formattedFilter.discount = {
             ...((formattedFilter.discount as any) || {}),
@@ -188,8 +231,10 @@ export class PrismaVoucherRepository implements VoucherRepo {
             }),
         ]);
         
+        const availableVouchers = (vouchers as VoucherResponse[]).filter((voucher) => this.isDiscountAvailable(voucher));
+
         return {
-            data: vouchers as VoucherResponse[],
+            data: availableVouchers,
             meta: {
                 page,
                 limit,
@@ -212,7 +257,9 @@ export class PrismaVoucherRepository implements VoucherRepo {
                 discount: true,
             },
         });
-        return voucher as VoucherResponse | null;
+        if (!voucher) return null;
+        const castedVoucher = voucher as VoucherResponse;
+        return this.isDiscountAvailable(castedVoucher) ? castedVoucher : null;
     }
 
     async getVoucherByCode(code: string): Promise<VoucherResponse | null> {
@@ -228,7 +275,9 @@ export class PrismaVoucherRepository implements VoucherRepo {
                 discount: true,
             },
         });
-        return voucher as VoucherResponse | null;
+        if (!voucher) return null;
+        const castedVoucher = voucher as VoucherResponse;
+        return this.isDiscountAvailable(castedVoucher) ? castedVoucher : null;
     }
 
     async getVouchersByIds(ids: string[]): Promise<VoucherResponse[]> {
@@ -244,7 +293,7 @@ export class PrismaVoucherRepository implements VoucherRepo {
                 discount: true,
             },
         });
-        return vouchers as VoucherResponse[];
+        return (vouchers as VoucherResponse[]).filter((voucher) => this.isDiscountAvailable(voucher));
     }
 
     async getVouchersByCodes(codes: string[]): Promise<VoucherResponse[]> {
@@ -260,7 +309,7 @@ export class PrismaVoucherRepository implements VoucherRepo {
                 discount: true,
             },
         });
-        return vouchers as VoucherResponse[];
+        return (vouchers as VoucherResponse[]).filter((voucher) => this.isDiscountAvailable(voucher));
     }
 
     async deleteVoucher(id: string): Promise<void> {

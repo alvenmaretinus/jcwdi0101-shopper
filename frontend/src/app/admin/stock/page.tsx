@@ -84,7 +84,7 @@ export default function StockReport() {
       }
 
       try {
-        const categoriesData = await apiFetch<any>('/product-category', {
+        const categoriesData = await apiFetch<any>('/product-category?page=1&limit=100', {
           method: HttpMethod.GET,
         });
         const categoriesArray = Array.isArray(categoriesData) ? categoriesData : categoriesData?.data || [];

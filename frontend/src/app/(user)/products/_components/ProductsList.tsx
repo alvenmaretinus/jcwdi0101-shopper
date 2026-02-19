@@ -38,6 +38,7 @@ interface PaginationMeta {
 interface ProductsListProps {
   initialProducts: ProductWithDetails[];
   categories: ProductCategory[];
+  categoryPagination: PaginationMeta;
   selectedCategoryId?: string;
   selectedCategoryName?: string;
   pagination: PaginationMeta;
@@ -49,6 +50,7 @@ interface ProductsListProps {
 export function ProductsList({
   initialProducts,
   categories,
+  categoryPagination,
   selectedCategoryId: initialCategoryId,
   selectedCategoryName,
   pagination,
@@ -58,12 +60,20 @@ export function ProductsList({
 }: ProductsListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const categoryOptions = [
+    { id: "all", category: "All Categories" },
+    ...categories,
+  ];
+
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
     initialCategoryId || "all"
   );
   const [sortBy, setSortBy] = useState(initialSort);
   const [showInStock, setShowInStock] = useState(initialInStockOnly);
+
+  const safeCategoryPage = Math.min(categoryPagination.page, categoryPagination.totalPages);
+  const totalCategoryPages = categoryPagination.totalPages;
 
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -95,6 +105,12 @@ export function ProductsList({
     router.push(`/products?${params.toString()}`);
   };
 
+  const handleCategoryPageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("categoryPage", newPage.toString());
+    router.push(`/products?${params.toString()}`);
+  };
+
   const handleSortChange = (sort: string) => {
     setSortBy(sort);
     const params = new URLSearchParams(searchParams.toString());
@@ -114,11 +130,6 @@ export function ProductsList({
     params.set("page", "1"); // Reset to first page
     router.push(`/products?${params.toString()}`);
   };
-
-  const categoryOptions = [
-    { id: "all", category: "All Categories" },
-    ...categories,
-  ];
 
   const FilterContent = () => (
     <div className="space-y-6">
@@ -140,6 +151,32 @@ export function ProductsList({
             </button>
           ))}
         </div>
+
+        {totalCategoryPages > 1 && (
+          <div className="mt-3 flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCategoryPageChange(safeCategoryPage - 1)}
+              disabled={safeCategoryPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Prev
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {safeCategoryPage}/{totalCategoryPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCategoryPageChange(safeCategoryPage + 1)}
+              disabled={safeCategoryPage === totalCategoryPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filters */}

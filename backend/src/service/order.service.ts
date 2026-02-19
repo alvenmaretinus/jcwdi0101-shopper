@@ -13,6 +13,110 @@ type StoreWithDistance = {
 };
 
 export class OrderService {
+  private static isDiscountApplicable(
+    discount: { startsAt: Date | null; endsAt: Date | null; isWithMinimum: boolean; minimumPrice: number | null; isLimited: boolean; limit: number | null; useCounter: number },
+    subtotal: number
+  ) {
+    const now = new Date();
+    const hasStarted = !discount.startsAt || discount.startsAt <= now;
+    const hasNotEnded = !discount.endsAt || discount.endsAt >= now;
+    const minimumPassed = !discount.isWithMinimum || discount.minimumPrice === null || subtotal >= discount.minimumPrice;
+    const available = !discount.isLimited || (discount.limit !== null && discount.useCounter < discount.limit);
+    return hasStarted && hasNotEnded && minimumPassed && available;
+  }
+
+  private static async incrementAppliedDiscountCounters(
+    userId: string,
+    subtotal: number,
+    db: PrismaClient,
+    discountIds?: string[],
+    voucherIds?: string[]
+  ) {
+    const applicableDiscountIds = new Set<string>();
+
+    if (discountIds && discountIds.length > 0) {
+      const discounts = await db.discount.findMany({
+        where: {
+          id: { in: discountIds },
+          isSoftDeleted: false,
+        },
+        select: {
+          id: true,
+          startsAt: true,
+          endsAt: true,
+          isWithMinimum: true,
+          minimumPrice: true,
+          isLimited: true,
+          limit: true,
+          useCounter: true,
+        },
+      });
+
+      for (const discount of discounts) {
+        if (this.isDiscountApplicable(discount, subtotal)) {
+          applicableDiscountIds.add(discount.id);
+        }
+      }
+    }
+
+    if (voucherIds && voucherIds.length > 0) {
+      const vouchers = await db.voucher.findMany({
+        where: {
+          isSoftDeleted: false,
+          OR: [
+            { id: { in: voucherIds } },
+            { code: { in: voucherIds } },
+          ],
+          discount: {
+            isSoftDeleted: false,
+          },
+        },
+        include: {
+          discount: {
+            select: {
+              id: true,
+              startsAt: true,
+              endsAt: true,
+              isWithMinimum: true,
+              minimumPrice: true,
+              isLimited: true,
+              limit: true,
+              useCounter: true,
+            },
+          },
+        },
+      });
+
+      for (const voucher of vouchers) {
+        if (voucher.voucherType === "REFERRAL" && voucher.userId !== userId) {
+          continue;
+        }
+
+        if (this.isDiscountApplicable(voucher.discount, subtotal)) {
+          applicableDiscountIds.add(voucher.discount.id);
+        }
+      }
+    }
+
+    await Promise.all(
+      Array.from(applicableDiscountIds).map((discountId) =>
+        db.discount.updateMany({
+          where: {
+            id: discountId,
+            isLimited: true,
+            limit: { not: null },
+            useCounter: {
+              lt: db.discount.fields.limit,
+            },
+          },
+          data: {
+            useCounter: { increment: 1 },
+          },
+        })
+      )
+    );
+  }
+
   /**
    * Create a pending order (checkout)
    * @param userId User ID
@@ -125,7 +229,8 @@ export class OrderService {
       subtotal,
       discountIds,
       voucherIds,
-      db
+      db,
+      userId,
     );
 
     const grandTotal = subtotal + shippingCost - totalDiscount;
@@ -160,6 +265,8 @@ export class OrderService {
         },
       },
     });
+
+    await this.incrementAppliedDiscountCounters(userId, subtotal, db, discountIds, voucherIds);
 
     return order;
   }

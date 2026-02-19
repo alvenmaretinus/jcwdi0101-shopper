@@ -8,6 +8,7 @@ export interface Discount {
   minimumPrice?: number;
   isLimited: boolean;
   limit?: number;
+  useCounter?: number;
   isTiedToProduct: boolean;
   productId?: string;
   buyQuantity?: number;
