@@ -2,6 +2,7 @@ import { authClient } from "@/lib/authClient";
 import { UserCard } from "./_components/UserPersonalCard";
 import { ReferralCard } from "./_components/UserReferralCard";
 import { EnterReferralCodeCard } from "./_components/EnterReferralCodeCard";
+import { MobileProfileHeader } from "./_components/MobileProfileHeader";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUserByEmail } from "@/services/user/getUserByEmail";
@@ -28,11 +29,14 @@ export default async function ProfilePage() {
   userFull.name = user.name;
 
   return (
-    <div className="space-y-6">
-      <div className="shadow-md rounded-xl">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Mobile: Show profile header */}
+      <MobileProfileHeader user={userFull} />
+      
+      <div className="shadow-soft rounded-xl">
         <UserCard user={userFull} isOAuth={isOAuth} />
       </div>
-      <div className="shadow-md rounded-xl">
+      <div className="shadow-soft rounded-xl">
         <ReferralCard referralCode={userFull.referralCode} />
       </div>
       <EnterReferralCodeCard />

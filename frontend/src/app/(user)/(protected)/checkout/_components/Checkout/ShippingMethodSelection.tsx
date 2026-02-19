@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
-import { Check } from "lucide-react";
+import { Check, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,21 +34,25 @@ interface ShippingMethodSelectionProps {
     calculate_instant: ShippingCostItem[];
   } | null;
   selectedMethod: string;
-  onSelect: (method: string) => void;
+  onSelect: (method: string, cost: number) => void;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
 export const ShippingMethodSelection = ({
   shippingData,
   selectedMethod,
   onSelect,
+  isLoading = false,
+  error = null,
 }: ShippingMethodSelectionProps) => {
   const [open, setOpen] = useState(false);
   const [tempMethod, setTempMethod] = useState(selectedMethod);
 
   const getCheapest = (items: ShippingCostItem[]) => {
     if (!items || items.length === 0) return null;
-    return items.sort((prev, curr) =>
-      prev.shipping_cost - curr.shipping_cost
+    return [...items].sort(
+      (prev, curr) => prev.shipping_cost - curr.shipping_cost
     )[0];
   };
 
@@ -81,9 +85,52 @@ export const ShippingMethodSelection = ({
   const currentMethod = methods.find((m) => m.id === selectedMethod);
 
   const handleConfirm = () => {
-    onSelect(tempMethod);
+    const selected = methods.find((m) => m.id === tempMethod);
+    onSelect(tempMethod, selected?.item?.shipping_cost_net ?? 0);
     setOpen(false);
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="bg-card rounded-2xl border border-border p-6 shadow-soft">
+        <h2 className="text-xl font-semibold mb-4">Shipping Method</h2>
+        <div className="flex items-center justify-center py-6 gap-3 bg-muted/50 rounded-xl">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            Mencari toko terdekat & menghitung ongkir...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="bg-card rounded-2xl border border-border p-6 shadow-soft">
+        <h2 className="text-xl font-semibold mb-4">Shipping Method</h2>
+        <div className="flex items-center gap-3 py-4 px-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+          <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
+          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // No data yet (no address selected)
+  if (!shippingData) {
+    return (
+      <div className="bg-card rounded-2xl border border-border p-6 shadow-soft">
+        <h2 className="text-xl font-semibold mb-4">Shipping Method</h2>
+        <div className="text-center py-4 bg-muted/50 rounded-xl border-0">
+          <p className="text-sm text-muted-foreground italic">
+            Pilih alamat pengiriman untuk melihat opsi pengiriman
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-card rounded-2xl border border-border p-6 shadow-soft">
@@ -129,7 +176,7 @@ export const ShippingMethodSelection = ({
                     </div>
                   </div>
 
-                  <div className="ml-4 flex items-center justify-center min-w-[1.5rem]">
+                  <div className="ml-4 flex items-center justify-center min-w-6">
                     {tempMethod === method.id && (
                       <Check className="h-5 w-5 md:h-6 md:w-6 text-emerald-500" />
                     )}

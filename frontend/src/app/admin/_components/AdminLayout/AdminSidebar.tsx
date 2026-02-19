@@ -35,6 +35,7 @@ import { authClient } from "@/lib/authClient";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getUserByEmail } from "@/services/user/getUserByEmail";
+import { useSidebar } from "@/components/ui/sidebar";
 
 const mainMenuItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
@@ -65,6 +66,7 @@ export function AdminSidebar() {
   const { data } = authClient.useSession();
   const user = data?.user;
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const { isMobile, setOpenMobile } = useSidebar();
 
   useEffect(() => {
     const initialFetch = async () => {
@@ -110,7 +112,10 @@ export function AdminSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Main</SidebarGroupLabel>
           <SidebarGroupContent>
-            <AdminSidebarMenuItem items={mainMenuItems} />
+            <AdminSidebarMenuItem
+              items={mainMenuItems}
+              onItemClick={() => isMobile && setOpenMobile(false)}
+            />
           </SidebarGroupContent>
         </SidebarGroup>
 
@@ -118,7 +123,10 @@ export function AdminSidebar() {
           <SidebarGroup>
             <SidebarGroupLabel>Management</SidebarGroupLabel>
             <SidebarGroupContent>
-              <AdminSidebarMenuItem items={superAdminItems} />
+              <AdminSidebarMenuItem
+                items={superAdminItems}
+                onItemClick={() => isMobile && setOpenMobile(false)}
+              />
             </SidebarGroupContent>
           </SidebarGroup>
         )}
@@ -126,21 +134,30 @@ export function AdminSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Catalog</SidebarGroupLabel>
           <SidebarGroupContent>
-            <AdminSidebarMenuItem items={catalogItems} />
+            <AdminSidebarMenuItem
+              items={catalogItems}
+              onItemClick={() => isMobile && setOpenMobile(false)}
+            />
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
           <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarGroupContent>
-            <AdminSidebarMenuItem items={operationsItems} />
+            <AdminSidebarMenuItem
+              items={operationsItems}
+              onItemClick={() => isMobile && setOpenMobile(false)}
+            />
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
           <SidebarGroupLabel>Reports</SidebarGroupLabel>
           <SidebarGroupContent>
-            <AdminSidebarMenuItem items={reportItems} />
+            <AdminSidebarMenuItem
+              items={reportItems}
+              onItemClick={() => isMobile && setOpenMobile(false)}
+            />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
@@ -163,7 +180,9 @@ export function AdminSidebar() {
                 <LogOut className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="p-2.5">Logout</TooltipContent>
+            {!isMobile && (
+              <TooltipContent className="p-2.5">Logout</TooltipContent>
+            )}
           </Tooltip>
         </div>
       </SidebarFooter>
@@ -171,14 +190,21 @@ export function AdminSidebar() {
   );
 }
 
-const AdminSidebarMenuItem = ({ items }: { items: typeof mainMenuItems }) => (
+const AdminSidebarMenuItem = ({
+  items,
+  onItemClick,
+}: {
+  items: typeof mainMenuItems;
+  onItemClick?: () => void;
+}) => (
   <SidebarMenu>
     {items.map((item) => (
       <SidebarMenuItem key={item.title}>
         <SidebarMenuButton asChild>
           <Link
             href={item.url}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+            onClick={onItemClick}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
           >
             <item.icon className="h-4 w-4 shrink-0" />
             <span>{item.title}</span>

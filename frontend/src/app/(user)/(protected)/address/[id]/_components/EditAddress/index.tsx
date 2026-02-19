@@ -55,8 +55,8 @@ export function EditAddress({ address }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 pb-32">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-slate-50/50 p-4 pb-20">
+      <div className="max-w-2xl mx-auto px-0 sm:px-0">
         <Card className="border-none shadow-xl bg-emerald-600 overflow-hidden rounded-2xl relative">
           <AddressFormHeader
             title="Edit Address"
@@ -66,7 +66,7 @@ export function EditAddress({ address }: Props) {
           <DeleteAddressDialog id={address.id}>
             <button
               type="button"
-              className="absolute top-6 right-6 flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all shadow-md active:scale-95 text-sm font-semibold border border-red-400/30"
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all shadow-md active:scale-95 text-sm font-semibold border border-red-400/30"
             >
               <Trash2 className="h-4 w-4" />
               <span className="hidden sm:inline">Delete address</span>
@@ -101,14 +101,14 @@ export function EditAddress({ address }: Props) {
             <Button
               variant="outline"
               onClick={() => router.push("/profile/address")}
-              className="h-14 px-6 border-slate-200 text-slate-500 font-bold rounded-2xl hover:bg-slate-50 transition-all text-lg"
+              className="h-12 sm:h-14 px-4 sm:px-6 border-slate-200 text-slate-500 font-bold rounded-2xl hover:bg-slate-50 transition-all text-base sm:text-lg"
             >
               Back
             </Button>
             <Button
               onClick={handleUpdate}
               disabled={isLoading}
-              className="flex-1 h-14 bg-white border-2 border-emerald-100 hover:bg-gray-100 text-emerald-600 font-bold rounded-2xl transition-all text-lg"
+              className="flex-1 h-12 sm:h-14 bg-white border-2 border-emerald-100 hover:bg-gray-100 text-emerald-600 font-bold rounded-2xl transition-all text-base sm:text-lg"
             >
               {isLoading ? "Saving..." : "Save Changes"}
             </Button>

@@ -110,12 +110,13 @@ export class OrderAdminService {
    */
   static async autoConfirmOrders() {
     const db: PrismaClient = prisma;
-    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const days = Number(process.env.AUTO_CONFIRM_DAYS ?? 7);
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     const confirmedOrders = await db.order.updateMany({
       where: {
         status: "SHIPPED",
-        shippedAt: { lt: twoDaysAgo },
+        shippedAt: { lt: cutoff },
       },
       data: {
         status: "DELIVERED",
@@ -124,7 +125,7 @@ export class OrderAdminService {
     });
 
     if (confirmedOrders.count > 0) {
-      console.info(`[OrderAdminService] auto-confirmed ${confirmedOrders.count} orders past 2-day shipping window`);
+      console.info(`[OrderAdminService] auto-confirmed ${confirmedOrders.count} orders past ${days}-day shipping window`);
     }
 
     return confirmedOrders;

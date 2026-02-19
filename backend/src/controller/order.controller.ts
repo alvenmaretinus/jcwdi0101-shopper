@@ -51,6 +51,27 @@ router.get("/", isAuth, async (req: Request, res: Response, next: NextFunction) 
 });
 
 /**
+ * @route POST /checkout/shipping-info
+ * @desc Get nearest store + shipping methods for an address (Early Store Selection)
+ * @access Private (User)
+ */
+router.post("/checkout/shipping-info", isAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.id as string;
+    const { addressId } = req.body;
+
+    if (!userId || !addressId) {
+      return res.status(400).json({ success: false, message: "SHIPPING_ADDRESS_REQUIRED" });
+    }
+
+    const result = await OrderService.getCheckoutShippingInfo(userId, addressId);
+    return res.status(200).json({ success: true, data: result });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+/**
  * @route POST /checkout
  * @desc Create a pending order
  * @access Private (User)
@@ -58,13 +79,13 @@ router.get("/", isAuth, async (req: Request, res: Response, next: NextFunction) 
 router.post("/checkout", isAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id as string;
-    const { addressId, paymentType, voucherIds } = req.body;
+    const { addressId, paymentType, voucherIds, shippingCost, shippingMethod } = req.body;
 
     if (!userId || !addressId) {
       return res.status(400).json({ success: false, message: "SHIPPING_ADDRESS_REQUIRED" });
     }
 
-    const order = await OrderService.createPendingOrder(userId, addressId, paymentType, voucherIds);
+    const order = await OrderService.createPendingOrder(userId, addressId, paymentType, voucherIds, undefined, shippingCost, shippingMethod);
     return res.status(200).json({ success: true, data: order, message: "Order created (PAYMENT_PENDING)" });
   } catch (err: any) {
     next(err);

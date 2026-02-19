@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { apiFetch, HttpMethod } from "@/lib/apiFetch";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/formatPrice";
-import { CartItem, CartResponse } from "@/types/cart";
+import { CartItem, CartResponse, RawBackendCartItem } from "@/types/cart";
 
 export function useCart() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -16,23 +16,50 @@ export function useCart() {
   const fetchCart = async () => {
     try {
       setLoading(true);
+      console.log("[useCart] Fetching cart...");
       const response = await apiFetch<CartResponse>("/cart", {
         method: HttpMethod.GET,
       });
-      // Handle different response structures
-      const items = Array.isArray(response) 
-        ? response 
-        : Array.isArray(response?.data) 
-          ? response.data 
-          : [];
+      console.log("[useCart] Cart response:", response);
+      // Backend returns { cartId, cartItems } — normalize to frontend CartItem shape
+      const data = response?.data;
+      let items: CartItem[] = [];
+      if (Array.isArray(data)) {
+        items = data as CartItem[];
+      } else if (
+        data &&
+        Array.isArray((data as { cartItems?: unknown }).cartItems)
+      ) {
+        const raw = (data as { cartItems: RawBackendCartItem[] }).cartItems;
+        // Normalize backend fields: productId -> id, stockQuantity -> stock
+        items = raw.map((it) => ({
+          id: it.productId ?? it.id ?? 0,
+          productId: it.productId ?? it.id,
+          name: it.name ?? "",
+          price:
+            typeof it.price === "number" ? it.price : Number(it.price) || 0,
+          image: it.image,
+          quantity:
+            typeof it.quantity === "number"
+              ? it.quantity
+              : Number(it.quantity) || 0,
+          unit: it.unit,
+          stock:
+            typeof it.stockQuantity === "number"
+              ? it.stockQuantity
+              : Number(it.productTotal) || 0,
+          outOfStock: it.outOfStock ?? false,
+        }));
+      } else {
+        items = [];
+      }
+      console.log("[useCart] Setting cart items:", items);
       setCartItems(items);
     } catch (error) {
-      console.error("Failed to fetch cart:", error);
-      setCartItems([]); // Ensure it's always an array on error
-      // Don't show error toast on initial load if user is not logged in
-      if (error instanceof Error && !error.message.includes("Unauthorized")) {
-        toast.error("Failed to load cart");
-      }
+      console.error("[useCart] Failed to fetch cart:", error);
+      // on error, clear cart and show toast
+      setCartItems([]);
+      toast.error("Failed to load cart");
     } finally {
       setLoading(false);
     }
@@ -60,24 +87,24 @@ export function useCart() {
         : null;
       if (!item) return;
 
+      const maxStock =
+        typeof item.stock === "number" ? item.stock : Number(item.stock) || 0;
       const newQuantity = Math.max(
         1,
-        Math.min(item.stock, item.quantity + delta)
+        Math.min(maxStock, item.quantity + delta)
       );
 
       // Update optimistically
       setCartItems((items) =>
-        Array.isArray(items)
-          ? items.map((item) =>
-              item.id === id ? { ...item, quantity: newQuantity } : item
-            )
-          : []
+        items.map((it) =>
+          it.id === id ? { ...it, quantity: newQuantity } : it
+        )
       );
 
-      // Sync with backend
+      // Sync with backend - send productId (backend expects productId)
       await apiFetch("/cart", {
-        method: HttpMethod.PATCH,
-        body: { productId: id, quantity: newQuantity },
+        method: "PATCH",
+        body: { productId: item.productId ?? id, quantity: newQuantity },
       });
     } catch (error) {
       console.error("Failed to update quantity:", error);
@@ -89,16 +116,17 @@ export function useCart() {
 
   const removeItem = async (id: number | string) => {
     try {
-      // Update optimistically
-      setCartItems((items) => 
-        Array.isArray(items) ? items.filter((item) => item.id !== id) : []
-      );
+      // Find item and call backend to delete by productId
+      const item = cartItems.find((it) => it.id === id);
+      if (!item) return;
 
-      // Sync with backend
       await apiFetch("/cart", {
-        method: HttpMethod.DELETE,
-        body: { productId: id },
+        method: "DELETE",
+        body: { productId: item.productId ?? id },
       });
+
+      // Refresh cart
+      await fetchCart();
       toast.success("Item removed from cart");
     } catch (error) {
       console.error("Failed to remove item:", error);
@@ -124,8 +152,11 @@ export function useCart() {
     }
   };
 
-  const subtotal = Array.isArray(cartItems) 
-    ? cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const subtotal = Array.isArray(cartItems)
+    ? cartItems.reduce(
+        (sum, item) => sum + (item.price * item.quantity || 0),
+        0
+      )
     : 0;
 
   const deliveryFee = subtotal >= 200000 ? 0 : 15000;

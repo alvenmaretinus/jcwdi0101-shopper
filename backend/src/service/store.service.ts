@@ -20,6 +20,7 @@ type StoreProduct = {
   name: string;
   description: string | null;
   price: number;
+  weight?: number | null;
   category: string;
   images: string[];
   quantity: number;
