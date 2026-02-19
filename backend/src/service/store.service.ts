@@ -27,12 +27,125 @@ type StoreProduct = {
 };
 
 export class StoreService {
-  static async createStore(data: CreateStoreInput) {
-    const { name, phone, coords, addressName, description, postCode } = data;
-
-    const isExist = await prisma.store.findFirst({
+  private static async hasAnyStore() {
+    const store = await prisma.store.findFirst({
       where: { isSoftDeleted: false },
     });
+    return Boolean(store);
+  }
+
+  private static sortStoresByDistance(stores: any[], latitude: number, longitude: number) {
+    return stores.sort((a, b) => {
+      const distA = getDistance(
+        { latitude, longitude },
+        { latitude: a.latitude, longitude: a.longitude },
+      );
+      const distB = getDistance(
+        { latitude, longitude },
+        { latitude: b.latitude, longitude: b.longitude },
+      );
+      return distA - distB;
+    });
+  }
+
+  private static sortStoresByDefault(stores: any[]) {
+    return stores.sort((a, b) => {
+      if (a.isDefault === b.isDefault) return 0;
+      return a.isDefault ? -1 : 1;
+    });
+  }
+
+  private static upsertProductMap(productMap: Map<string, StoreProduct>, product: StoreProduct) {
+    const existingProduct = productMap.get(product.id);
+    if (!existingProduct) {
+      productMap.set(product.id, { ...product });
+      return;
+    }
+
+    productMap.set(product.id, {
+      ...existingProduct,
+      quantity: Math.max(existingProduct.quantity, product.quantity),
+    });
+  }
+
+  private static buildUniqueProductsFromStores(stores: any[]) {
+    const uniqueProductIds = new Set<string>();
+    const productMap = new Map<string, StoreProduct>();
+
+    stores.forEach((store) => {
+      store.products.forEach((product: StoreProduct) => {
+        if (product.quantity === 0) return;
+        uniqueProductIds.add(product.id);
+        this.upsertProductMap(productMap, product);
+      });
+    });
+
+    return Array.from(uniqueProductIds)
+      .map((id) => productMap.get(id))
+      .filter((product) => product !== undefined);
+  }
+
+  private static async ensureStoreExists(id: string) {
+    const store = await StoreRepository.getStoreById({ id });
+    if (!store) throw new NotFoundError("Store Not Found");
+  }
+
+  private static async getCurrentDefaultStoreOrThrow() {
+    const defaultStore = await StoreRepository.getDefaultStore();
+    if (defaultStore) return defaultStore;
+
+    console.error("Default store not found when setting default store");
+    throw new AppError({
+      message: "Internal Server Error",
+      statusCode: 500,
+    });
+  }
+
+  private static async ensureStoreCanBeDeleted(id: string) {
+    const store = await StoreRepository.getStoreByIdWithCounts({ id });
+    if (!store) throw new NotFoundError("Store Not Found");
+    if (store.employees > 0) throw new ConflictError("Employees still exist");
+    if (store.orders > 0) throw new ConflictError("Orders still exist");
+    if (store.productStores > 0) throw new ConflictError("Products still exist");
+
+    const defaultStore = await prisma.store.findFirst({
+      where: {
+        isDefault: true,
+        isSoftDeleted: false,
+      },
+    });
+    if (defaultStore?.id === id) throw new ConflictError("Default store cannot be deleted");
+  }
+
+  private static mapStoresWithDistance(stores: any[], latitude: number, longitude: number) {
+    return stores.map((store) => ({
+      ...store,
+      distance: getDistance(
+        { latitude: store.latitude, longitude: store.longitude },
+        { latitude, longitude },
+      ),
+    }));
+  }
+
+  private static async swapDefaultStore(currentDefaultStoreId: string, nextDefaultStoreId: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.store.update({ where: { id: currentDefaultStoreId }, data: { isDefault: false } });
+      return tx.store.update({ where: { id: nextDefaultStoreId }, data: { isDefault: true } });
+    });
+  }
+
+  private static filterByRadius(storesWithDistance: any[], radiusMeters?: number) {
+    if (!radiusMeters || radiusMeters <= 0) return storesWithDistance;
+    return storesWithDistance.filter((store) => store.distance <= radiusMeters);
+  }
+
+  private static sortByDistance(storesWithDistance: any[]) {
+    return storesWithDistance.sort((a, b) => a.distance - b.distance);
+  }
+
+  static async createStore(data: CreateStoreInput) {
+    const { name, phone, coords, addressName, description, postCode } = data;
+    const isExist = await this.hasAnyStore();
     return await StoreRepository.createStore({
       name,
       phone,
@@ -63,64 +176,16 @@ export class StoreService {
 
   static async getNearestProducts(data?: GetNearestProductsInput) {
     const stores = await StoreRepository.getStoresWithProducts();
-
-    // Sort stores by distance if coordinates provided, otherwise sort by default store
-    let sortedStores = stores;
-    if (data?.latitude !== undefined && data?.longitude !== undefined) {
-      const { latitude, longitude } = data;
-      sortedStores = stores.sort((a, b) => {
-        const distA = getDistance(
-          { latitude, longitude },
-          { latitude: a.latitude, longitude: a.longitude },
-        );
-        const distB = getDistance(
-          { latitude, longitude },
-          { latitude: b.latitude, longitude: b.longitude },
-        );
-        return distA - distB;
-      });
-    } else {
-      // Sort by default store first when no coordinates provided
-      sortedStores = stores.sort((a, b) => {
-        if (a.isDefault === b.isDefault) return 0;
-        return a.isDefault ? -1 : 1;
-      });
-    }
-
-    const uniqueProductIds = new Set<string>();
-    const productMap = new Map<string, StoreProduct>();
-
-    sortedStores.forEach((store) => {
-      store.products.forEach((product) => {
-        if (product.quantity === 0) return;
-
-        uniqueProductIds.add(product.id);
-
-        const existingProduct = productMap.get(product.id);
-        if (!existingProduct) {
-          productMap.set(product.id, { ...product });
-        } else {
-          const currentMaxStock = existingProduct.quantity;
-          productMap.set(product.id, {
-            ...existingProduct,
-            quantity: Math.max(currentMaxStock, product.quantity),
-          });
-        }
-      });
-    });
-
-    const uniqueProducts = Array.from(uniqueProductIds)
-      .map((id) => productMap.get(id))
-      .filter((product) => product !== undefined);
-
-    return uniqueProducts;
+    const sortedStores = data?.latitude !== undefined && data?.longitude !== undefined
+      ? this.sortStoresByDistance(stores, data.latitude, data.longitude)
+      : this.sortStoresByDefault(stores);
+    return this.buildUniqueProductsFromStores(sortedStores);
   }
 
   static async updateStore(data: UpdateStoreInput) {
     const { id, name, lng, lat, description, addressName, phone, postCode } =
       data;
-    const store = await StoreRepository.getStoreById({ id });
-    if (!store) throw new NotFoundError("Store Not Found");
+    await this.ensureStoreExists(id);
 
     return await StoreRepository.updateStore({
       id,
@@ -136,57 +201,15 @@ export class StoreService {
 
   static async setDefaultStore(data: SetDefaultStoreInput) {
     const { id } = data;
-    const store = await StoreRepository.getStoreById({ id });
-    if (!store) throw new NotFoundError("Store Not Found");
-
-    const defaultStore = await StoreRepository.getDefaultStore();
-    if (!defaultStore) {
-      console.error("Default store not found when setting default store");
-      throw new AppError({
-        message: "Internal Server Error",
-        statusCode: 500,
-      });
-    }
-
-    if (defaultStore.id === id) {
-      throw new ConflictError("Store is already the default store");
-    }
-
-    return await prisma.$transaction(async (tx) => {
-      await tx.store.update({
-        where: { id: defaultStore.id },
-        data: { isDefault: false },
-      });
-      return await tx.store.update({
-        where: { id },
-        data: { isDefault: true },
-      });
-    });
+    await this.ensureStoreExists(id);
+    const defaultStore = await this.getCurrentDefaultStoreOrThrow();
+    if (defaultStore.id === id) throw new ConflictError("Store is already the default store");
+    return this.swapDefaultStore(defaultStore.id, id);
   }
 
   static async deleteStoreById(data: DeleteStoreByIdInput) {
     const { id } = data;
-    const store = await StoreRepository.getStoreByIdWithCounts({ id });
-    if (!store) throw new NotFoundError("Store Not Found");
-    if (store.employees > 0) {
-      throw new ConflictError("Employees still exist");
-    }
-    if (store.orders > 0) {
-      throw new ConflictError("Orders still exist");
-    }
-    if (store.productStores > 0) {
-      throw new ConflictError("Products still exist");
-    }
-
-    const defaultStore = await prisma.store.findFirst({
-      where: {
-        isDefault: true,
-        isSoftDeleted: false,
-      },
-    });
-    if (defaultStore?.id === id) {
-      throw new ConflictError("Default store cannot be deleted");
-    }
+    await this.ensureStoreCanBeDeleted(id);
 
     return await StoreRepository.deleteStoreById({ id });
   }
@@ -217,31 +240,10 @@ export class StoreService {
   }
 
   static async getNearestStores(data: GetNearestStoreInput) {
-    const {
-      latitude: userAddressLatitude,
-      longitude: userAddressLongitude,
-      radiusMeters,
-    } = data;
-
+    const { latitude: userAddressLatitude, longitude: userAddressLongitude, radiusMeters } = data;
     const stores = await StoreRepository.getAllStores();
-    let storesWithDistance = stores.map((store) => ({
-      ...store,
-      distance: getDistance(
-        { latitude: store.latitude, longitude: store.longitude },
-        { latitude: userAddressLatitude, longitude: userAddressLongitude },
-      ),
-    }));
-
-    if (radiusMeters && radiusMeters > 0) {
-      storesWithDistance = storesWithDistance.filter(
-        (store) => store.distance <= radiusMeters,
-      );
-    }
-
-    const sortedStoreFromNearest = storesWithDistance.sort((a, b) => {
-      return a.distance - b.distance;
-    });
-
-    return sortedStoreFromNearest;
+    const storesWithDistance = this.mapStoresWithDistance(stores, userAddressLatitude, userAddressLongitude);
+    const filtered = this.filterByRadius(storesWithDistance, radiusMeters);
+    return this.sortByDistance(filtered);
   }
 }

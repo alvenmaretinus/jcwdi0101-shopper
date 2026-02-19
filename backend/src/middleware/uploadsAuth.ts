@@ -22,7 +22,7 @@ export const uploadsAuthMiddleware: express.RequestHandler = async (req, res, ne
     return res.status(401).json({
       error: "Unauthorized access to uploads. Provide valid authentication or x-api-key header.",
     });
-  } catch (err) {
+  } catch {
     return res.status(401).json({
       error: "Unauthorized access to uploads. Provide valid authentication or x-api-key header.",
     });
