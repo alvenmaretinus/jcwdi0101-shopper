@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { ProductCard } from "@/components/products/ProductCard";
 import { Button } from "@/components/ui/button";
-import { Clock, ArrowRight, Sparkles, Percent, Gift } from "lucide-react";
+import { Clock, ArrowRight, Sparkles, Percent, Gift, ChevronLeft, ChevronRight } from "lucide-react";
 import { getVouchers } from "@/services/voucher";
 import { getProductsWithDiscounts, type ProductWithDiscount } from "@/services/discount";
 import type { Voucher } from "@/types/Voucher";
@@ -25,6 +25,15 @@ const Deals = () => {
   const [flashDeals, setFlashDeals] = useState<ProductWithDiscount[]>([]);
   const [bogoProducts, setBogoProducts] = useState<ProductWithDiscount[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Pagination states
+  const [promoPage, setPromoPage] = useState(1);
+  const [flashPage, setFlashPage] = useState(1);
+  const [bogoPage, setBogoPage] = useState(1);
+  
+  const PROMO_PER_PAGE = 3;
+  const DEALS_PER_PAGE = 4;
+  const BOGO_PER_PAGE = 4;
 
   const formatEndsIn = (endsAt?: string | Date | null) => {
     if (!endsAt) return "";
@@ -43,8 +52,8 @@ const Deals = () => {
       try {
         const [vouchersResponse, flashDealsResponse, bogoResponse] = await Promise.all([
           getVouchers({ isRedeemed: false }),
-          getProductsWithDiscounts({ isActive: true, type: "PERCENTAGE", limit: 4 }),
-          getProductsWithDiscounts({ isActive: true, type: "QUANTITY", limit: 4 }),
+          getProductsWithDiscounts({ isActive: true, type: "PERCENTAGE" }),
+          getProductsWithDiscounts({ isActive: true, type: "QUANTITY" }),
         ]);
         
         setVouchers(vouchersResponse.data);
@@ -113,6 +122,21 @@ const Deals = () => {
       expiresIn,
     };
   });
+
+  // Pagination logic
+  const totalPromoPages = Math.ceil(promoCards.length / PROMO_PER_PAGE);
+  const paginatedPromos = promoCards.slice(
+    (promoPage - 1) * PROMO_PER_PAGE,
+    promoPage * PROMO_PER_PAGE
+  );
+
+  const handlePromoNext = () => {
+    if (promoPage < totalPromoPages) setPromoPage(promoPage + 1);
+  };
+
+  const handlePromoPrev = () => {
+    if (promoPage > 1) setPromoPage(promoPage - 1);
+  };
 
   // Transform flash deals with discounts - only show in-stock products
   const transformedFlashDeals = flashDeals
@@ -195,6 +219,44 @@ const Deals = () => {
       };
     });
 
+  // Flash deals pagination
+  const totalFlashPages = Math.ceil(transformedFlashDeals.length / DEALS_PER_PAGE);
+  const paginatedFlashDeals = transformedFlashDeals.slice(
+    (flashPage - 1) * DEALS_PER_PAGE,
+    flashPage * DEALS_PER_PAGE
+  );
+  const paginatedFlashDealsData = flashDeals.slice(
+    (flashPage - 1) * DEALS_PER_PAGE,
+    flashPage * DEALS_PER_PAGE
+  );
+
+  const handleFlashNext = () => {
+    if (flashPage < totalFlashPages) setFlashPage(flashPage + 1);
+  };
+
+  const handleFlashPrev = () => {
+    if (flashPage > 1) setFlashPage(flashPage - 1);
+  };
+
+  // BOGO products pagination
+  const totalBogoPages = Math.ceil(transformedBogoProducts.length / BOGO_PER_PAGE);
+  const paginatedBogoProducts = transformedBogoProducts.slice(
+    (bogoPage - 1) * BOGO_PER_PAGE,
+    bogoPage * BOGO_PER_PAGE
+  );
+  const paginatedBogoData = bogoProducts.slice(
+    (bogoPage - 1) * BOGO_PER_PAGE,
+    bogoPage * BOGO_PER_PAGE
+  );
+
+  const handleBogoNext = () => {
+    if (bogoPage < totalBogoPages) setBogoPage(bogoPage + 1);
+  };
+
+  const handleBogoPrev = () => {
+    if (bogoPage > 1) setBogoPage(bogoPage - 1);
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -235,12 +297,37 @@ const Deals = () => {
         <div className="container-app py-12">
           {/* Promo Cards */}
           <section className="mb-16">
-            <h2 className="section-title mb-6 flex items-center gap-2">
-              <Gift className="h-6 w-6 text-primary" />
-              Promo Codes
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="section-title flex items-center gap-2">
+                <Gift className="h-6 w-6 text-primary" />
+                Promo Codes
+              </h2>
+              {totalPromoPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePromoPrev}
+                    disabled={promoPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {promoPage} / {totalPromoPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePromoNext}
+                    disabled={promoPage === totalPromoPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
             <div className="grid md:grid-cols-3 gap-6">
-              {promoCards.map((promo, index) => {
+              {paginatedPromos.map((promo, index) => {
                 // Get gradient colors based on index
                 const gradients = [
                   { from: "#ec4899", to: "#e11d48" }, // pink to rose
@@ -254,7 +341,7 @@ const Deals = () => {
                   { from: "#f97316", to: "#f59e0b" }, // orange to amber
                   { from: "#d946ef", to: "#ec4899" }, // fuchsia to pink
                 ];
-                const gradient = gradients[index % gradients.length];
+                const gradient = gradients[((promoPage - 1) * PROMO_PER_PAGE + index) % gradients.length];
                 
                 return (
                   <div
@@ -294,12 +381,35 @@ const Deals = () => {
                   <Percent className="h-6 w-6 text-pink-600" />
                   Deals
                 </h2>
+                {totalFlashPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleFlashPrev}
+                      disabled={flashPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      {flashPage} / {totalFlashPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleFlashNext}
+                      disabled={flashPage === totalFlashPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {transformedFlashDeals.length > 0 ? (
-                flashDeals.map((item, index) => {
-                  const product = transformedFlashDeals[index];
+              {paginatedFlashDeals.length > 0 ? (
+                paginatedFlashDealsData.map((item, index) => {
+                  const product = paginatedFlashDeals[index];
                   if (!product) return null;
                   
                   return (
@@ -331,11 +441,34 @@ const Deals = () => {
                 <span className="text-2xl">🎁</span>
                 Buy X Get Y Free
               </h2>
+              {totalBogoPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBogoPrev}
+                    disabled={bogoPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {bogoPage} / {totalBogoPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBogoNext}
+                    disabled={bogoPage === totalBogoPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {transformedBogoProducts.length > 0 ? (
-                bogoProducts.map((item, index) => {
-                  const product = transformedBogoProducts[index];
+              {paginatedBogoProducts.length > 0 ? (
+                paginatedBogoData.map((item, index) => {
+                  const product = paginatedBogoProducts[index];
                   if (!product) return null;
                   
                   return (

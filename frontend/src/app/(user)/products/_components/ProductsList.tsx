@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,9 @@ interface ProductsListProps {
   selectedCategoryId?: string;
   selectedCategoryName?: string;
   pagination: PaginationMeta;
+  initialSearch?: string;
+  initialInStockOnly?: boolean;
+  initialSort?: string;
 }
 
 export function ProductsList({
@@ -49,15 +52,18 @@ export function ProductsList({
   selectedCategoryId: initialCategoryId,
   selectedCategoryName,
   pagination,
+  initialSearch = "",
+  initialInStockOnly = false,
+  initialSort = "featured",
 }: ProductsListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
     initialCategoryId || "all"
   );
-  const [sortBy, setSortBy] = useState("featured");
-  const [showInStock, setShowInStock] = useState(false);
+  const [sortBy, setSortBy] = useState(initialSort);
+  const [showInStock, setShowInStock] = useState(initialInStockOnly);
 
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -65,39 +71,49 @@ export function ProductsList({
     router.push(`/products?${params.toString()}`);
   };
 
-  const filteredAndSortedProducts = useMemo(() => {
-    let filtered = initialProducts.filter((product) => {
-      const matchesSearch = product.name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      const matchesCategory =
-        selectedCategoryId === "all" || product.categoryId === selectedCategoryId;
-      
-      // Check if product has stock in any store
-      const hasStock = product.productStores
-        ? product.productStores.some((ps) => ps.quantity > 0)
-        : true;
-      const matchesStock = !showInStock || hasStock;
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    const params = new URLSearchParams(searchParams.toString());
+    if (query) {
+      params.set("search", query);
+    } else {
+      params.delete("search");
+    }
+    params.set("page", "1"); // Reset to first page
+    router.push(`/products?${params.toString()}`);
+  };
 
-      return matchesSearch && matchesCategory && matchesStock;
-    });
+  const handleCategoryChange = (categoryId: string) => {
+    setSelectedCategoryId(categoryId);
+    const params = new URLSearchParams(searchParams.toString());
+    if (categoryId === "all") {
+      params.delete("categoryId");
+    } else {
+      params.set("categoryId", categoryId);
+    }
+    params.set("page", "1"); // Reset to first page
+    router.push(`/products?${params.toString()}`);
+  };
 
-    // Sort products
-    const sorted = [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case "price-low":
-          return a.price - b.price;
-        case "price-high":
-          return b.price - a.price;
-        case "name":
-          return a.name.localeCompare(b.name);
-        default:
-          return 0;
-      }
-    });
+  const handleSortChange = (sort: string) => {
+    setSortBy(sort);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sort", sort);
+    params.set("page", "1"); // Reset to first page
+    router.push(`/products?${params.toString()}`);
+  };
 
-    return sorted;
-  }, [initialProducts, searchQuery, selectedCategoryId, sortBy, showInStock]);
+  const handleInStockChange = (checked: boolean) => {
+    setShowInStock(checked);
+    const params = new URLSearchParams(searchParams.toString());
+    if (checked) {
+      params.set("inStockOnly", "true");
+    } else {
+      params.delete("inStockOnly");
+    }
+    params.set("page", "1"); // Reset to first page
+    router.push(`/products?${params.toString()}`);
+  };
 
   const categoryOptions = [
     { id: "all", category: "All Categories" },
@@ -113,7 +129,7 @@ export function ProductsList({
           {categoryOptions.map((category) => (
             <button
               key={category.id}
-              onClick={() => setSelectedCategoryId(category.id)}
+              onClick={() => handleCategoryChange(category.id)}
               className={`block w-full text-left px-3 py-2 rounded-lg transition-colors ${
                 selectedCategoryId === category.id
                   ? "bg-primary text-primary-foreground"
@@ -133,7 +149,7 @@ export function ProductsList({
           <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox
               checked={showInStock}
-              onCheckedChange={(checked) => setShowInStock(checked as boolean)}
+              onCheckedChange={handleInStockChange}
             />
             <span>In Stock Only</span>
           </label>
@@ -177,12 +193,12 @@ export function ProductsList({
                   type="search"
                   placeholder="Search products..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value)}
                   className="pl-12 h-12 rounded-full bg-card border-0 shadow-soft"
                 />
                 {searchQuery && (
                   <button
-                    onClick={() => setSearchQuery("")}
+                    onClick={() => handleSearch("")}
                     className="absolute right-4 top-1/2 -translate-y-1/2"
                   >
                     <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
@@ -209,7 +225,7 @@ export function ProductsList({
                   </SheetContent>
                 </Sheet>
 
-                <Select value={sortBy} onValueChange={setSortBy}>
+                <Select value={sortBy} onValueChange={handleSortChange}>
                   <SelectTrigger className="w-[180px] h-12 rounded-full bg-card border-0 shadow-soft">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
@@ -231,7 +247,7 @@ export function ProductsList({
                     variant="secondary"
                     size="sm"
                     className="rounded-full"
-                    onClick={() => setSelectedCategoryId("all")}
+                    onClick={() => handleCategoryChange("all")}
                   >
                     {selectedCategory.category}
                     <X className="ml-1 h-3 w-3" />
@@ -242,7 +258,7 @@ export function ProductsList({
                     variant="secondary"
                     size="sm"
                     className="rounded-full"
-                    onClick={() => setShowInStock(false)}
+                    onClick={() => handleInStockChange(false)}
                   >
                     In Stock
                     <X className="ml-1 h-3 w-3" />
@@ -252,10 +268,10 @@ export function ProductsList({
             )}
 
             {/* Products grid */}
-            {filteredAndSortedProducts.length > 0 ? (
+            {initialProducts.length > 0 ? (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                  {filteredAndSortedProducts.map((product) => (
+                  {initialProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
                 </div>

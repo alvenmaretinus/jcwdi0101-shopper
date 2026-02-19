@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,6 +12,7 @@ import type { StockReport } from '@/types/StockReport';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
 import { Pagination } from '@/components/Pagination/Pagination';
+import { apiFetch, HttpMethod } from '@/lib/apiFetch';
 
 const movementTypeColors: Record<MovementType, string> = {
   PURCHASED: 'bg-green-100 text-green-800',
@@ -71,52 +72,85 @@ export default function StockReport() {
 
   useEffect(() => {
     const fetchStoresAndCategories = async () => {
-      fetch('/api/stores').then(res => res.json()).then(data => setStores(data)).catch(err => console.error('Failed to fetch stores:', err));
-      fetch('/api/categories').then(res => res.json()).then(data => setCategories(data)).catch(err => console.error('Failed to fetch categories:', err)); 
+      try {
+        const storesData = await apiFetch<any>('/stores', {
+          method: HttpMethod.GET,
+        });
+        const storesArray = Array.isArray(storesData) ? storesData : storesData?.data || [];
+        setStores(storesArray);
+      } catch (err) {
+        console.error('Failed to fetch stores:', err);
+        setStores([]);
+      }
+
+      try {
+        const categoriesData = await apiFetch<any>('/product-category', {
+          method: HttpMethod.GET,
+        });
+        const categoriesArray = Array.isArray(categoriesData) ? categoriesData : categoriesData?.data || [];
+        setCategories(categoriesArray);
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+        setCategories([]);
+      }
     };
     fetchStoresAndCategories(); 
-  }, [])
+  }, []);
+
+  // Ref to track previous filter values to detect changes
+  const previousFiltersRef = useRef({ selectedStoreId, selectedMonth, selectedYear });
 
   useEffect(() => {
-    // Fetch stock report with pagination
+    // Check if filters have changed
+    const filtersChanged =
+      previousFiltersRef.current.selectedStoreId !== selectedStoreId ||
+      previousFiltersRef.current.selectedMonth !== selectedMonth ||
+      previousFiltersRef.current.selectedYear !== selectedYear;
+
     const fetchMovements = async () => {
       const limit = 20;
       const skip = (currentPage - 1) * limit;
-      let query = `skip=${skip}&take=${limit}`
+      let query = `?skip=${skip}&take=${limit}`
       if (selectedStoreId !== 'all') query += `&storeId=${selectedStoreId}`
       // Parse month and year for the API
       const monthNum = Number(selectedMonth) + 1; // API expects 1-12, state is 0-11
       const yearNum = Number(selectedYear);
       query += `&createdAtMonth=${monthNum}&createdAtYear=${yearNum}`
-      fetch(`/api/stock-report?${query}`) // Adjust query params as needed
-        .then(res => res.json())
-        .then(response => {
-          // Check if response has data array and pagination info
-          if (response && 'data' in response) {
-            setFilteredMovements(response.data || []);
-            setPagination({
-              page: response.page || 1,
-              limit: limit,
-              total: response.total || 0,
-              totalPages: response.totalPages || 1,
-            });
-          } else {
-            // Fallback if response is just an array
-            setFilteredMovements(Array.isArray(response) ? response : []);
-          }
-        })
-        .catch(err => {
-          console.error('Failed to fetch stock movements:', err);
-          setFilteredMovements([]);
+      
+      try {
+        const response = await apiFetch<any>(`/stock-report${query}`, {
+          method: HttpMethod.GET,
         });
+        
+        // Check if response has data array and pagination info
+        if (response && 'data' in response) {
+          setFilteredMovements(response.data || []);
+          setPagination({
+            page: response.page || 1,
+            limit: limit,
+            total: response.total || 0,
+            totalPages: response.totalPages || 1,
+          });
+        } else {
+          // Fallback if response is just an array
+          setFilteredMovements(Array.isArray(response) ? response : []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch stock movements:', err);
+        setFilteredMovements([]);
+      }
     };
-    fetchMovements();
+
+    if (filtersChanged) {
+      // Reset page to 1 when filters change
+      setCurrentPage(1);
+      previousFiltersRef.current = { selectedStoreId, selectedMonth, selectedYear };
+    } else if (currentPage === 1 || !filtersChanged) {
+      // Fetch when on page 1 or when page hasn't been reset yet
+      fetchMovements();
+    }
   }, [selectedStoreId, selectedMonth, selectedYear, currentPage]);
 
-  // Reset page to 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedStoreId, selectedMonth, selectedYear]);
 
   return (
     <div className="space-y-6">

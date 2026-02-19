@@ -3,6 +3,7 @@ export type GetProductReq = {
     name: string;
     categoryId: string;
     storeId: string;
+    inStockOnly: boolean;
     // Additional filter fields can be added here when the logic is ready e.g. priceRange, createdAtRange
 }
 
@@ -35,7 +36,10 @@ export type ProductWhereClause = {
     };
     productStores?: {
         some: {
-            storeId: string;
+            storeId?: string;
+            quantity?: {
+                gt: number;
+            };
         };
     };
     isSoftDeleted: boolean; // Ensure this is always included to filter out soft-deleted products

@@ -44,6 +44,7 @@ export interface GetProductsParams {
   name?: string;
   categoryId?: string;
   storeId?: string;
+  inStockOnly?: boolean;
   withStock?: boolean;
   page?: number;
   limit?: number;
@@ -69,6 +70,9 @@ export const getProducts = async (
   if (params?.name) queryParams.append("name", params.name);
   if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
   if (params?.storeId) queryParams.append("storeId", params.storeId);
+  if (params?.inStockOnly !== undefined) {
+    queryParams.append("inStockOnly", params.inStockOnly.toString());
+  }
   if (params?.withStock !== undefined) {
     queryParams.append("withStock", params.withStock.toString());
   }

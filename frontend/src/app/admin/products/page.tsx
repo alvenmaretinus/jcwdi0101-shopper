@@ -65,7 +65,7 @@ export default function Products() {
       const apiInit: ApiInit = {
         method: HttpMethod.GET,
       };
-      let filterStrings = ['withStock=true', `page=${currentPage}`, 'limit=20']; // Include store information and pagination
+      const filterStrings = ['withStock=true', `page=${currentPage}`, 'limit=20']; // Include store information and pagination
       if (categoryFilter !== undefined && categoryFilter !== 'all') {
         filterStrings.push(`categoryId=${categoryFilter}`);
       }

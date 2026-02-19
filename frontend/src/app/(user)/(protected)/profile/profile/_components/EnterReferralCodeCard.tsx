@@ -21,7 +21,7 @@ export const EnterReferralCodeCard = () => {
       const left = 30 - days;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDaysLeft(left);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setIsShow(left > 0);
     }
   }, [user]);

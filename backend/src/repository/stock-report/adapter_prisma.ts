@@ -94,13 +94,17 @@ export class PrismaRepository implements StockReportRepository {
    */
   private buildStockReportQuery(filter: FindStockReportsByFilterReq) {
     const { start, end } = this.buildDateRange(filter.createdAtYear, filter.createdAtMonth);
-    const storeFilterCondition = this.buildStoreFilter(filter.storeId);
     const dateFilterCondition = this.buildDateFilter(start, end);
     
     const andConditions: Prisma.ProductMovementWhereInput[] = [
-      storeFilterCondition,
       dateFilterCondition,
     ];
+
+    // Only add store filter if storeId is provided
+    if (filter.storeId) {
+      const storeFilterCondition = this.buildStoreFilter(filter.storeId);
+      andConditions.push(storeFilterCondition);
+    }
 
     const where: Prisma.ProductMovementWhereInput = {
       AND: andConditions,

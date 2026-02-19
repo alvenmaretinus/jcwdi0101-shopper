@@ -11,9 +11,9 @@ export const deleteDiscount = async (id: string): Promise<void> => {
     if (typeof window !== "undefined") {
       toast.success("Discount deleted successfully");
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (typeof window !== "undefined") {
-      toast.error(error.message || "Failed to delete discount");
+      toast.error((error as { message: string }).message || "Failed to delete discount");
     }
     throw error;
   }

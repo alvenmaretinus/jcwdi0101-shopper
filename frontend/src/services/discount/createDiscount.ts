@@ -18,6 +18,7 @@ export interface CreateDiscountInput {
   endsAt?: Date | string;
 }
 
+
 export const createDiscount = async (inputData: CreateDiscountInput): Promise<Discount> => {
   try {
     const res = await apiFetch<Discount>("/discounts", {
@@ -30,9 +31,9 @@ export const createDiscount = async (inputData: CreateDiscountInput): Promise<Di
     }
 
     return res;
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (typeof window !== "undefined") {
-      toast.error(error.message || "Failed to create discount");
+      toast.error((error as { message: string }).message || "Failed to create discount");
     }
     throw error;
   }

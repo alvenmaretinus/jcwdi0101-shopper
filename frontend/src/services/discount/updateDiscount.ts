@@ -33,9 +33,9 @@ export const updateDiscount = async (inputData: UpdateDiscountInput): Promise<Di
     }
 
     return res;
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (typeof window !== "undefined") {
-      toast.error(error.message || "Failed to update discount");
+      toast.error((error as { message: string }).message || "Failed to update discount");
     }
     throw error;
   }
