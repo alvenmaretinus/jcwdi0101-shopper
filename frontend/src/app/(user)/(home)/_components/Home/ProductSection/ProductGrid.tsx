@@ -34,8 +34,23 @@ export const ProductGrid = ({ initialProducts, isDefaultAddress }: Props) => {
           },
           (error) => {
             console.error("Geolocation error:", error);
+            let errorMessage = "Unable to get your location";
+            
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage = "Location permission denied. Please enable location access in your browser settings.";
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage = "Location information is unavailable. Please try again.";
+                break;
+              case error.TIMEOUT:
+                errorMessage = "Location request timed out. Please try again.";
+                break;
+            }
+            
+            toast.error(errorMessage);
           },
-          { enableHighAccuracy: true }
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       };
       handleUseCurrentLocation();

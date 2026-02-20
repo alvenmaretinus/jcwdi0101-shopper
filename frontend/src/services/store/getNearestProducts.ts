@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/apiFetch";
+import { apiFetch, HttpMethod } from "@/lib/apiFetch";
 import { ReadonlyHeaders } from "next/dist/server/web/spec-extension/adapters/headers";
 import { StoreProduct } from "@/types/StoreProduct";
 
@@ -20,7 +20,7 @@ export const getNearestProducts = async ({
 
   const res = await apiFetch<StoreProduct[]>(
     `/stores/nearest-products${queryString}`,
-    { method: "GET", headers }
+    { method: HttpMethod.GET, headers }
   );
   return res;
 };

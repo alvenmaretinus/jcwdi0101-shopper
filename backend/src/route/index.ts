@@ -2,7 +2,7 @@ import { Router } from "express";
 import storeRouter from "./store";
 import userRouter from "./user";
 
-import productRouter from "./product";
+import productRouter from "./product.route";
 import productStoreRouter from "./productstore";
 import productMovementRouter from "./productmovement";
 import cartRouter from "./cart.route";
@@ -14,6 +14,7 @@ import voucherRouter from "./voucher.route";
 import productCategoryRouter from "./product-category.route";
 import salesReportRouter from "./sales-report.route";
 import stockReportRouter from "./stock-report.route";
+import referralRouter from "../controller/referral.controller";
 import docsRouter from "./docs.route";
 
 export const appRouter = Router();
@@ -32,4 +33,5 @@ appRouter.use(voucherRouter);
 appRouter.use(productCategoryRouter);
 appRouter.use(salesReportRouter);
 appRouter.use(stockReportRouter);
+appRouter.use(referralRouter);
 appRouter.use("/docs", docsRouter);

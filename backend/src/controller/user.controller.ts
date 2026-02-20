@@ -1,4 +1,4 @@
-import { UserService } from "../service/user.service";
+import { UserService } from "../service/user/user.service";
 import { Router } from "express";
 import { prisma } from "../lib/db/prisma";
 import { PostgresRepository as UsersRepository } from "../repository/user/adapter_prisma";

@@ -1,13 +1,13 @@
-import { UsersRepo } from "../repository/user/interface";
-import { UserReq as UserReq, User } from "../repository/user/entities";
-import { UserRole } from "../../prisma/generated/client";
-import { CreateUserInput } from "../schema/user/CreateUserSchema";
-import { UpdateUserInput } from "../schema/user/UpdateUserSchema";
-import { GetUsersByFilterInput } from "../schema/user/GetUsersByFilterSchema";
-import { NotFoundError } from "../error/NotFoundError";
-import { UnauthorizedError } from "../error/UnauthorizedError";
-import { BadRequestError } from "../error/BadRequestError";
-import { StoreRepository } from "../repository/store.repository";
+import { UsersRepo } from "../../repository/user/interface";
+import { UserReq as UserReq, User } from "../../repository/user/entities";
+import { UserRole } from "../../../prisma/generated/client";
+import { CreateUserInput } from "../../schema/user/CreateUserSchema";
+import { UpdateUserInput } from "../../schema/user/UpdateUserSchema";
+import { GetUsersByFilterInput } from "../../schema/user/GetUsersByFilterSchema";
+import { NotFoundError } from "../../error/NotFoundError";
+import { UnauthorizedError } from "../../error/UnauthorizedError";
+import { BadRequestError } from "../../error/BadRequestError";
+import { StoreRepository } from "../../repository/store.repository";
 import { v4 } from "uuid";
 
 interface UserPayload {

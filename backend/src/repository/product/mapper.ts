@@ -2,8 +2,16 @@ import { Prisma } from '../../../prisma/generated/client';
 import { ProductModel } from '../../../prisma/generated/models';
 import { Product, ProductWithStock } from './entities';
 
-export function toDomainModel (prismaModel: ProductModel): Product {
-    return {
+// Type for Prisma results that include category and productImages
+type PrismaProductWithRelations = Prisma.ProductGetPayload<{
+    include: {
+        category: true;
+        productImages: true;
+    };
+}>;
+
+export function toDomainModel (prismaModel: ProductModel | PrismaProductWithRelations): Product {
+    const base: Product = {
         id: prismaModel.id,
         name: prismaModel.name,
         categoryId: prismaModel.categoryId,
@@ -12,16 +20,29 @@ export function toDomainModel (prismaModel: ProductModel): Product {
         createAt: prismaModel.createAt,
         updatedAt: prismaModel.updatedAt,
         weight: prismaModel.weight,
+        isSoftDeleted: prismaModel.isSoftDeleted,
     };
+
+    // Add category and productImages if present
+    if ('category' in prismaModel && prismaModel.category) {
+        base.category = prismaModel.category;
+    }
+    if ('productImages' in prismaModel && prismaModel.productImages) {
+        base.productImages = prismaModel.productImages;
+    }
+
+    return base;
 }
 
-export function toDomainModels (prismaModels: ProductModel[]): Product[] {
+export function toDomainModels (prismaModels: (ProductModel | PrismaProductWithRelations)[]): Product[] {
     return prismaModels.map(prismaModel => toDomainModel(prismaModel));
 }
 
 // Mapper for Prisma results that include productStores -> ProductWithStock
 type PrismaProductWithStores = Prisma.ProductGetPayload<{
     include: {
+        category: true;
+        productImages: true;
         productStores: {
             include: {
                 store: true;

@@ -58,10 +58,27 @@ export async function seedAccounts() {
       email: "admin@example.com",
       emailVerified: true,
       role: UserRole.ADMIN,
+      storeId: null, // Admin doesn't belong to a specific store
     },
   });
   console.log(`Created admin: ${admin.email}`);
   await ensureCredentialAccount(admin.id, admin.email, defaultPassword);
+
+  // Create Store Admin
+  const storeAdmin = await prisma.user.upsert({
+    where: { email: "storeadmin@example.com" },
+    update: {},
+    create: {
+      id: crypto.randomUUID(),
+      name: "Store Admin",
+      email: "storeadmin@example.com",
+      emailVerified: true,
+      role: UserRole.ADMIN,
+      storeId: null,
+    },
+  });
+  console.log(`Created store admin: ${storeAdmin.email}`);
+  await ensureCredentialAccount(storeAdmin.id, storeAdmin.email, defaultPassword);
 
   // Create Normal User
   const normalUser = await prisma.user.upsert({

@@ -1,7 +1,7 @@
 import { MovementType } from "../../../prisma/generated/enums";
 
 export type FindStockReportsByFilterReq = {
-    storeId: string;
+    storeId?: string;
     createdAtMonth: number;
     createdAtYear: number;
     skip: number;
@@ -15,9 +15,18 @@ export type StockReport = {
     createdAt: Date;
     updatedAt: Date;
     productId: string;
+    product: {
+        name: string;
+    };
     orderId: string | null;
     quantityChange: number;
     movementType: MovementType;
     fromStoreId: string | null;
+    fromStore: {
+        name: string;
+    } | null;
     toStoreId: string | null;
+    toStore: {
+        name: string;
+    } | null;
 }

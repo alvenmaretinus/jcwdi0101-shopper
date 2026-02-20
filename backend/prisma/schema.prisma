@@ -69,6 +69,9 @@ model User {
   role             UserRole  @default(USER)
   image            String?
   referralCode     String    @unique @default(uuid())
+  referredById     String?
+  referredBy       User?     @relation("Referrals", fields: [referredById], references: [id])
+  referrals        User[]    @relation("Referrals")
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   storeId          String?   @unique
@@ -80,6 +83,7 @@ model User {
   orders    Order[]
   sessions  Session[]
   accounts  Account[]
+  vouchers  Voucher[]
 
   @@unique([email])
   @@map("user")
@@ -156,6 +160,9 @@ model Order {
   grandTotal    Int
   status        OrderStatus
   paymentType   OrderPaymentType
+
+  voucherCodes  String[]  @default([])
+  discountNames String[]  @default([])
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -261,6 +268,7 @@ model Product {
   name        String
   description String?
   price       Int
+  isSoftDeleted Boolean @default(false)
   weight      Int @default(1)
 
   createAt  DateTime @default(now())
@@ -315,12 +323,17 @@ model ProductStore {
 // TODO: When business wants to implement vouchers, use this model.
 model Voucher {
   id        String  @id @default(uuid())
+  code      String  @unique
   discountId String
+  userId    String?
   voucherType VoucherType
+  referralRole ReferralVoucherRole?
   discount   Discount @relation(fields: [discountId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
 
   isRedeemed Boolean @default(false)
   redeemedAt DateTime?
+  isSoftDeleted Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -332,9 +345,14 @@ enum VoucherType {
   FREEDELIVERY
 }
 
+enum ReferralVoucherRole {
+  REFERRER
+  REFEREE
+}
+
 model Discount {
   id          String  @id @default(uuid())
-  name        String?
+  name        String
   percentage  Decimal? @db.Decimal(5, 2)
   amount      Int?
   type        DiscountType
@@ -347,6 +365,7 @@ model Discount {
   //This field is for future use when business wants to limit the number of uses for a discount
   isLimited   Boolean @default(false)
   limit       Int?
+  useCounter  Int @default(0)
 
   isTiedToProduct Boolean @default(false)
   productId   String?
@@ -357,6 +376,8 @@ model Discount {
 
   startsAt DateTime?
   endsAt   DateTime?
+
+  isSoftDeleted Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

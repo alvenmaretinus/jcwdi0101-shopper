@@ -11,4 +11,3 @@ export type StoreProduct = {
   images: string[];
   weight?: number; // Weight in grams per piece (e.g., 800 for 800g/pcs)
 };
-    

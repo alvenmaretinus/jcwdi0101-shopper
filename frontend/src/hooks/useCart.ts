@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { apiFetch } from "@/lib/apiFetch";
+import { apiFetch, HttpMethod } from "@/lib/apiFetch";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/formatPrice";
 import { CartItem, CartResponse, RawBackendCartItem } from "@/types/cart";
@@ -18,7 +18,7 @@ export function useCart() {
       setLoading(true);
       console.log("[useCart] Fetching cart...");
       const response = await apiFetch<CartResponse>("/cart", {
-        method: "GET",
+        method: HttpMethod.GET,
       });
       console.log("[useCart] Cart response:", response);
       // Backend returns { cartId, cartItems } — normalize to frontend CartItem shape
@@ -65,9 +65,26 @@ export function useCart() {
     }
   };
 
+  const addToCart = async (productId: string, quantity: number = 1) => {
+    try {
+      await apiFetch("/cart", {
+        method: HttpMethod.POST,
+        body: { productId, quantity },
+      });
+      toast.success("Added to cart successfully");
+      // Refetch cart to get updated items
+      await fetchCart();
+    } catch (error) {
+      console.error("Failed to add to cart:", error);
+      toast.error("Failed to add item to cart");
+    }
+  };
+
   const updateQuantity = async (id: number | string, delta: number) => {
     try {
-      const item = cartItems.find((item) => item.id === id);
+      const item = Array.isArray(cartItems) 
+        ? cartItems.find((item) => item.id === id)
+        : null;
       if (!item) return;
 
       const maxStock =
@@ -122,7 +139,7 @@ export function useCart() {
   const applyPromo = async (code: string) => {
     try {
       await apiFetch("/promo/validate", {
-        method: "POST",
+        method: HttpMethod.POST,
         body: { code },
       });
       toast.success("Promo code applied successfully");
@@ -147,6 +164,7 @@ export function useCart() {
   return {
     cartItems,
     loading,
+    addToCart,
     updateQuantity,
     removeItem,
     applyPromo,

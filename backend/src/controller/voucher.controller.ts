@@ -5,6 +5,8 @@ import { VoucherService } from '../service/voucher/voucher.service';
 import { 
     GetVoucherByIdInput, 
     GetVoucherByIdSchema, 
+    GetVoucherByCodeInput,
+    GetVoucherByCodeSchema,
     GetVouchersByFilterInput, 
     GetVouchersByFilterSchema, 
     CreateVoucherInput, 
@@ -17,7 +19,9 @@ import {
     CalculateVoucherDiscountSchema
 } from '../schema/voucher/';
 import { isSuperAdmin } from '../middleware/isSuperAdmin';
+import { isMaybeAuth } from '../middleware/isMaybeAuth';
 import { isAuth } from '../middleware/isAuth';
+import { UserRole } from '../../prisma/generated/enums';
 
 const vouchersRepo = new PrismaVoucherRepository(prisma);
 const voucherService = new VoucherService(vouchersRepo);
@@ -25,16 +29,23 @@ const voucherService = new VoucherService(vouchersRepo);
 const router = Router();
 
 // Business requires that even non-logged in users can view vouchers
-router.get("/vouchers", async (req, res) => {
+// However, referral vouchers are only visible to the user they're designated for
+router.get("/vouchers", isMaybeAuth, async (req, res) => {
     const inputData: GetVouchersByFilterInput = GetVouchersByFilterSchema.parse(req.query);
-    const vouchers = await voucherService.getVouchersByFilter(inputData);
-    return res.json(vouchers);
+    // Include userId if user is authenticated
+    if (req.user?.id) {
+        inputData.userId = req.user.id;
+    }
+    const includeAllReferral = req.user?.role === UserRole.ADMIN || req.user?.role === UserRole.SUPERADMIN;
+    const result = await voucherService.getVouchersByFilter(inputData, { includeAllReferral });
+    return res.json(result);
 });
 
 // Calculate voucher discount - public endpoint for UI preview
 router.post("/vouchers/calculate-discount", async (req, res) => {
     const inputData: CalculateVoucherDiscountInput = CalculateVoucherDiscountSchema.parse(req.body);
-    const totalDiscount = await voucherService.calculateVoucherDiscount(inputData.voucherIds, inputData.subtotal);
+    const userId = req.user?.id as string | undefined;
+    const totalDiscount = await voucherService.calculateVoucherDiscount(inputData.voucherCodes, inputData.subtotal, userId);
     return res.json({ totalDiscount, subtotal: inputData.subtotal, finalAmount: inputData.subtotal - totalDiscount });
 });
 
@@ -59,6 +70,17 @@ router.delete("/vouchers/:id", isAuth, isSuperAdmin, async (req, res) => {
     const inputData: DeleteVoucherByIdInput = DeleteVoucherByIdSchema.parse(req.params);
     await voucherService.deleteVoucher(inputData.id);
     return res.status(204).send();
+});
+
+// Get voucher by code - public endpoint for users to apply vouchers
+// MUST be before the /:id route to avoid conflicts
+router.get("/vouchers/code/:code", async (req, res) => {
+    const inputData: GetVoucherByCodeInput = GetVoucherByCodeSchema.parse(req.params);
+    const voucher = await voucherService.getVoucherByCode(inputData.code);
+    if (!voucher) {
+        return res.status(404).json({ message: "Voucher not found" });
+    }
+    return res.json(voucher);
 });
 
 // Anyone (even non-logged in users) can view voucher details

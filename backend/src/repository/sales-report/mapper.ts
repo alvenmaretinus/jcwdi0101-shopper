@@ -14,6 +14,8 @@ export function toDomainModel(param: OrderItemSalesReportEntity): SalesReportEnt
             product_price: item.unitPrice,
             quantity: item.quantity,
             total_price: item.unitPrice * item.quantity,
+            voucher_codes: param.voucherCodes,
+            discount_names: param.discountNames,
         });
     } 
     return results;

@@ -12,45 +12,149 @@ type StoreWithDistance = {
   distanceKm: number;
 };
 
-/** Shared helper: find nearby stores sorted by distance */
-function findNearbyStores(stores: Store[], lat: number, lon: number): StoreWithDistance[] {
-  return stores
-    .map((store) => {
-      const sLat = Number(store.latitude);
-      const sLon = Number(store.longitude);
-      if (!Number.isFinite(sLat) || !Number.isFinite(sLon)) return null;
-      const distanceKm = getDistance({ latitude: lat, longitude: lon }, { latitude: sLat, longitude: sLon }) / 1000;
-      return { store, distanceKm } as StoreWithDistance;
-    })
-    .filter((s): s is StoreWithDistance => s !== null)
-    .filter((s) => s.distanceKm <= 5)
-    .sort((a, b) => a.distanceKm - b.distanceKm);
-}
+export class OrderService {
+  private static isDiscountApplicable(
+    discount: { startsAt: Date | null; endsAt: Date | null; isWithMinimum: boolean; minimumPrice: number | null; isLimited: boolean; limit: number | null; useCounter: number },
+    subtotal: number
+  ) {
+    const now = new Date();
+    const hasStarted = !discount.startsAt || discount.startsAt <= now;
+    const hasNotEnded = !discount.endsAt || discount.endsAt >= now;
+    const minimumPassed = !discount.isWithMinimum || discount.minimumPrice === null || subtotal >= discount.minimumPrice;
+    const available = !discount.isLimited || (discount.limit !== null && discount.useCounter < discount.limit);
+    return hasStarted && hasNotEnded && minimumPassed && available;
+  }
 
-/** Shared helper: find first store that can fulfill all items */
-async function findFulfillableStore(db: PrismaClient, storesWithDistance: StoreWithDistance[], items: { productId: string; quantity: number }[]): Promise<StoreWithDistance | null> {
-  const productIds = items.map((i) => i.productId);
-  for (const s of storesWithDistance) {
-    const storeProducts = await db.productStore.findMany({
-      where: { storeId: s.store.id, productId: { in: productIds } },
-    });
-    const psMap: Record<string, { quantity: number }> = {};
-    for (const ps of storeProducts) psMap[ps.productId] = ps as any;
+  private static async incrementAppliedDiscountCounters(
+    userId: string,
+    subtotal: number,
+    db: PrismaClient,
+    discountIds?: string[],
+    voucherIds?: string[]
+  ) {
+    const applicableDiscountIds = new Set<string>();
 
-    let canFulfill = true;
-    for (const it of items) {
-      const ps = psMap[it.productId];
-      if (!ps || ps.quantity < it.quantity) {
-        canFulfill = false;
-        break;
+    if (discountIds && discountIds.length > 0) {
+      const discounts = await db.discount.findMany({
+        where: {
+          id: { in: discountIds },
+          isSoftDeleted: false,
+        },
+        select: {
+          id: true,
+          startsAt: true,
+          endsAt: true,
+          isWithMinimum: true,
+          minimumPrice: true,
+          isLimited: true,
+          limit: true,
+          useCounter: true,
+        },
+      });
+
+      for (const discount of discounts) {
+        if (this.isDiscountApplicable(discount, subtotal)) {
+          applicableDiscountIds.add(discount.id);
+        }
       }
     }
-    if (canFulfill) return s;
-  }
-  return null;
-}
 
-export class OrderService {
+    if (voucherIds && voucherIds.length > 0) {
+      const vouchers = await db.voucher.findMany({
+        where: {
+          isSoftDeleted: false,
+          OR: [
+            { id: { in: voucherIds } },
+            { code: { in: voucherIds } },
+          ],
+          discount: {
+            isSoftDeleted: false,
+          },
+        },
+        include: {
+          discount: {
+            select: {
+              id: true,
+              startsAt: true,
+              endsAt: true,
+              isWithMinimum: true,
+              minimumPrice: true,
+              isLimited: true,
+              limit: true,
+              useCounter: true,
+            },
+          },
+        },
+      });
+
+      for (const voucher of vouchers) {
+        if (voucher.voucherType === "REFERRAL" && voucher.userId !== userId) {
+          continue;
+        }
+
+        if (this.isDiscountApplicable(voucher.discount, subtotal)) {
+          applicableDiscountIds.add(voucher.discount.id);
+        }
+      }
+    }
+
+    await Promise.all(
+      Array.from(applicableDiscountIds).map((discountId) =>
+        db.discount.updateMany({
+          where: {
+            id: discountId,
+            isLimited: true,
+            limit: { not: null },
+            useCounter: {
+              lt: db.discount.fields.limit,
+            },
+          },
+          data: {
+            useCounter: { increment: 1 },
+          },
+        })
+      )
+    );
+  }
+
+  /** Shared helper: find nearby stores sorted by distance */
+  private static findNearbyStores(stores: Store[], lat: number, lon: number): StoreWithDistance[] {
+    return stores
+      .map((store) => {
+        const sLat = Number(store.latitude);
+        const sLon = Number(store.longitude);
+        if (!Number.isFinite(sLat) || !Number.isFinite(sLon)) return null;
+        const distanceKm = getDistance({ latitude: lat, longitude: lon }, { latitude: sLat, longitude: sLon }) / 1000;
+        return { store, distanceKm } as StoreWithDistance;
+      })
+      .filter((s): s is StoreWithDistance => s !== null)
+      .filter((s) => s.distanceKm <= 5)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+  }
+
+  /** Shared helper: find first store that can fulfill all items */
+  private static async findFulfillableStore(db: PrismaClient, storesWithDistance: StoreWithDistance[], items: { productId: string; quantity: number }[]): Promise<StoreWithDistance | null> {
+    const productIds = items.map((i) => i.productId);
+    for (const s of storesWithDistance) {
+      const storeProducts = await db.productStore.findMany({
+        where: { storeId: s.store.id, productId: { in: productIds } },
+      });
+      const psMap: Record<string, { quantity: number }> = {};
+      for (const ps of storeProducts) psMap[ps.productId] = ps as any;
+
+      let canFulfill = true;
+      for (const it of items) {
+        const ps = psMap[it.productId];
+        if (!ps || ps.quantity < it.quantity) {
+          canFulfill = false;
+          break;
+        }
+      }
+      if (canFulfill) return s;
+    }
+    return null;
+  }
+
   /**
    * Get checkout shipping info: find nearest store + return shipping methods
    * Called when user selects address on checkout page (Early Store Selection)
@@ -69,10 +173,10 @@ export class OrderService {
     const addrLon = Number(address.longitude);
 
     const stores = await db.store.findMany();
-    const storesWithDistance = findNearbyStores(stores, addrLat, addrLon);
+    const storesWithDistance = this.findNearbyStores(stores, addrLat, addrLon);
     if (storesWithDistance.length === 0) throw new BadRequestError("No store within 5 km of the shipping address.");
 
-    const candidate = await findFulfillableStore(db, storesWithDistance, items);
+    const candidate = await this.findFulfillableStore(db, storesWithDistance, items);
     if (!candidate) throw new BadRequestError("No store within 5 km can fulfill the entire order.");
 
     const { store } = candidate;
@@ -155,12 +259,12 @@ export class OrderService {
       const addrLat = Number(address.latitude);
       const addrLon = Number(address.longitude);
       const stores = await db.store.findMany();
-      const storesWithDistance = findNearbyStores(stores, addrLat, addrLon);
+      const storesWithDistance = this.findNearbyStores(stores, addrLat, addrLon);
 
       if (storesWithDistance.length === 0) throw new BadRequestError("No store within 5 km of the shipping address.");
 
       // pick nearest store that can fulfill all items
-      const candidate = await findFulfillableStore(db, storesWithDistance, items);
+      const candidate = await this.findFulfillableStore(db, storesWithDistance, items);
       if (!candidate) throw new BadRequestError("No store within 5 km can fulfill the entire order.");
 
       const candidateStore = candidate.store;
@@ -195,7 +299,7 @@ export class OrderService {
         }
       }
 
-      const totalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotal, discountIds, voucherIds, db);
+      const totalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotal, discountIds, voucherIds, db, userId);
       const grandTotal = subtotal + shippingCost - totalDiscount;
 
       const paymentDueHours = Number.isFinite(Number(process.env.PAYMENT_DUE_HOURS)) ? Number(process.env.PAYMENT_DUE_HOURS) : 1;

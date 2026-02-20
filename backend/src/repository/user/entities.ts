@@ -6,16 +6,22 @@ export type UserReq = {
   role: UserRole;
   image: string;
   referralCode?: string;
+  referredById?: string;
   storeId?: string;
 };
 
 export type User = {
-  email: string;
-  id: string;
-  role: UserRole;
-  image: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  referralCode: string;
-  storeId: string | null;
+    referrals: User[]; // For stats on how many referrals a user has
+    id: string;
+    email: string;
+    role: UserRole;
+    image: string | null;
+    referralCode: string;
+    storeId: string | null;
+    referredById: string | null;
+    name: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    emailVerified: boolean;
+    employeeJoinedAt: Date | null;
 };

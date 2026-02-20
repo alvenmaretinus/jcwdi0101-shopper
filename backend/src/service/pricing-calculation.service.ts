@@ -15,7 +15,8 @@ export class PricingCalculationService {
     subtotal: number,
     discountIds: string[] | undefined,
     voucherIds: string[] | undefined,
-    db: PrismaClient
+    db: PrismaClient,
+    userId?: string,
   ): Promise<number> {
     let totalDiscount = 0;
 
@@ -29,7 +30,7 @@ export class PricingCalculationService {
     // Vouchers are applied after discounts
     if (voucherIds && voucherIds.length > 0) {
       const priceAfterDiscounts = subtotal - totalDiscount;
-      const voucherAmount = await this.calculateVouchers(priceAfterDiscounts, voucherIds, db);
+      const voucherAmount = await this.calculateVouchers(priceAfterDiscounts, voucherIds, db, userId);
       totalDiscount += voucherAmount;
     }
 
@@ -63,7 +64,8 @@ export class PricingCalculationService {
       .filter(d => {
         const hasStarted = !d.startsAt || d.startsAt <= now;
         const hasNotEnded = !d.endsAt || d.endsAt >= now;
-        return hasStarted && hasNotEnded;
+        const available = !d.isLimited || (d.limit !== null && d.useCounter < d.limit);
+        return hasStarted && hasNotEnded && available;
       });
 
     // Separate into percentage and fixed amount discounts, sorted by best value
@@ -142,12 +144,13 @@ export class PricingCalculationService {
   private static async calculateVouchers(
     priceAfterDiscounts: number,
     voucherIds: string[],
-    db: PrismaClient
+    db: PrismaClient,
+    userId?: string,
   ): Promise<number> {
     const { VoucherService } = await import("./voucher/voucher.service");
     const { PrismaVoucherRepository } = await import("../repository/voucher/adapter_prisma");
     const voucherRepo = new PrismaVoucherRepository(db);
     const voucherService = new VoucherService(voucherRepo);
-    return voucherService.calculateVoucherDiscount(voucherIds, priceAfterDiscounts);
+    return voucherService.calculateVoucherDiscount(voucherIds, priceAfterDiscounts, userId);
   }
 }

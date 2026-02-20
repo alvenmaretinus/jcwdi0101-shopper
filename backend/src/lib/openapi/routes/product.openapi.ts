@@ -11,7 +11,7 @@ import { registerRoute, createSuccessResponseSchema, commonResponses } from "../
 extendZodWithOpenApi(z);
 
 /**
- * GET /api/products - Get products with filters
+ * GET /products - Get products with filters
  */
 registerRoute({
   method: "get",
@@ -70,7 +70,7 @@ registerRoute({
 });
 
 /**
- * GET /api/products/:id - Get product by ID
+ * GET /products/:id - Get product by ID
  */
 registerRoute({
   method: "get",
@@ -119,7 +119,7 @@ registerRoute({
 });
 
 /**
- * POST /api/products - Create product (Admin only)
+ * POST /products - Create product (Admin only)
  */
 registerRoute({
   method: "post",
@@ -170,7 +170,7 @@ registerRoute({
 });
 
 /**
- * PATCH /api/products/:id - Update product (Admin only)
+ * PATCH /products/:id - Update product (Admin only)
  */
 registerRoute({
   method: "patch",
@@ -228,14 +228,14 @@ registerRoute({
 });
 
 /**
- * DELETE /api/products/:id - Delete product (Admin only)
+ * DELETE /products/:id - Soft delete product (Admin only)
  */
 registerRoute({
   method: "delete",
   path: "/api/products/{id}",
   tags: ["Products"],
-  summary: "Delete product",
-  description: "Delete a product (Super Admin only)",
+  summary: "Soft delete product",
+  description: "Soft delete a product by marking it as deleted (Super Admin only). The product will be hidden from listings but preserved in the database.",
   security: [{ BearerAuth: [] }],
   request: {
     params: z.object({
@@ -249,7 +249,7 @@ registerRoute({
   },
   responses: {
     204: {
-      description: "Product deleted successfully",
+      description: "Product soft deleted successfully",
     },
     ...commonResponses,
   },

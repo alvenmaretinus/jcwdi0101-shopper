@@ -6,9 +6,11 @@ import { prisma } from "../lib/db/prisma";
 import { ProductStoreRepo } from "../repository/productstore/interface";
 import { Service as ProductStoreServiceInterface } from "../service/productstore/interface";
 import { ProductMovementRepo } from "../repository/productmovement/interface";
-import { isSuperAdmin } from "../middleware/isSuperAdmin";
+import { isAdmin } from "../middleware/isAdmin";
 import { isAuth } from "../middleware/isAuth";
 import { GetProductStoreByIdSchema, CreateProductStoreSchema, GetProductStoresByFilterSchema, UpdateProductStoreSchema, DeleteProductStoreByIdSchema } from "../schema/productstore";
+import { UnauthorizedError } from "../error/UnauthorizedError";
+import { UserRole } from "../../prisma/generated/enums";
 
 
 const productStoreRepo: ProductStoreRepo = new ProductStoreRepoImpl(prisma);
@@ -18,8 +20,19 @@ const productStoreService: ProductStoreServiceInterface = new ProductStoreServic
 
 const router = Router();
 
-router.post("/", isAuth, isSuperAdmin, async (req, res) => {
+router.post("/", isAuth, isAdmin, async (req, res) => {
   const inputData = CreateProductStoreSchema.parse(req.body);
+  
+  // Check if admin has permission to create stock for this store
+  const user = req.user!;
+  
+  // If user is not SUPERADMIN, check if their storeId matches the requested storeId
+  if (user.role !== UserRole.SUPERADMIN) {
+    if (!user.storeId || user.storeId !== inputData.storeId) {
+      throw new UnauthorizedError("You can only create inventory for your own store");
+    }
+  }
+  
   const result = await productStoreService.createProductStore(inputData);
   return res.status(201).json(result);
 });
@@ -40,14 +53,50 @@ router.get("/", async (req, res) => {
 });
 
 // UpdateProductStore only allows updates to quantity
-router.patch("/:id",  isAuth, isSuperAdmin, async (req, res) => {
+router.patch("/:id",  isAuth, isAdmin, async (req, res) => {
   const inputData = UpdateProductStoreSchema.parse({...req.body, id: req.params.id});
+  
+  // Check if admin has permission to update this store's inventory
+  const user = req.user!;
+  
+  // Fetch the productStore to check its storeId
+  const productStore = await productStoreService.getProductStoreByID(inputData.id);
+  
+  if (!productStore) {
+    return res.status(404).json({ error: "Product store not found" });
+  }
+  
+  // If user is not SUPERADMIN, check if their storeId matches the productStore's storeId
+  if (user.role !== UserRole.SUPERADMIN) {
+    if (!user.storeId || user.storeId !== productStore.storeId) {
+      throw new UnauthorizedError("You can only update inventory for your own store");
+    }
+  }
+  
   const result = await productStoreService.updateProductStore(inputData);
   return res.json(result);
 });
 
-router.delete("/:id",  isAuth, isSuperAdmin, async (req, res) => {
+router.delete("/:id",  isAuth, isAdmin, async (req, res) => {
   const { id } = DeleteProductStoreByIdSchema.parse(req.params);
+  
+  // Check if admin has permission to delete this store's inventory
+  const user = req.user!;
+  
+  // Fetch the productStore to check its storeId
+  const productStore = await productStoreService.getProductStoreByID(id);
+  
+  if (!productStore) {
+    return res.status(404).json({ error: "Product store not found" });
+  }
+  
+  // If user is not SUPERADMIN, check if their storeId matches the productStore's storeId
+  if (user.role !== UserRole.SUPERADMIN) {
+    if (!user.storeId || user.storeId !== productStore.storeId) {
+      throw new UnauthorizedError("You can only delete inventory for your own store");
+    }
+  }
+  
   await productStoreService.deleteProductStore(id);
   return res.status(204).send();
 });

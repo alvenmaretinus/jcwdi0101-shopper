@@ -12,10 +12,25 @@ const discountService = new DiscountService(discountsRepo);
 const router = Router();
 
 // Business requires that even non-logged in users can view discounts that a product has
-router.get("/",  async (req, res) => {
-    const inputData: GetDiscountsByFilterInput = GetDiscountsByFilterSchema.parse(req.query);
-    const discounts = await discountService.getDiscountsByFilter(inputData); 
-    return res.json(discounts);
+router.get("/",  async (req, res, next) => {
+    try {
+        const inputData: GetDiscountsByFilterInput = GetDiscountsByFilterSchema.parse(req.query);
+        const result = await discountService.getDiscountsByFilter(inputData); 
+        return res.json(result);
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Get products with active discounts (for deals page)
+router.get("/products",  async (req, res, next) => {
+    try {
+        const inputData: GetDiscountsByFilterInput = GetDiscountsByFilterSchema.parse(req.query);
+        const result = await discountService.getProductsWithDiscounts(inputData); 
+        return res.json(result);
+    } catch (error) {
+        next(error);
+    }
 }); 
 
 router.post("/", isAuth, isSuperAdmin, async (req, res) => {

@@ -12,7 +12,7 @@ export class PrismaRepository implements ProductStoreRepo {
         this.prisma = prisma;
     }
 
-    async createProductStore(data: ProductStoreCreateInput, tx?: Prisma.TransactionClient): Promise<ProductStore> {
+    async createProductStore(data: ProductStoreCreateInput, tx?: PrismaClient | Prisma.TransactionClient): Promise<ProductStore> {
         const client = tx ?? this.prisma;
         const now: Date = new Date();
         const productStoreData: PrismaProductStoreCreateInput = {
@@ -24,23 +24,49 @@ export class PrismaRepository implements ProductStoreRepo {
         }
         const createdProductStore = await client.productStore.create({
             data: productStoreData,
+            include: {
+                product: { select: { name: true } },
+                store: { select: { name: true } }
+            }
         });
-        return createdProductStore;
+        return {
+            ...createdProductStore,
+            productName: createdProductStore.product.name,
+            storeName: createdProductStore.store.name
+        };
     }
-    async getProductStoreByID(id: string, tx?: Prisma.TransactionClient): Promise<ProductStore | null> {
+    async getProductStoreByID(id: string, tx?: PrismaClient | Prisma.TransactionClient): Promise<ProductStore | null> {
         const client = tx ?? this.prisma;
         const productStore = await client.productStore.findUnique({
             where: { id: id },
+            include: {
+                product: { select: { name: true } },
+                store: { select: { name: true } }
+            }
         });
-        return productStore;
+        if (!productStore) return null;
+        return {
+            ...productStore,
+            productName: productStore.product.name,
+            storeName: productStore.store.name
+        };
     }  
-    async getProductStoresByFilter(filter: Partial<ProductStoreGetInput>): Promise<ProductStore[]> {
-        const productStores = await this.prisma.productStore.findMany({
+    async getProductStoresByFilter(filter: Partial<ProductStoreGetInput>, tx?: PrismaClient | Prisma.TransactionClient): Promise<ProductStore[]> {
+        const client = tx ?? this.prisma;
+        const productStores = await client.productStore.findMany({
             where: filter,
+            include: {
+                product: { select: { name: true } },
+                store: { select: { name: true } }
+            }
         });
-        return productStores;
+        return productStores.map(ps => ({
+            ...ps,
+            productName: ps.product.name,
+            storeName: ps.store.name
+        }));
     }
-    async updateProductStore(id: string, data: ProductStoreUpdateInput, tx?: Prisma.TransactionClient): Promise<ProductStore> {
+    async updateProductStore(id: string, data: ProductStoreUpdateInput, tx?: PrismaClient | Prisma.TransactionClient): Promise<ProductStore> {
         const client = tx ?? this.prisma;
         const productStoreData: Partial<PrismaProductStoreUpdateInput> = {
             ...(data.quantity !== undefined ? { quantity: data.quantity } : {}),
@@ -49,11 +75,19 @@ export class PrismaRepository implements ProductStoreRepo {
         const updatedProductStore = await client.productStore.update({
             where: { id: id },
             data: productStoreData,
+            include: {
+                product: { select: { name: true } },
+                store: { select: { name: true } }
+            }
         });
-        return updatedProductStore;
+        return {
+            ...updatedProductStore,
+            productName: updatedProductStore.product.name,
+            storeName: updatedProductStore.store.name
+        };
     }
 
-    async deleteProductStore(id: string, tx?: Prisma.TransactionClient): Promise<ProductStore> {
+    async deleteProductStore(id: string, tx?: PrismaClient | Prisma.TransactionClient): Promise<ProductStore> {
         const client = tx ?? this.prisma;
         const data = await client.productStore.findUnique({
             where: { id: id },

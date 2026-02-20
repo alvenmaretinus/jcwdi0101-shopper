@@ -1,8 +1,9 @@
 import { CreateVoucherInput, GetVouchersByFilterInput, UpdateVoucherInput } from "../../schema/voucher/index";
 import { VoucherCreateReq, VoucherFilter, VoucherResponse, VoucherUpdateReq } from "../../repository/voucher/entity";
 import { Service } from "./interface";
-import { VoucherRepo } from "../../repository/voucher/interface";
+import { VoucherRepo, PaginatedResponse, VoucherQueryOptions } from "../../repository/voucher/interface";
 import Decimal from "decimal.js";
+import { BadRequestError } from "../../error/BadRequestError";
 
 export class VoucherService implements Service {
     private repo: VoucherRepo;
@@ -15,6 +16,8 @@ export class VoucherService implements Service {
         const createData: VoucherCreateReq = {
             ...data,
             percentage: data.percentage !== undefined ? new Decimal(data.percentage) : undefined,
+            isLimited: data.voucherType === 'REFERRAL' ? true : data.isLimited,
+            limit: data.voucherType === 'REFERRAL' ? 1 : data.limit,
         };
         return this.repo.createVoucher(createData);
     }
@@ -30,20 +33,24 @@ export class VoucherService implements Service {
 
     /**
      * Get vouchers with flexible filtering options.
-     * Supports field filters and active date filtering.
+     * Supports field filters, active date filtering, and pagination.
      */
-    async getVouchersByFilter(filter: GetVouchersByFilterInput): Promise<VoucherResponse[]> {
-        const { percentage, ...rest } = filter;
+    async getVouchersByFilter(filter: GetVouchersByFilterInput, options?: VoucherQueryOptions): Promise<PaginatedResponse<VoucherResponse>> {
+        const { percentage, page, limit, ...rest } = filter;
         const formattedFilter: Partial<VoucherFilter> = {
             ...rest,
             ...(percentage !== undefined ? { percentage: new Decimal(percentage) } : {}),
         };
 
-        return this.repo.getVouchersByFilter(formattedFilter);
+        return this.repo.getVouchersByFilter(formattedFilter, { page, limit }, options);
     }
 
     async getVoucherById(id: string): Promise<VoucherResponse | null> {
         return this.repo.getVoucherById(id);
+    }
+
+    async getVoucherByCode(code: string): Promise<VoucherResponse | null> {
+        return this.repo.getVoucherByCode(code);
     }
 
     /**
@@ -52,6 +59,14 @@ export class VoucherService implements Service {
      */
     async getVouchersByIds(ids: string[]): Promise<VoucherResponse[]> {
         return this.repo.getVouchersByIds(ids);
+    }
+
+    /**
+     * Get multiple vouchers by their codes.
+     * Used for checkout to validate and apply voucher discounts.
+     */
+    async getVouchersByCodes(codes: string[]): Promise<VoucherResponse[]> {
+        return this.repo.getVouchersByCodes(codes);
     }
 
     async deleteVoucher(id: string): Promise<void> {
@@ -63,19 +78,44 @@ export class VoucherService implements Service {
      * Vouchers are ranked by highest amount first (business requirement).
      * Only applicable vouchers (meeting minimum price requirement) are applied.
      * 
-     * @param voucherIds Array of voucher IDs to apply
+     * @param voucherIdentifiers Array of voucher IDs or codes to apply
      * @param subtotal Order subtotal amount
+     * @param userId Current user ID (required for referral voucher ownership validation)
      * @returns Total discount amount from all applicable vouchers
      */
-    async calculateVoucherDiscount(voucherIds: string[], subtotal: number): Promise<number> {
-        if (!voucherIds || voucherIds.length === 0) {
+    async calculateVoucherDiscount(voucherIdentifiers: string[], subtotal: number, userId?: string): Promise<number> {
+        if (!voucherIdentifiers || voucherIdentifiers.length === 0) {
             return 0;
         }
 
-        const vouchers = await this.getVouchersByIds(voucherIds);
+        const [vouchersByIds, vouchersByCodes] = await Promise.all([
+            this.getVouchersByIds(voucherIdentifiers),
+            this.getVouchersByCodes(voucherIdentifiers),
+        ]);
+
+        const vouchersMap = new Map<string, VoucherResponse>();
+        for (const voucher of [...vouchersByIds, ...vouchersByCodes]) {
+            vouchersMap.set(voucher.id, voucher);
+        }
+
+        const vouchers = Array.from(vouchersMap.values());
+
+        const unauthorizedReferralVouchers = vouchers.filter(
+            (voucher) => voucher.voucherType === "REFERRAL" && voucher.userId !== userId
+        );
+
+        if (unauthorizedReferralVouchers.length > 0) {
+            throw new BadRequestError("Referral voucher can only be used by its assigned user");
+        }
+
+        const availableVouchers = vouchers.filter((voucher) => {
+            if (!voucher.discount.isLimited) return true;
+            if (voucher.discount.limit === null) return false;
+            return voucher.discount.useCounter < voucher.discount.limit;
+        });
 
         // Filter out vouchers that don't meet minimum price requirement
-        const applicableVouchers = vouchers.filter(v => {
+        const applicableVouchers = availableVouchers.filter(v => {
             if (v.discount.isWithMinimum && v.discount.minimumPrice !== null) {
                 return subtotal >= v.discount.minimumPrice;
             }

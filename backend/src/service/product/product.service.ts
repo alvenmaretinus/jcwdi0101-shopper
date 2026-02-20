@@ -1,5 +1,5 @@
 import {Service} from './interface';
-import {ProductsRepo} from '../../repository/product/interface';
+import {ProductsRepo, PaginationParams, PaginatedResponse} from '../../repository/product/interface';
 import { FilterInput } from '../../schema/product/GetProductsByFilterSchema';
 import { CreateProductInput, UpdateProductInput } from '../../schema/product';
 import { Product, ProductWithStock } from '../../repository/product/entities';
@@ -13,14 +13,14 @@ export class ProductService implements Service {
 
     async getProductsByFilterWithOptionalStock(
         filter: Partial<FilterInput>,
-        withStock: boolean
-    ): Promise<Product[] | ProductWithStock[]>
+        withStock: boolean,
+        pagination?: PaginationParams
+    ): Promise<PaginatedResponse<Product> | PaginatedResponse<ProductWithStock>>
     {
         if (withStock) {
-            return this.productRepo.getProductsByFilterWithStock(filter);
-        } else {
-            return this.productRepo.getProductsByFilter(filter);
+            return this.productRepo.getProductsByFilterWithStock(filter, pagination);
         }
+        return this.productRepo.getProductsByFilter(filter, pagination);
     }
 
     async createProduct(data: CreateProductInput): Promise<Product> {

@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 
 export type DiscountCreateReq = {
-    name?: string;
+    name: string;
     percentage?: Decimal;
     amount?: number;
     type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
@@ -9,9 +9,12 @@ export type DiscountCreateReq = {
     isVoucher?: boolean;
     isWithMinimum: boolean;
     minimumPrice?: number;
+    isLimited?: boolean;
+    limit?: number;
+    useCounter?: number;
     
     isTiedToProduct: boolean;
-    productId?: string;
+    productId?: string | null;
 
     buyQuantity?: number;
     freeQuantity?: number;
@@ -29,9 +32,12 @@ export type DiscountUpdateReq = {
     isVoucher?: boolean;
     isWithMinimum?: boolean;
     minimumPrice?: number;
+    isLimited?: boolean;
+    limit?: number;
+    useCounter?: number;
     
     isTiedToProduct?: boolean;
-    productId?: string;
+    productId?: string | null;
 
     buyQuantity?: number;
     freeQuantity?: number;
@@ -49,6 +55,9 @@ export type DiscountFilter = {
     isVoucher?: boolean;
     isWithMinimum?: boolean;
     minimumPrice?: number;
+    isLimited?: boolean;
+    limit?: number;
+    useCounter?: number;
     
     isTiedToProduct?: boolean;
     productId?: string;
@@ -73,6 +82,7 @@ export type  DiscountResponse = {
 
     isLimited: boolean;
     limit: number | null;
+    useCounter: number;
     
     isTiedToProduct: boolean;
     productId: string | null;
@@ -85,6 +95,24 @@ export type  DiscountResponse = {
 
     createdAt: Date;
     updatedAt: Date;
+    
+    // Optional: included when queried with product relation
+    product?: {
+        id: string;
+        name: string;
+        description: string | null;
+        price: number;
+        weight: number;
+        categoryId: string;
+        category?: {
+            id: string;
+            category: string;
+        };
+        productImages?: Array<{
+            id: string;
+            url: string;
+        }>;
+    };
 }
     
 

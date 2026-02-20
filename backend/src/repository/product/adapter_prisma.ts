@@ -1,4 +1,4 @@
-import { ProductsRepo } from './interface';
+import { ProductsRepo, PaginationParams, PaginatedResponse } from './interface';
 import { PrismaClient } from '../../../prisma/generated/client';
 import { Product, CreateProductReq, GetProductReq, ProductWhereClause, UpdateProductReq, ProductWithStock } from './entities';
 import { ProductCreateInput} from '../../../prisma/generated/models';
@@ -13,33 +13,113 @@ export class PrismaRepository implements ProductsRepo {
         this.prisma = prisma;
     }
 
-    async getProductsByFilter(filter: Partial<GetProductReq>): Promise<Product[]> {
+    async getProductsByFilter(filter: Partial<GetProductReq>, pagination?: PaginationParams): Promise<PaginatedResponse<Product>> {
         const where = this.buildWhereClause(filter);
-        const products = await this.prisma.product.findMany({
-            where,
-        });
-        return toDomainModels(products);
+        
+        const skip = pagination ? (pagination.page - 1) * pagination.limit : 0;
+        const take = pagination ? pagination.limit : undefined;
+
+        const [products, total] = await Promise.all([
+            this.prisma.product.findMany({
+                where,
+                include: {
+                    category: true,
+                    productImages: true,
+                },
+                skip,
+                take,
+            }),
+            this.prisma.product.count({ where }),
+        ]);
+
+        return {
+            data: toDomainModels(products),
+            meta: {
+                page: pagination?.page ?? 1,
+                limit: pagination?.limit ?? total,
+                total,
+                totalPages: pagination ? Math.ceil(total / pagination.limit) : 1,
+            },
+        };
     }
 
-    async getProductsByFilterWithStock(filter: Partial<GetProductReq>): Promise<ProductWithStock[]> {
-        const where = this.buildWhereClause(filter);
-        const products = await this.prisma.product.findMany({
-            where,
-            include: {
+    async getProductsByFilterWithStock(filter: Partial<GetProductReq>, pagination?: PaginationParams): Promise<PaginatedResponse<ProductWithStock>> {
+        const baseWhere = this.buildWhereClause(filter);
+        
+        // Build productStores filter based on inStockOnly and storeId
+        let where = { ...baseWhere };
+        
+        if (filter.inStockOnly) {
+            // Require at least one product store with quantity > 0
+            if (filter.storeId) {
+                where = {
+                    ...where,
+                    productStores: {
+                        some: {
+                            storeId: filter.storeId,
+                            quantity: { gt: 0 }
+                        } as any
+                    }
+                };
+            } else {
+                where = {
+                    ...where,
+                    productStores: {
+                        some: {
+                            quantity: { gt: 0 }
+                        } as any
+                    }
+                };
+            }
+        } else if (filter.storeId) {
+            // If only storeId is provided (no inStockOnly), include all products from that store
+            where = {
+                ...where,
                 productStores: {
-                    include: {
-                        store: true,
+                    some: { storeId: filter.storeId }
+                }
+            };
+        }
+        
+        const skip = pagination ? (pagination.page - 1) * pagination.limit : 0;
+        const take = pagination ? pagination.limit : undefined;
+
+        const [products, total] = await Promise.all([
+            this.prisma.product.findMany({
+                where: where as any,
+                include: {
+                    category: true,
+                    productImages: true,
+                    productStores: {
+                        where: filter.storeId ? { storeId: filter.storeId } : undefined,
+                        include: {
+                            store: true,
+                        },
                     },
                 },
-            },
-        });
+                skip,
+                take,
+            }),
+            this.prisma.product.count({ where: where as any }),
+        ]);
         
-        return toDomainModelsWithStock(products);
+        return {
+            data: toDomainModelsWithStock(products),
+            meta: {
+                page: pagination?.page ?? 1,
+                limit: pagination?.limit ?? total,
+                total,
+                totalPages: pagination ? Math.ceil(total / pagination.limit) : 1,
+            },
+        };
     }
 
     private buildWhereClause(filter: Partial<GetProductReq>): ProductWhereClause {
-        const { name, storeId, ...restFilter } = filter;
-        const where: ProductWhereClause = { ...restFilter };
+        const { name, storeId, inStockOnly, ...restFilter } = filter;
+        const where: ProductWhereClause = { 
+            ...restFilter,
+            isSoftDeleted: false // Filter out soft-deleted products by default
+        };
 
         if (name) {
             where.name = {
@@ -48,13 +128,8 @@ export class PrismaRepository implements ProductsRepo {
             };
         }
 
-        if (storeId) {
-            where.productStores = {
-                some: {
-                    storeId
-                }
-            };
-        }
+        // Note: storeId and inStockOnly filtering is handled in the include clause for getProductsByFilterWithStock
+        // to allow filtering of productStores rather than products themselves
 
         return where;
     }
@@ -75,6 +150,10 @@ export class PrismaRepository implements ProductsRepo {
 
         const createdProduct = await this.prisma.product.create({
             data: productCreateInput,
+            include: {
+                category: true,
+                productImages: true,
+            },
         });
         return toDomainModel(createdProduct);
     }
@@ -90,13 +169,21 @@ export class PrismaRepository implements ProductsRepo {
         const updatedProduct = await this.prisma.product.update({
             where: { id: id },
             data: productUpdateData,
+            include: {
+                category: true,
+                productImages: true,
+            },
         });
         return toDomainModel(updatedProduct);
     }
 
     async deleteProduct(id: string): Promise<void> {
-        await this.prisma.product.delete({
+        await this.prisma.product.update({
             where: { id: id },
+            data: {
+                isSoftDeleted: true,
+                updatedAt: new Date(),
+            },
         });
     }
 }

@@ -35,9 +35,23 @@ const app = express();
 const port = process.env.PORT! || 3001;
 const clientUrl = process.env.CLIENT_URL!;
 
+// Parse allowed origins from environment variable (comma-separated)
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map(origin => origin.trim())
+  : [clientUrl || "http://localhost:3000", "http://localhost:3001"];
+
 app.use(
   cors({
-    origin: clientUrl || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   }),

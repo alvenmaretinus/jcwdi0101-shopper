@@ -3,6 +3,7 @@ export type GetProductReq = {
     name: string;
     categoryId: string;
     storeId: string;
+    inStockOnly: boolean;
     // Additional filter fields can be added here when the logic is ready e.g. priceRange, createdAtRange
 }
 
@@ -35,9 +36,28 @@ export type ProductWhereClause = {
     };
     productStores?: {
         some: {
-            storeId: string;
+            storeId?: string;
+            quantity?: {
+                gt: number;
+            };
         };
     };
+    isSoftDeleted: boolean; // Ensure this is always included to filter out soft-deleted products
+}
+
+export type ProductCategory = {
+    id: string;
+    category: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export type ProductImage = {
+    id: string;
+    url: string;
+    productId: string;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 export type Product = {
@@ -49,6 +69,9 @@ export type Product = {
     createAt: Date; //TODO: Have this be changed to createdAt in future refactors
     weight: number;
     categoryId: string;
+    isSoftDeleted: boolean; // Optional field to indicate soft deletion status
+    category?: ProductCategory; // Optional: included when queried with relations
+    productImages?: ProductImage[]; // Optional: included when queried with relations
     // productStores removed from base Product type; use ProductWithStock when store-level data is needed
 }
 

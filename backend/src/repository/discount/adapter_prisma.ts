@@ -1,5 +1,5 @@
 import { DiscountCreateReq, DiscountUpdateReq, DiscountResponse, DiscountFilter } from "./entity";
-import { DiscountRepo } from "./interface";
+import { DiscountRepo, PaginationParams, PaginatedResponse } from "./interface";
 import { PrismaClient, Prisma } from "../../../prisma/generated/client";
 import { DiscountCreateInput } from "../../../prisma/generated/models";
 import { DiscountType } from "../../../prisma/generated/enums";
@@ -12,6 +12,12 @@ export class PrismaRepository implements DiscountRepo {
         this.prisma = prismaClient;
     }
 
+    private isDiscountAvailable(discount: DiscountResponse): boolean {
+        if (!discount.isLimited) return true;
+        if (discount.limit === null) return false;
+        return discount.useCounter < discount.limit;
+    }
+
     async createDiscount(data: DiscountCreateReq): Promise<DiscountResponse> {
         const discountCreateData: DiscountCreateInput = {
             ...data,
@@ -22,6 +28,7 @@ export class PrismaRepository implements DiscountRepo {
         );
         return discount as DiscountResponse;
     }
+    
     async updateDiscount(id: string, data: Partial<DiscountUpdateReq>): Promise<DiscountResponse> {
          const updateData = {
             ...data,
@@ -101,27 +108,150 @@ export class PrismaRepository implements DiscountRepo {
      * Supports:
      * - Regular field filters: percentage, amount, type, productId, etc.
      * - Active date filtering: Returns only discounts valid on a specific date
+     * - Pagination: Returns paginated results with metadata
      * 
      * Complex date range logic is handled by formatFilter() method.
      */
-    async getDiscountsByFilter(filter: Partial<DiscountFilter>): Promise<DiscountResponse[]> {
+    async getDiscountsByFilter(filter: Partial<DiscountFilter>, pagination?: PaginationParams): Promise<PaginatedResponse<DiscountResponse>> {
         const formattedFilter: Prisma.DiscountWhereInput = this.formatFilter(filter);
-        const discounts = await this.prisma.discount.findMany({
-            where: formattedFilter,
-        });
-        return discounts as DiscountResponse[];
+        formattedFilter.isSoftDeleted = false;
+        
+        // If pagination is provided, use it; otherwise default to page 1, limit 20
+        const page = pagination?.page ?? 1;
+        const limit = pagination?.limit ?? 20;
+        const skip = (page - 1) * limit;
+        
+        const [discounts, total] = await Promise.all([
+            this.prisma.discount.findMany({
+                where: formattedFilter,
+                skip,
+                take: limit,
+                include: {
+                    product: {
+                        include: {
+                            productImages: true,
+                            category: true,
+                            productStores: {
+                                include: {
+                                    store: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }),
+            this.prisma.discount.count({
+                where: formattedFilter,
+            }),
+        ]);
+        
+        const availableDiscounts = (discounts as DiscountResponse[]).filter((discount) => this.isDiscountAvailable(discount));
+
+        return {
+            data: availableDiscounts,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+    
+    async getProductsWithDiscounts(filter: Partial<DiscountFilter>, pagination?: PaginationParams): Promise<PaginatedResponse<DiscountResponse>> {
+        const formattedFilter: Prisma.DiscountWhereInput = this.formatFilter(filter);
+        formattedFilter.isSoftDeleted = false;
+        formattedFilter.isTiedToProduct = true;
+        formattedFilter.productId = { not: null };
+        
+        // If pagination is provided, use it; otherwise default to page 1, limit 20
+        const page = pagination?.page ?? 1;
+        const limit = pagination?.limit ?? 20;
+        const skip = (page - 1) * limit;
+        
+        const [discounts, total] = await Promise.all([
+            this.prisma.discount.findMany({
+                where: formattedFilter,
+                skip,
+                take: limit,
+                include: {
+                    product: {
+                        include: {
+                            productImages: true,
+                            category: true,
+                            productStores: {
+                                include: {
+                                    store: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }),
+            this.prisma.discount.count({
+                where: formattedFilter,
+            }),
+        ]);
+        
+        const availableDiscounts = (discounts as DiscountResponse[]).filter((discount) => this.isDiscountAvailable(discount));
+
+        return {
+            data: availableDiscounts,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     }
     
     async getDiscountById(id: string): Promise<DiscountResponse | null> {
-        const discount = await this.prisma.discount.findUnique({
-            where: { id },
+        const discount = await this.prisma.discount.findFirst({
+            where: { 
+                id,
+                isSoftDeleted: false,
+            },
+            include: {
+                product: {
+                    include: {
+                        productImages: true,
+                        category: true,
+                        productStores: {
+                            include: {
+                                store: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         });
-        return discount as DiscountResponse | null;
+        if (!discount) return null;
+
+        const castedDiscount = discount as DiscountResponse;
+        return this.isDiscountAvailable(castedDiscount) ? castedDiscount : null;
     }
 
     async deleteDiscount(id: string): Promise<void> {
-        await this.prisma.discount.delete({
+        // Soft delete
+        await this.prisma.discount.update({
             where: { id },
+            data: { isSoftDeleted: true },
         });
     } 
 }

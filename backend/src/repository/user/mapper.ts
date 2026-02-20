@@ -1,7 +1,7 @@
 import { User } from "./entities";
 import { UserModel } from "../../../prisma/generated/models/User";
 
-export const toDomainModel = (createdUser: UserModel): User => {
+export const toDomainModel = (createdUser: UserModel & { referrals?: UserModel[] }): User => {
   return {
     id: createdUser.id,
     email: createdUser.email,
@@ -11,6 +11,11 @@ export const toDomainModel = (createdUser: UserModel): User => {
     updatedAt: createdUser.updatedAt,
     referralCode: createdUser.referralCode,
     storeId: createdUser.storeId,
+    referredById: createdUser.referredById,
+    name: createdUser.name,
+    emailVerified: createdUser.emailVerified,
+    employeeJoinedAt: createdUser.employeeJoinedAt,
+    referrals: createdUser.referrals ? createdUser.referrals.map(toDomainModel) : [],
   };
 };
 

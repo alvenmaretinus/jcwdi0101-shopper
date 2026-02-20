@@ -36,7 +36,8 @@ export class PostgresRepository implements UsersRepo {
 
   async getUsersByFilter(filter: Partial<UserReq>): Promise<User[]> {
     const users = await this.prisma.user.findMany({
-      where: filter,
+      where: { ...filter }, // Exclude referrals from filter to avoid issues with array fields
+      include: { referrals: true }, // Include referrals in the result for stats
     });
     return toDomainModels(users);
   }
@@ -48,6 +49,21 @@ export class PostgresRepository implements UsersRepo {
       data: userData,
     });
     return toDomainModel(updatedUser);
+  }
+
+  async setReferredByOnce(userId: string, referrerId: string): Promise<boolean> {
+    const result = await this.prisma.user.updateMany({
+      where: {
+        id: userId,
+        referredById: null,
+      },
+      data: {
+        referredById: referrerId,
+        updatedAt: new Date(),
+      },
+    });
+
+    return result.count === 1;
   }
 
   async deleteUser(id: string): Promise<void> {
