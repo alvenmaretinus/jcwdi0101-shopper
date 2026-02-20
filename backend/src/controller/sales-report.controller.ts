@@ -1,7 +1,7 @@
 import { Router } from "express"
 import { Service } from "../service/sales-report/interface"
 import { SalesReportService } from "../service/sales-report/sales-report.service"
-import { GetSalesReportByFilterSchema } from "../schema/sales-report"
+import { GetSalesReportByFilterSchema, GetSalesReportByFilterInput } from "../schema/sales-report"
 import { SalesReportRepository } from "../repository/sales-report/interface"
 import { PrismaRepository } from "../repository/sales-report/adapter_prisma"
 import { prisma } from "../lib/db/prisma"
@@ -9,6 +9,7 @@ import { SalesReportEntity } from "../repository/sales-report/entities"
 import { isAuth } from "../middleware/isAuth"
 import { isAdmin } from "../middleware/isAdmin"
 import { UserRole } from "../../prisma/generated/enums"
+import { ZodError } from "zod"
 
 const router = Router()
 

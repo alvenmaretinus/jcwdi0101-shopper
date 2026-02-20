@@ -10,15 +10,6 @@ type PrismaProductWithRelations = Prisma.ProductGetPayload<{
     };
 }>;
 
-const withOptionalRelations = (
-    base: Product,
-    prismaModel: ProductModel | PrismaProductWithRelations
-): Product => {
-    if ('category' in prismaModel && prismaModel.category) base.category = prismaModel.category;
-    if ('productImages' in prismaModel && prismaModel.productImages) base.productImages = prismaModel.productImages;
-    return base;
-};
-
 export function toDomainModel (prismaModel: ProductModel | PrismaProductWithRelations): Product {
     const base: Product = {
         id: prismaModel.id,
@@ -31,7 +22,16 @@ export function toDomainModel (prismaModel: ProductModel | PrismaProductWithRela
         weight: prismaModel.weight,
         isSoftDeleted: prismaModel.isSoftDeleted,
     };
-    return withOptionalRelations(base, prismaModel);
+
+    // Add category and productImages if present
+    if ('category' in prismaModel && prismaModel.category) {
+        base.category = prismaModel.category;
+    }
+    if ('productImages' in prismaModel && prismaModel.productImages) {
+        base.productImages = prismaModel.productImages;
+    }
+
+    return base;
 }
 
 export function toDomainModels (prismaModels: (ProductModel | PrismaProductWithRelations)[]): Product[] {
@@ -51,22 +51,28 @@ type PrismaProductWithStores = Prisma.ProductGetPayload<{
     };
 }>;
 
-const mapProductStores = (pm: PrismaProductWithStores) => pm.productStores.map(ps => ({
-    storeId: ps.storeId,
-    id: ps.id,
-    createdAt: ps.createdAt,
-    updatedAt: ps.updatedAt,
-    quantity: ps.quantity,
-    productId: ps.productId,
-    store: ps.store,
-}));
-
-const toDomainModelWithStock = (pm: PrismaProductWithStores): ProductWithStock => {
-    const productStores = mapProductStores(pm);
-    const totalStock = productStores.reduce((acc, store) => acc + (store.quantity || 0), 0);
-    return { ...toDomainModel(pm), productStores, totalStock };
-};
-
 export function toDomainModelsWithStock(prismaModels: PrismaProductWithStores[]): ProductWithStock[] {
-    return prismaModels.map(toDomainModelWithStock);
+    return prismaModels.map(pm => {
+        const base = toDomainModel(pm);
+
+        const productStores = pm.productStores.map(ps => ({
+            storeId: ps.storeId,
+            id: ps.id,
+            createdAt: ps.createdAt,
+            updatedAt: ps.updatedAt,
+            quantity: ps.quantity,
+            productId: ps.productId,
+            store: ps.store,
+        }));
+
+        const totalStock = productStores.reduce((acc, s) => acc + (s.quantity || 0), 0);
+
+        const result: ProductWithStock = {
+            ...base,
+            productStores,
+            totalStock,
+        };
+
+        return result;
+    });
 }
