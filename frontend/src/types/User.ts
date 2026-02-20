@@ -7,6 +7,7 @@ export type User = {
   createdAt: Date;
   updatedAt: Date;
   referralCode: string;
+  referredById: string | null;
   storeId: string | null;
   employeeJoinedAt: string | null;
 };
