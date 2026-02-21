@@ -3,6 +3,7 @@ import { DiscountRepo, PaginationParams, PaginatedResponse } from "./interface";
 import { PrismaClient, Prisma } from "../../../prisma/generated/client";
 import { DiscountCreateInput } from "../../../prisma/generated/models";
 import { DiscountType } from "../../../prisma/generated/enums";
+import { calculateStackedDiscount } from "../../lib/discount/calculateStackedDiscount";
 
 
 export class PrismaRepository implements DiscountRepo {
@@ -204,6 +205,52 @@ export class PrismaRepository implements DiscountRepo {
         ]);
         
         const availableDiscounts = (discounts as DiscountResponse[]).filter((discount) => this.isDiscountAvailable(discount));
+
+        const productIds = Array.from(
+            new Set(
+                availableDiscounts
+                    .map((discount) => discount.productId)
+                    .filter((productId): productId is string => Boolean(productId))
+            )
+        );
+
+        if (productIds.length > 0) {
+            const activeOnDate = filter.activeOnDate ?? new Date();
+            const pricingDiscounts = await this.prisma.discount.findMany({
+                where: {
+                    isSoftDeleted: false,
+                    isTiedToProduct: true,
+                    isVoucher: false,
+                    productId: { in: productIds },
+                    AND: [
+                        { OR: this.buildStartsAtCondition(activeOnDate) },
+                        { OR: this.buildEndsAtCondition(activeOnDate) },
+                    ],
+                },
+            });
+
+            const availablePricingDiscounts = (pricingDiscounts as DiscountResponse[]).filter((discount) =>
+                this.isDiscountAvailable(discount)
+            );
+
+            const pricingByProductId = new Map<string, DiscountResponse[]>();
+            for (const discount of availablePricingDiscounts) {
+                if (!discount.productId) continue;
+                const existing = pricingByProductId.get(discount.productId) ?? [];
+                existing.push(discount);
+                pricingByProductId.set(discount.productId, existing);
+            }
+
+            for (const discount of availableDiscounts) {
+                if (!discount.productId || !discount.product) continue;
+                const productDiscounts = pricingByProductId.get(discount.productId) ?? [];
+                if (productDiscounts.length === 0) continue;
+                discount.product.discountedPricing = calculateStackedDiscount(
+                    discount.product.price,
+                    productDiscounts
+                );
+            }
+        }
 
         return {
             data: availableDiscounts,

@@ -1,6 +1,6 @@
 "use client";
 import  Link  from "next/link";
-import { Plus, Heart } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductWithDetails } from "@/services/product/getProducts";
@@ -9,9 +9,17 @@ import { useCart } from "@/hooks/useCart";
 
 interface ProductCardProps {
   product: ProductWithDetails;
+  discountBadge?: {
+    label: string;
+    endsAt?: string | Date | null;
+  };
+  bugoBadge?: {
+    label: string;
+    endsAt?: string | Date | null;
+  };
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, discountBadge, bugoBadge }: ProductCardProps) {
   const { addToCart } = useCart();
   
   const formatPrice = (price: number) => {
@@ -20,6 +28,18 @@ export function ProductCard({ product }: ProductCardProps) {
       currency: "IDR",
       minimumFractionDigits: 0,
     }).format(price);
+  };
+
+  const formatEndsIn = (endsAt?: string | Date | null) => {
+    if (!endsAt) return "";
+    const endDate = new Date(endsAt);
+    if (Number.isNaN(endDate.getTime())) return "";
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const diffDays = Math.ceil((endDate.getTime() - Date.now()) / msPerDay);
+    if (diffDays <= 0) {
+      return ", ends today";
+    }
+    return `, ends in ${diffDays} day${diffDays === 1 ? "" : "s"}`;
   };
 
   const totalStock = product.productStores
@@ -48,14 +68,27 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
       </div>
 
-      {/* Wishlist button */}
-      <button className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-card/80 backdrop-blur-sm flex items-center justify-center shadow-soft opacity-0 group-hover:opacity-100 transition-opacity hover:bg-berry hover:text-white">
-        <Heart className="h-4 w-4" />
-      </button>
+      {/* Discount and BOGO Badges - positioned at top center */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex flex-col gap-2 w-full px-4 pt-4">
+        {discountBadge && (
+          <div className="flex justify-center">
+            <div className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap" style={{ background: 'linear-gradient(to right, #ec4899, #db2777)' }}>
+              {discountBadge.label}{formatEndsIn(discountBadge.endsAt)}
+            </div>
+          </div>
+        )}
+        {bugoBadge && (
+          <div className="flex justify-center">
+            <div className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap" style={{ background: 'linear-gradient(to right, #f97316, #dc2626)' }}>
+              {bugoBadge.label}{formatEndsIn(bugoBadge.endsAt)}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Image */}
       <Link href={`/products/${product.id}`}>
-        <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden relative">
+        <div className={`aspect-square bg-muted/30 flex items-center justify-center overflow-hidden relative ${(discountBadge || bugoBadge) ? 'pt-4' : ''}`}>
           <Image
             src={primaryImage}
             alt={product.name}

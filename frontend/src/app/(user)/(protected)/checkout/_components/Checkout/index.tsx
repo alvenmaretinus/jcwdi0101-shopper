@@ -155,7 +155,7 @@ export default function CheckoutShell() {
     try {
       const ids = [...appliedVouchers, voucherInput.trim()];
       const resp = await calculateVoucher({
-        voucherIds: ids,
+        voucherCodes: ids,
         subtotal: cartSubtotal,
       });
       const isApiWrapper = (
@@ -179,7 +179,7 @@ export default function CheckoutShell() {
     setAppliedVouchers(ids);
     if (ids.length === 0) setVoucherDiscount(0);
     else {
-      calculateVoucher({ voucherIds: ids, subtotal: cartSubtotal })
+      calculateVoucher({ voucherCodes: ids, subtotal: cartSubtotal })
         .then((resp) => {
           const isApiWrapper = (
             v: unknown

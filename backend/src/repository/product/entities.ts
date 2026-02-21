@@ -75,6 +75,24 @@ export type Product = {
     // productStores removed from base Product type; use ProductWithStock when store-level data is needed
 }
 
+export type CalculatedDiscount = {
+    id: string;
+    name: string;
+    label: string;
+    savedAmount: number;
+};
+
+export type DiscountedPricing = {
+    discountedPrice: number;
+    totalDiscount: number;
+    appliedCount: number;
+    appliedDiscounts: CalculatedDiscount[];
+};
+
+export type ProductWithDiscounts = Product & {
+    discountedPricing?: DiscountedPricing;
+};
+
 export type Store = {
     id: string;
     name: string;
@@ -102,4 +120,8 @@ export type ProductWithStock = Product & {
         productId: string;
         store: Store;
     }[];
+};
+
+export type ProductWithStockAndDiscounts = ProductWithStock & {
+    discountedPricing?: DiscountedPricing;
 };

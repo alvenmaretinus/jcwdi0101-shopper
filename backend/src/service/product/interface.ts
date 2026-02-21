@@ -3,7 +3,7 @@ import { CreateProductInput, FilterInput, UpdateProductInput } from "../../schem
 import { PaginationParams, PaginatedResponse } from "../../repository/product/interface";
 
 export interface ProductService {
-    getProductsByFilterWithOptionalStock(filter: Partial<FilterInput>, withStock: boolean, pagination?: PaginationParams): Promise<PaginatedResponse<Product> | PaginatedResponse<ProductWithStock>>;
+    getProductsByFilterWithOptionalStock(filter: Partial<FilterInput>, withStock: boolean, withDiscounts?: boolean, pagination?: PaginationParams): Promise<PaginatedResponse<Product> | PaginatedResponse<ProductWithStock>>;
     createProduct(data: CreateProductInput): Promise<Product>;
     updateProduct(data: UpdateProductInput): Promise<Product>;
     deleteProduct(id: string): Promise<void>;

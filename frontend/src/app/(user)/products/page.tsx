@@ -33,6 +33,7 @@ const Products = async ({
   const [productsResponse, categories, selectedCategory] = await Promise.all([
     getProducts({ 
       withStock: true, 
+      withDiscounts: true,
       categoryId, 
       page, 
       limit,

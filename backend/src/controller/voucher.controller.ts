@@ -42,7 +42,7 @@ router.get("/vouchers", isMaybeAuth, async (req, res) => {
 });
 
 // Calculate voucher discount - public endpoint for UI preview
-router.post("/vouchers/calculate-discount", async (req, res) => {
+router.post("/vouchers/calculate-discount", isAuth, async (req, res) => {
     const inputData: CalculateVoucherDiscountInput = CalculateVoucherDiscountSchema.parse(req.body);
     const userId = req.user?.id as string | undefined;
     const totalDiscount = await voucherService.calculateVoucherDiscount(inputData.voucherCodes, inputData.subtotal, userId);

@@ -39,6 +39,27 @@ export interface ProductWithDetails {
       name: string;
     };
   }>;
+  // Available when withDiscounts=true
+  discountedPricing?: {
+    discountedPrice: number;
+    totalDiscount: number;
+    appliedCount: number;
+    appliedDiscounts: Array<{
+      id: string;
+      name: string;
+      label: string;
+      savedAmount: number;
+      endsAt?: string | Date | null;
+    }>;
+    earliestEndsAt?: string | Date | null;
+    quantityDiscounts?: Array<{
+      id: string;
+      name: string;
+      buyQuantity: number;
+      freeQuantity: number;
+      endsAt?: string | Date | null;
+    }>;
+  };
 }
 
 export interface GetProductsParams {
@@ -48,6 +69,7 @@ export interface GetProductsParams {
   storeId?: string;
   inStockOnly?: boolean;
   withStock?: boolean;
+  withDiscounts?: boolean;
   page?: number;
   limit?: number;
 }
@@ -77,6 +99,9 @@ export const getProducts = async (
   }
   if (params?.withStock !== undefined) {
     queryParams.append("withStock", params.withStock.toString());
+  }
+  if (params?.withDiscounts !== undefined) {
+    queryParams.append("withDiscounts", params.withDiscounts.toString());
   }
   if (params?.page !== undefined) {
     queryParams.append("page", params.page.toString());
