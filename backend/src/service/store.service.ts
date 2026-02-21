@@ -61,8 +61,8 @@ export class StoreService {
     return await StoreRepository.getStoresWithEmployeeCount(data);
   }
 
-  static async getNearestProducts(data?: GetNearestProductsInput) {
-    const limit = data?.limit ?? 20;
+  static async getNearestProducts(data: GetNearestProductsInput) {
+    const limit = data.limit;
     const stores = await StoreRepository.getStoresWithProducts();
 
     // Sort stores by distance if coordinates provided, otherwise sort by default store
