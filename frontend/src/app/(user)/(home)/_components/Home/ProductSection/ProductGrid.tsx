@@ -22,6 +22,7 @@ export const ProductGrid = ({ initialProducts, isDefaultAddress }: Props) => {
           async (position) => {
             try {
               const products = await getNearestProducts({
+                limit: 20,
                 coords: {
                   latitude: position.coords.latitude,
                   longitude: position.coords.longitude,

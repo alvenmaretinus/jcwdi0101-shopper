@@ -9,25 +9,62 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { HERO_SLIDES } from "./slides";
+import { getVouchers } from "@/services/voucher";
+import {
+  FALLBACK_HERO_SLIDES,
+  mapPromoCardsToHeroSlides,
+  mapVouchersToPromoCards,
+  type HeroSlide,
+} from "./slides";
 import { SlideContent } from "./SlideContent";
 import { DotIndicators } from "./DotIndicators";
 
 export function HeroSection() {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [slides, setSlides] = useState<HeroSlide[]>(FALLBACK_HERO_SLIDES);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [totalSlides, setTotalSlides] = useState(0);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadDealsSlides = async () => {
+      try {
+        const response = await getVouchers({ isRedeemed: false });
+        const promoCards = mapVouchersToPromoCards(response.data);
+        const mappedSlides = mapPromoCardsToHeroSlides(promoCards);
+        if (isMounted && mappedSlides.length > 0) {
+          setSlides(mappedSlides);
+        }
+      } catch (error) {
+        console.error("Failed to load hero promos:", error);
+      }
+    };
+
+    loadDealsSlides();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!carouselApi) return;
 
-    setTotalSlides(carouselApi.scrollSnapList().length);
-    setCurrentSlide(carouselApi.selectedScrollSnap());
-
-    carouselApi.on("select", () => {
+    const syncCarouselState = () => {
+      setTotalSlides(carouselApi.scrollSnapList().length);
       setCurrentSlide(carouselApi.selectedScrollSnap());
-    });
-  }, [carouselApi]);
+    };
+
+    syncCarouselState();
+    carouselApi.on("select", syncCarouselState);
+    carouselApi.on("reInit", syncCarouselState);
+
+    return () => {
+      carouselApi.off("select", syncCarouselState);
+      carouselApi.off("reInit", syncCarouselState);
+    };
+  }, [carouselApi, slides.length]);
 
   const goToSlide = useCallback(
     (index: number) => carouselApi?.scrollTo(index),
@@ -43,7 +80,7 @@ export function HeroSection() {
           className="w-full relative"
         >
           <CarouselContent>
-            {HERO_SLIDES.map((slide) => (
+            {slides.map((slide) => (
               <CarouselItem key={slide.id}>
                 <SlideContent slide={slide} />
               </CarouselItem>

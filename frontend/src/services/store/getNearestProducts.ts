@@ -5,16 +5,19 @@ import { StoreProduct } from "@/types/StoreProduct";
 interface GetNearestProductsParams {
   headers?: ReadonlyHeaders;
   coords?: { latitude?: number; longitude?: number };
+  limit?: number;
 }
 
 export const getNearestProducts = async ({
   headers,
   coords,
+  limit,
 }: GetNearestProductsParams = {}) => {
   const params = new URLSearchParams();
   if (coords?.latitude) params.append("latitude", coords.latitude.toString());
   if (coords?.longitude)
     params.append("longitude", coords.longitude.toString());
+  if (limit) params.append("limit", String(limit));
 
   const queryString = params.toString() ? `?${params.toString()}` : "";
 

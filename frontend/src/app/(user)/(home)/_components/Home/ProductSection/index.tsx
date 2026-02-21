@@ -10,9 +10,10 @@ export async function ProductSection() {
   let defaultAddress: any = null;
   try {
     defaultAddress = await getDefaultAddressByUserId(nextHeaders);
-  } catch (error) {}
+  } catch {}
 
   const products = await getNearestProducts({
+    limit: 20,
     headers: nextHeaders,
     coords: defaultAddress
       ? {
