@@ -3,7 +3,10 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { createCharge } from "@/services/order/createCharge";
+import {
+  createCharge,
+  type CreateChargeResponse,
+} from "@/services/order/createCharge";
 import type {
   CreateOrderResponse,
   OrderItem as OrderServiceItem,
@@ -41,6 +44,51 @@ declare global {
   }
 }
 
+const getMidtransCacheKey = (orderId: string) => `midtrans:tx:${orderId}`;
+
+const isMidtransChargeResponse = (
+  value: unknown
+): value is CreateChargeResponse => {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.orderId === "string" &&
+    typeof v.transactionId === "string" &&
+    typeof v.amount === "number"
+  );
+};
+
+const readCachedMidtransTx = (orderId: string): CreateChargeResponse | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(getMidtransCacheKey(orderId));
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isMidtransChargeResponse(parsed)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const saveCachedMidtransTx = (orderId: string, tx: CreateChargeResponse) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(getMidtransCacheKey(orderId), JSON.stringify(tx));
+  } catch {
+    // ignore storage failures
+  }
+};
+
+const clearCachedMidtransTx = (orderId: string) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(getMidtransCacheKey(orderId));
+  } catch {
+    // ignore storage failures
+  }
+};
+
 export default function PaymentPage({ params }: { params: unknown }) {
   const router = useRouter();
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -77,6 +125,8 @@ export default function PaymentPage({ params }: { params: unknown }) {
   const timerRef = useRef<number | null>(null);
   const prevOrderRef = useRef<CreateOrderResponse | null>(null);
   const [showReuploadNotice, setShowReuploadNotice] = useState(false);
+  const [cachedMidtransTx, setCachedMidtransTx] =
+    useState<CreateChargeResponse | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -107,6 +157,16 @@ export default function PaymentPage({ params }: { params: unknown }) {
     load();
   }, [orderId]);
 
+  useEffect(() => {
+    if (!orderId) {
+      setCachedMidtransTx(null);
+      return;
+    }
+
+    const cached = readCachedMidtransTx(orderId);
+    setCachedMidtransTx(cached);
+  }, [orderId]);
+
   const handleMidtrans = async () => {
     if (!orderId) {
       toast.error("Order ID missing");
@@ -114,7 +174,19 @@ export default function PaymentPage({ params }: { params: unknown }) {
     }
     try {
       setIsProcessing(true);
-      const tx = await createCharge(orderId);
+      let tx = cachedMidtransTx ?? readCachedMidtransTx(orderId);
+      if (tx && tx.orderId === orderId) {
+        setCachedMidtransTx(tx);
+      }
+
+      if (!tx) {
+        tx = await createCharge(orderId);
+        if (tx) {
+          setCachedMidtransTx(tx);
+          saveCachedMidtransTx(orderId, tx);
+        }
+      }
+
       if (tx && tx.redirectUrl && !tx.token) {
         // redirect user to Midtrans payment page (non-snap)
         window.location.href = tx.redirectUrl;
@@ -147,6 +219,8 @@ export default function PaymentPage({ params }: { params: unknown }) {
           if (window.snap) {
             window.snap.pay(tx.token, {
               onSuccess: async () => {
+                clearCachedMidtransTx(orderId);
+                setCachedMidtransTx(null);
                 toast.success("Payment successful, updating order...");
                 // refresh order after payment
                 const resp = await apiFetch<
@@ -183,6 +257,10 @@ export default function PaymentPage({ params }: { params: unknown }) {
       if (typeof err === "object" && err !== null && "message" in err) {
         const m = (err as { message?: unknown }).message;
         if (typeof m === "string") msg = m;
+      }
+      if (msg.includes("order_id sudah digunakan")) {
+        msg =
+          "Sesi pembayaran Midtrans untuk order ini sudah dibuat. Tutup pesan ini lalu klik kembali tombol pembayaran.";
       }
       toast.error(msg);
     } finally {
@@ -381,6 +459,14 @@ export default function PaymentPage({ params }: { params: unknown }) {
     }
     prevOrderRef.current = order;
   }, [order]);
+
+  useEffect(() => {
+    if (!orderId || !order) return;
+    if (order.status !== "PAYMENT_PENDING") {
+      clearCachedMidtransTx(orderId);
+      setCachedMidtransTx(null);
+    }
+  }, [order, orderId]);
 
   // Redirect when order reaches a successful/processing state after payment
   useEffect(() => {

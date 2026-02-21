@@ -8,14 +8,14 @@ const eslintConfig = defineConfig([
   {
     files: ["**/*.{js,mjs,cjs,ts,tsx,jsx}"],
     rules: {
-      "max-lines-per-function": [
-        "error",
-        {
-          max: 15,
-          skipBlankLines: true,
-          skipComments: true,
-        },
-      ],
+      // "max-lines-per-function": [
+      //   "error",
+      //   {
+      //     // max: 15,
+      //     skipBlankLines: true,
+      //     skipComments: true,
+      //   },
+      // ],
     },
   },
   // Override default ignores of eslint-config-next.

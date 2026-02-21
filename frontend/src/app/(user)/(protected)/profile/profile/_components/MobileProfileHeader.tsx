@@ -6,13 +6,23 @@ import { useState } from "react";
 import { ChangePictureDialog } from "../../_components/ProfileSidebar/ChangePictureDialog";
 import { User } from "@/types/User";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 
 export const MobileProfileHeader = ({ user }: { user: User }) => {
   const [isChangeImageOpen, setIsChangeImageOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const router = useRouter();
   
   const { data } = authClient.useSession();
   const sessionUser = data?.user;
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await authClient.signOut();
+    router.replace("/login");
+  };
 
   return (
     <div className="lg:hidden flex flex-col items-center pb-6 mb-6 border-b border-border">
@@ -44,6 +54,14 @@ export const MobileProfileHeader = ({ user }: { user: User }) => {
       <p className="text-xs text-muted-foreground mt-1">
         Member since {format(new Date(user.createdAt), "MMMM yyyy")}
       </p>
+      <button
+        onClick={handleLogout}
+        disabled={isLoggingOut}
+        className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-red-500 text-red-500 hover:bg-red-500/10 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+      >
+        <LogOut className="h-4 w-4" />
+        <span>{isLoggingOut ? "Logging Out..." : "Log Out"}</span>
+      </button>
     </div>
   );
 };
