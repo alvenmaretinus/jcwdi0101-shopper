@@ -13,12 +13,11 @@ const Cart = () => {
     removeItem,
 
     subtotal,
-    deliveryFee,
     formatPrice,
   } = useCart();
 
   const discount = 0;
-  const total = subtotal + deliveryFee - discount;
+  const total = subtotal - discount;
 
   if (loading) {
     return (
@@ -108,7 +107,6 @@ const Cart = () => {
                         size="icon"
                         className="h-8 w-8 rounded-full"
                         onClick={() => updateQuantity(item.id, -1)}
-                        disabled={item.quantity <= 1}
                       >
                         <Minus className="h-4 w-4" />
                       </Button>
@@ -120,7 +118,9 @@ const Cart = () => {
                         size="icon"
                         className="h-8 w-8 rounded-full"
                         onClick={() => updateQuantity(item.id, 1)}
-                        disabled={item.quantity >= item.stock}
+                        disabled={
+                          item.stock > 0 ? item.quantity >= item.stock : false
+                        }
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
@@ -149,22 +149,12 @@ const Cart = () => {
               <h2 className="text-xl font-bold mb-6">Order Summary</h2>
 
               {/* Promo code removed: voucher application moved to Checkout page */}
-              
+
               {/* Summary lines */}
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-medium">{formatPrice(subtotal)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Delivery</span>
-                  <span className="font-medium">
-                    {deliveryFee === 0 ? (
-                      <span className="text-primary">Free</span>
-                    ) : (
-                      formatPrice(deliveryFee)
-                    )}
-                  </span>
                 </div>
                 {discount > 0 && (
                   <div className="flex justify-between text-primary">
@@ -180,12 +170,6 @@ const Cart = () => {
                   <span className="font-bold">{formatPrice(total)}</span>
                 </div>
               </div>
-
-              {deliveryFee > 0 && (
-                <p className="text-xs text-muted-foreground mt-4 text-center">
-                  Add {formatPrice(200000 - subtotal)} more for free delivery
-                </p>
-              )}
 
               <Link href="/checkout">
                 <Button className="w-full mt-6 h-12 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">

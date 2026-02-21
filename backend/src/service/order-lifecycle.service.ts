@@ -2,6 +2,7 @@ import { prisma } from "../lib/db/prisma";
 import { BadRequestError } from "../error/BadRequestError";
 import type { PrismaClient, Prisma } from "../../prisma/generated/client";
 import { getDistance } from "geolib";
+import { PricingCalculationService } from "./pricing-calculation.service";
 
 type StoreWithDistance = {
   store: any;
@@ -81,6 +82,22 @@ export class OrderLifecycleService {
     const productMap: Record<string, any> = {};
     for (const p of products) productMap[p.id] = p;
 
+    // Calculate BOGO promotion breakdown once to determine total quantities needed
+    const promotionBreakdown = await PricingCalculationService.calculateProductPromotionBreakdown(
+      items.map((it) => ({
+        productId: it.productId,
+        quantity: it.quantity,
+        unitPrice: productMap[it.productId]?.price ?? 0,
+      })),
+      db,
+    );
+
+    // Create map of productId -> bogoFreeQuantity for easy lookup
+    const bogoFreeQuantityMap: Record<string, number> = {};
+    for (const line of promotionBreakdown.lines) {
+      bogoFreeQuantityMap[line.productId] = line.bogoFreeQuantity;
+    }
+
     // Try candidate stores (nearest first)
     for (const candidate of storesWithDistance) {
       const store = candidate.store;
@@ -95,11 +112,14 @@ export class OrderLifecycleService {
       const psMap: Record<string, any> = {};
       for (const ps of storeProducts) psMap[ps.productId] = ps;
 
-      // Check if all items can be fulfilled
+      // Check if all items can be fulfilled (including BOGO bonus items)
       let canFulfill = true;
       for (const it of items) {
         const ps = psMap[it.productId];
-        if (!ps || ps.quantity < it.quantity) {
+        const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
+        const totalQuantityNeeded = it.quantity + bogoFreeQuantity;
+
+        if (!ps || ps.quantity < totalQuantityNeeded) {
           canFulfill = false;
           break;
         }
@@ -116,15 +136,18 @@ export class OrderLifecycleService {
             throw new BadRequestError("Order already processed or cancelled");
           }
 
-          // Atomically decrement stock
+          // Atomically decrement stock (including BOGO bonus items)
           for (const it of items) {
+            const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
+            const totalQuantityToDeduct = it.quantity + bogoFreeQuantity;
+
             const upd = await tx.productStore.updateMany({
               where: {
                 productId: it.productId,
                 storeId: store.id,
-                quantity: { gte: it.quantity },
+                quantity: { gte: totalQuantityToDeduct },
               },
-              data: { quantity: { decrement: it.quantity } },
+              data: { quantity: { decrement: totalQuantityToDeduct } },
             });
             if (upd.count === 0) throw new BadRequestError("Stock changed during confirmation");
           }
@@ -168,14 +191,17 @@ export class OrderLifecycleService {
             data: updateData,
           });
 
-          // Record product movement for audit trail
+          // Record product movement for audit trail (including BOGO bonus items)
           for (const it of items) {
-            
+            const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
+            const totalQuantityToDeduct = it.quantity + bogoFreeQuantity;
+
             await tx.productMovement.create({
               data: {
-                quantityChange: -it.quantity,
+                quantityChange: -totalQuantityToDeduct,
                 movementType: "SOLD",
                 productId: it.productId,
+                fromStoreId: store.id,
               },
             });
           }

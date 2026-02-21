@@ -10,18 +10,30 @@ export interface CartItem {
   unit?: string;
   stock: number;
   isBuyOneGetOne?: boolean;
+  bogoFreeQuantity?: number;
   outOfStock?: boolean;
 }
 
 export interface CartResponse {
   success?: boolean;
   // backend returns either an array or an object { cartId, cartItems }
-  data: CartItem[] | { cartId: string | null; cartItems: CartItem[] };
+  data:
+    | CartItem[]
+    | {
+        cartId: string | null;
+        cartItems: CartItem[];
+        pricing?: {
+          subtotal: number;
+          totalDiscount: number;
+          shippingCost: number;
+          grandTotal: number;
+        };
+      };
   total?: number;
   subtotal?: number;
   message?: string;
 }
-export interface RawBackendCartItem{
+export interface RawBackendCartItem {
   id?: number | string;
   productId?: number | string;
   name?: string;
@@ -31,5 +43,6 @@ export interface RawBackendCartItem{
   unit?: string;
   stockQuantity?: number | string;
   productTotal?: number | string;
+  bogoFreeQuantity?: number;
   outOfStock?: boolean;
-};
+}

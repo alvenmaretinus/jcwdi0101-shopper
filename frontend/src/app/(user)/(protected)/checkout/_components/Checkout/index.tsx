@@ -25,7 +25,12 @@ import { ShippingMethodSelection } from "./ShippingMethodSelection";
 
 export default function CheckoutShell() {
   const router = useRouter();
-  const { cartItems, loading: isCartLoading, subtotal } = useCart();
+  const {
+    cartItems,
+    loading: isCartLoading,
+    subtotal,
+    serverPricingDiscount,
+  } = useCart();
 
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(
@@ -145,15 +150,29 @@ export default function CheckoutShell() {
     }
   };
 
-  const cartSubtotal = subtotal || 0;
-  const discount = voucherDiscount;
+  const baseSubtotal = subtotal || 0;
+  const productDiscount = serverPricingDiscount || 0;
+  const cartSubtotal = Math.max(0, baseSubtotal - productDiscount);
+  const discount = productDiscount + voucherDiscount;
+  const discountNote =
+    productDiscount > 0
+      ? voucherDiscount > 0
+        ? "Includes product promo/BOGO and voucher discount"
+        : "Includes product promo/BOGO discount"
+      : undefined;
   const shippingCost = selectedShippingCost;
-  const total = cartSubtotal - discount + shippingCost;
+  const total = Math.max(0, baseSubtotal - discount + shippingCost);
 
   const applyVoucher = async (): Promise<void> => {
-    if (!voucherInput) return;
+    const normalizedCode = voucherInput.trim().toUpperCase();
+    if (!normalizedCode) return;
+    if (appliedVouchers.includes(normalizedCode)) {
+      setVoucherInput("");
+      return;
+    }
+
     try {
-      const ids = [...appliedVouchers, voucherInput.trim()];
+      const ids = [...appliedVouchers, normalizedCode];
       const resp = await calculateVoucher({
         voucherCodes: ids,
         subtotal: cartSubtotal,
@@ -199,6 +218,7 @@ export default function CheckoutShell() {
     name: it.name || "",
     price: it.price || 0,
     quantity: it.quantity || 0,
+    bogoFreeQuantity: it.bogoFreeQuantity || 0,
     image: it.image || "/placeholder.png",
   }));
 
@@ -244,6 +264,7 @@ export default function CheckoutShell() {
               items={orderItems}
               subtotal={cartSubtotal}
               discount={discount}
+              discountNote={discountNote}
               shippingCost={shippingCost}
               total={total}
               onPlaceOrder={handlePlaceOrder}

@@ -25,7 +25,7 @@ export const VoucherInput = ({
         <input
           value={voucherInput}
           onChange={(e) => setVoucherInput(e.target.value)}
-          placeholder="Masukkan voucher ID"
+          placeholder="Masukkan kode voucher"
           className="flex-1 input"
         />
         <Button onClick={applyVoucher} className="px-4">

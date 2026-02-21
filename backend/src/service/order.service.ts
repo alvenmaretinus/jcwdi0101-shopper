@@ -13,10 +13,7 @@ type StoreWithDistance = {
 };
 
 export class OrderService {
-  private static isDiscountApplicable(
-    discount: { startsAt: Date | null; endsAt: Date | null; isWithMinimum: boolean; minimumPrice: number | null; isLimited: boolean; limit: number | null; useCounter: number },
-    subtotal: number
-  ) {
+  private static isDiscountApplicable(discount: { startsAt: Date | null; endsAt: Date | null; isWithMinimum: boolean; minimumPrice: number | null; isLimited: boolean; limit: number | null; useCounter: number }, subtotal: number) {
     const now = new Date();
     const hasStarted = !discount.startsAt || discount.startsAt <= now;
     const hasNotEnded = !discount.endsAt || discount.endsAt >= now;
@@ -25,13 +22,7 @@ export class OrderService {
     return hasStarted && hasNotEnded && minimumPassed && available;
   }
 
-  private static async incrementAppliedDiscountCounters(
-    userId: string,
-    subtotal: number,
-    db: PrismaClient,
-    discountIds?: string[],
-    voucherIds?: string[]
-  ) {
+  private static async incrementAppliedDiscountCounters(userId: string, subtotal: number, db: PrismaClient, discountIds?: string[], voucherIds?: string[]) {
     const applicableDiscountIds = new Set<string>();
 
     if (discountIds && discountIds.length > 0) {
@@ -63,10 +54,7 @@ export class OrderService {
       const vouchers = await db.voucher.findMany({
         where: {
           isSoftDeleted: false,
-          OR: [
-            { id: { in: voucherIds } },
-            { code: { in: voucherIds } },
-          ],
+          OR: [{ id: { in: voucherIds } }, { code: { in: voucherIds } }],
           discount: {
             isSoftDeleted: false,
           },
@@ -112,8 +100,8 @@ export class OrderService {
           data: {
             useCounter: { increment: 1 },
           },
-        })
-      )
+        }),
+      ),
     );
   }
 
@@ -275,6 +263,15 @@ export class OrderService {
       for (const p of products as ProductWithCategory[]) productMap[p.id] = p;
 
       const subtotal = items.reduce((s, it) => s + (productMap[it.productId]?.price ?? 0) * it.quantity, 0);
+      const productPromotionDiscount = await PricingCalculationService.calculateProductPromotionDiscount(
+        items.map((it) => ({
+          productId: it.productId,
+          quantity: it.quantity,
+          unitPrice: productMap[it.productId]?.price ?? 0,
+        })),
+        db,
+      );
+      const subtotalAfterProductPromotion = Math.max(0, subtotal - productPromotionDiscount);
 
       // Use frontend-provided shipping cost (Early Selection) or fallback to auto-calculate
       let shippingCost: number;
@@ -299,7 +296,8 @@ export class OrderService {
         }
       }
 
-      const totalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotal, discountIds, voucherIds, db, userId);
+      const additionalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotalAfterProductPromotion, discountIds, voucherIds, db, userId);
+      const totalDiscount = productPromotionDiscount + additionalDiscount;
       const grandTotal = subtotal + shippingCost - totalDiscount;
 
       const paymentDueHours = Number.isFinite(Number(process.env.PAYMENT_DUE_HOURS)) ? Number(process.env.PAYMENT_DUE_HOURS) : 1;

@@ -39,7 +39,7 @@ export function ProductCard({ product }: ProductCardProps) {
   // Format weight display from product data
   const weightDisplay = product.weight ? `${product.weight}g/pcs` : null;
 
-  const { addToCart } = useCart();
+  const { addToCart } = useCart({ autoFetch: false });
   const [isAdding, setIsAdding] = useState(false);
 
   const handleAddToCart = async (e: React.MouseEvent) => {

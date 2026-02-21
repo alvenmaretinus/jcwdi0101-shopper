@@ -6,6 +6,7 @@ interface Props {
   items: OrderItem[];
   subtotal: number;
   discount: number;
+  discountNote?: string;
   shippingCost: number;
   total: number;
   onPlaceOrder: () => void;
@@ -18,6 +19,7 @@ export const SummarySidebar = ({
   items,
   subtotal,
   discount,
+  discountNote,
   shippingCost,
   total,
   onPlaceOrder,
@@ -31,6 +33,7 @@ export const SummarySidebar = ({
       items={items}
       subtotal={subtotal}
       discount={discount}
+      discountNote={discountNote}
       shippingCost={shippingCost}
       total={total}
       onPlaceOrder={onPlaceOrder}

@@ -9,7 +9,7 @@ interface AddToCartSectionProps {
 }
 
 export function AddToCartSection({ productId, totalStock }: AddToCartSectionProps) {
-  const { addToCart } = useCart();
+  const { addToCart } = useCart({ autoFetch: false });
 
   return (
     <>

@@ -10,6 +10,7 @@ export interface OrderItem {
   name: string;
   price: number;
   quantity: number;
+  bogoFreeQuantity?: number;
   image: string;
 }
 
@@ -17,6 +18,7 @@ export interface OrderSummaryProps {
   items: OrderItem[];
   subtotal: number;
   discount: number;
+  discountNote?: string;
   shippingCost: number;
   total: number;
   onPlaceOrder: () => void;
@@ -27,6 +29,7 @@ export const OrderSummary = ({
   items,
   subtotal,
   discount,
+  discountNote,
   shippingCost,
   total,
   onPlaceOrder,
@@ -39,10 +42,10 @@ export const OrderSummary = ({
         Order Summary
       </h2>
 
-      <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-2">
+      <div className="space-y-4 mb-6 max-h-75 overflow-y-auto pr-2">
         {items.map((item) => (
           <div key={item.id} className="flex gap-3">
-            <div className="relative h-16 w-16 rounded-lg overflow-hidden border border-border bg-muted flex-shrink-0">
+            <div className="relative h-16 w-16 rounded-lg overflow-hidden border border-border bg-muted shrink-0">
               <Image
                 src={item.image}
                 alt={item.name}
@@ -55,6 +58,11 @@ export const OrderSummary = ({
               <p className="text-xs text-muted-foreground">
                 Qty: {item.quantity}
               </p>
+              {(item.bogoFreeQuantity ?? 0) > 0 && (
+                <p className="text-xs text-primary">
+                  +{item.bogoFreeQuantity} item bonus (BOGO)
+                </p>
+              )}
               <p className="text-sm font-semibold mt-1">
                 Rp {item.price.toLocaleString("id-ID")}
               </p>
@@ -78,6 +86,9 @@ export const OrderSummary = ({
             Rp {discount.toLocaleString("id-ID")}
           </span>
         </div>
+        {discount > 0 && discountNote && (
+          <p className="text-xs text-muted-foreground">{discountNote}</p>
+        )}
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Shipping Cost</span>
           <span>Rp {shippingCost.toLocaleString("id-ID")}</span>
