@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { ProductCard } from "@/components/products/ProductCard";
 import { Button } from "@/components/ui/button";
-import { Clock, Sparkles, Percent, Gift, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sparkles, Percent, Gift, ChevronLeft, ChevronRight } from "lucide-react";
 import { getVouchers } from "@/services/voucher";
 import { getProductsWithDiscounts, type ProductWithDiscount } from "@/services/discount";
 import { VoucherCard } from "@/components/cards/VoucherCard";
