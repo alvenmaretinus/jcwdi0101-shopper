@@ -13,10 +13,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { authClient } from "@/lib/authClient";
 import { compareTimeFromNow } from "@/lib/compareTime";
+import { applyReferralCode } from "@/services/referral/applyReferralCode";
 
 export function ReferralCodeModal() {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const { data } = authClient.useSession();
   const user = data?.user;
@@ -24,27 +26,30 @@ export function ReferralCodeModal() {
   useEffect(() => {
     if (user) {
       const { minutes } = compareTimeFromNow(user.createdAt);
-      const hasSkipped = localStorage.getItem("referralModalSkipped");
-
-      if (!hasSkipped) {
-        if (minutes < 5) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect
-          setOpen(true);
-        }
+      if (minutes < 5) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setOpen(true);
       }
     }
   }, [user]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim()) return toast.error("Please enter a referral code.");
-    localStorage.setItem("referralModalSkipped", "true");
-    toast.success("Referral code applied!");
-    setOpen(false);
+
+    setIsLoading(true);
+    try {
+      await applyReferralCode(code.trim());
+      toast.success("Referral code applied! You've received a reward voucher.");
+      setOpen(false);
+    } catch {
+      // Error toast is already handled by apiFetch
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSkip = () => {
-    localStorage.setItem("referralModalSkipped", "true");
     setOpen(false);
   };
 
@@ -68,12 +73,13 @@ export function ReferralCodeModal() {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               className="uppercase"
+              disabled={isLoading}
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <Button type="submit" className="w-full">
-              Apply Code
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Applying..." : "Apply Code"}
             </Button>
 
             <Button
@@ -81,6 +87,7 @@ export function ReferralCodeModal() {
               variant="ghost"
               className="w-full text-muted-foreground"
               onClick={handleSkip}
+              disabled={isLoading}
             >
               Skip for now
             </Button>

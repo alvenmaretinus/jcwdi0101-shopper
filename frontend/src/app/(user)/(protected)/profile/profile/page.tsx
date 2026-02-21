@@ -39,7 +39,7 @@ export default async function ProfilePage() {
       <div className="shadow-soft rounded-xl">
         <ReferralCard referralCode={userFull.referralCode} />
       </div>
-      <EnterReferralCodeCard />
+      <EnterReferralCodeCard referredById={userFull.referredById} />
     </div>
   );
 }
