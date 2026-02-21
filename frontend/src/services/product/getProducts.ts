@@ -49,6 +49,15 @@ export interface ProductWithDetails {
       name: string;
       label: string;
       savedAmount: number;
+      endsAt?: string | Date | null;
+    }>;
+    earliestEndsAt?: string | Date | null;
+    quantityDiscounts?: Array<{
+      id: string;
+      name: string;
+      buyQuantity: number;
+      freeQuantity: number;
+      endsAt?: string | Date | null;
     }>;
   };
 }

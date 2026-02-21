@@ -5,6 +5,7 @@ export interface CalculatedDiscount {
   name: string;
   label: string;
   savedAmount: number;
+  endsAt?: Date | null;
 }
 
 export interface StackedDiscountResult {
@@ -12,6 +13,14 @@ export interface StackedDiscountResult {
   totalDiscount: number;
   appliedCount: number;
   appliedDiscounts: CalculatedDiscount[];
+  earliestEndsAt?: Date | null;
+  quantityDiscounts?: Array<{
+    id: string;
+    name: string;
+    buyQuantity: number;
+    freeQuantity: number;
+    endsAt?: Date | null;
+  }>;
 }
 
 /**
@@ -23,7 +32,18 @@ export function calculateStackedDiscount(
   price: number,
   discounts: DiscountResponse[]
 ): StackedDiscountResult {
-  // Filter only applicable discounts
+  // Extract QUANTITY discounts separately (BOGO offers)
+  const quantityDiscounts = discounts
+    .filter((discount) => discount.type === "QUANTITY" && discount.buyQuantity && discount.freeQuantity)
+    .map((discount) => ({
+      id: discount.id,
+      name: discount.name || "Buy X Get Y",
+      buyQuantity: discount.buyQuantity!,
+      freeQuantity: discount.freeQuantity!,
+      endsAt: discount.endsAt || null,
+    }));
+
+  // Filter only applicable price discounts (PERCENTAGE and FIXED_AMOUNT)
   const applicableDiscounts = discounts.filter((discount) => {
     if (discount.type !== "PERCENTAGE" && discount.type !== "FIXED_AMOUNT") {
       return false;
@@ -40,6 +60,8 @@ export function calculateStackedDiscount(
       totalDiscount: 0,
       appliedCount: 0,
       appliedDiscounts: [],
+      earliestEndsAt: null,
+      quantityDiscounts: quantityDiscounts.length > 0 ? quantityDiscounts : undefined,
     };
   }
 
@@ -80,6 +102,7 @@ export function calculateStackedDiscount(
       name: discount.name || "Discount",
       label,
       savedAmount: Math.round(actualDiscount),
+      endsAt: discount.endsAt || null,
     });
   };
 
@@ -146,12 +169,21 @@ export function calculateStackedDiscount(
 
   const discountedPrice = Math.max(0, Math.round(price - totalDiscount));
 
+  // Find earliest end date
+  const endDates = appliedDiscounts
+    .map((d) => d.endsAt)
+    .filter((d): d is Date => d instanceof Date && !Number.isNaN(d.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime());
+  const earliestEndsAt = endDates.length > 0 ? endDates[0] : null;
+
   if (discountedPrice >= price || appliedCount === 0) {
     return {
       discountedPrice: price,
       totalDiscount: 0,
       appliedCount: 0,
       appliedDiscounts: [],
+      earliestEndsAt: null,
+      quantityDiscounts: quantityDiscounts.length > 0 ? quantityDiscounts : undefined,
     };
   }
 
@@ -160,5 +192,7 @@ export function calculateStackedDiscount(
     totalDiscount: Math.round(totalDiscount),
     appliedCount,
     appliedDiscounts,
+    earliestEndsAt,
+    quantityDiscounts: quantityDiscounts.length > 0 ? quantityDiscounts : undefined,
   };
 }

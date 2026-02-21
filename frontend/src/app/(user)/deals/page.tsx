@@ -97,7 +97,6 @@ const Deals = () => {
   };
 
   // Transform flash deals with discounts - only show in-stock products
-  // Backend now calculates discounts, so we can use calculatedPricing from the response
   const flashDealGroups = flashDeals.reduce((acc, item) => {
     const productId = item.product?.id;
     if (!productId || !item.product) return acc;
@@ -116,9 +115,28 @@ const Deals = () => {
       const hasStock = product.productStores?.some((store) => store.quantity > 0);
       if (!hasStock) return null;
 
-      // Use backend calculated pricing if available
-      const pricing = group[0]?.calculatedPricing;
-      if (!pricing || pricing.appliedCount === 0) return null;
+      // Calculate discount from the discount items (no backend calculated pricing available)
+      const discounts = group;
+      if (discounts.length === 0) return null;
+
+      // Calculate the best discount available
+      let totalDiscount = 0;
+      let discountedPrice = product.price;
+      const appliedDiscounts: Array<{ label: string }> = [];
+
+      for (const discount of discounts) {
+        let discountAmount = 0;
+        if (discount.type === 'PERCENTAGE' && discount.percentage) {
+          discountAmount = (product.price * Number(discount.percentage)) / 100;
+          appliedDiscounts.push({ label: `${discount.percentage}% off` });
+        } else if (discount.type === 'FIXED_AMOUNT' && discount.amount) {
+          discountAmount = discount.amount;
+          appliedDiscounts.push({ label: `${formatRupiah(discount.amount)} off` });
+        }
+        totalDiscount += discountAmount;
+      }
+
+      discountedPrice = Math.max(0, product.price - totalDiscount);
 
       const endsAtList = group
         .map((discount) => (discount.endsAt ? new Date(discount.endsAt) : null))
@@ -131,9 +149,9 @@ const Deals = () => {
         id: product.id,
         name: product.name,
         description: product.description,
-        price: pricing.discountedPrice,
+        price: discountedPrice,
         originalPrice: product.price,
-        savingsAmount: pricing.totalDiscount,
+        savingsAmount: totalDiscount,
         weight: product.weight,
         categoryId: product.categoryId,
         category: {
@@ -153,45 +171,9 @@ const Deals = () => {
         createAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         discountBadge:
-          pricing.appliedCount > 1
-            ? `${pricing.appliedCount} discounts applied`
-            : (pricing.appliedDiscounts[0]?.label || `${formatRupiah(pricing.totalDiscount)} off`),
-        endsAt: earliestEndsAt,
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => item !== null);
-
-      const earliestEndsAt = endsAtList[0] ?? null;
-
-      return {
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: pricing.discountedPrice,
-        originalPrice: product.price,
-        savingsAmount: pricing.totalDiscount,
-        weight: product.weight,
-        categoryId: product.categoryId,
-        category: {
-          id: product.category?.id || product.categoryId,
-          category: product.category?.category || "Products",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        productImages: (product.productImages || []).map((img) => ({
-          ...img,
-          productId: product.id,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })),
-        productStores: product.productStores || [],
-        isSoftDeleted: false,
-        createAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        discountBadge:
-          pricing.appliedCount > 1
-            ? `${pricing.appliedCount} discounts applied`
-            : (pricing.primaryLabel ?? `${formatRupiah(pricing.totalDiscount)} off`),
+          discounts.length > 1
+            ? `${discounts.length} discounts applied`
+            : (appliedDiscounts[0]?.label || `${formatRupiah(totalDiscount)} off`),
         endsAt: earliestEndsAt,
       };
     })
@@ -269,29 +251,6 @@ const Deals = () => {
   const handleBogoPrev = () => {
     if (bogoPage > 1) setBogoPage(bogoPage - 1);
   };
-
-  // Gradient colors for voucher cards
-  const gradientsPink = [
-    { from: "#ec4899", to: "#e11d48" },
-    { from: "#a855f7", to: "#7c3aed" },
-    { from: "#3b82f6", to: "#06b6d4" },
-    { from: "#22c55e", to: "#10b981" },
-    { from: "#eab308", to: "#f97316" },
-    { from: "#ef4444", to: "#ec4899" },
-    { from: "#6366f1", to: "#a855f7" },
-    { from: "#14b8a6", to: "#22c55e" },
-    { from: "#f97316", to: "#f59e0b" },
-    { from: "#d946ef", to: "#ec4899" },
-  ];
-
-  const gradientsBlue = [
-    { from: "#4f46e5", to: "#7c3aed" },
-    { from: "#0891b2", to: "#2563eb" },
-    { from: "#0d9488", to: "#14b8a6" },
-    { from: "#9333ea", to: "#ec4899" },
-    { from: "#0ea5e9", to: "#6366f1" },
-    { from: "#0f766e", to: "#0ea5e9" },
-  ];
 
   // Gradient colors for voucher cards
   const gradientsPink = [
@@ -480,19 +439,15 @@ const Deals = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
               {paginatedFlashDeals.length > 0 ? (
                 paginatedFlashDeals.map((product) => {
-                  
                   return (
-                    <div key={product.id} className="relative pt-4">
-                      {/* Discount Percentage Badge */}
-                      {product.discountBadge && (
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
-                          <div className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap" style={{ background: 'linear-gradient(to right, #ec4899, #db2777)' }}>
-                            {product.discountBadge}{formatEndsIn(product.endsAt)}
-                          </div>
-                        </div>
-                      )}
-                      <ProductCard product={product} />
-                    </div>
+                    <ProductCard 
+                      key={product.id} 
+                      product={product}
+                      discountBadge={{
+                        label: product.discountBadge || '',
+                        endsAt: product.endsAt
+                      }}
+                    />
                   );
                 })
               ) : (
@@ -541,17 +496,14 @@ const Deals = () => {
                   if (!product) return null;
                   
                   return (
-                    <div key={product.id} className="relative pt-4">
-                      {/* Buy X Get Y Badge */}
-                      {item.buyQuantity && item.freeQuantity && (
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
-                          <div className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap" style={{ background: 'linear-gradient(to right, #f97316, #dc2626)' }}>
-                            Buy {item.buyQuantity} get {item.freeQuantity} free{formatEndsIn(item.endsAt)}
-                          </div>
-                        </div>
-                      )}
-                      <ProductCard product={product} />
-                    </div>
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      bugoBadge={{
+                        label: `Buy ${item.buyQuantity} get ${item.freeQuantity} free`,
+                        endsAt: item.endsAt
+                      }}
+                    />
                   );
                 })
               ) : (

@@ -10,9 +10,9 @@ export class ProductService implements Service {
     private productRepo: ProductsRepo;
     private prisma: PrismaClient;
 
-    constructor(productRepo: ProductsRepo, prisma?: PrismaClient) {
+    constructor(productRepo: ProductsRepo, prisma: PrismaClient) {
         this.productRepo = productRepo;
-        this.prisma = prisma || new PrismaClient();
+        this.prisma = prisma;
     }
 
     async getProductsByFilterWithOptionalStock(
