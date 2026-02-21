@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
+import { useCart } from "@/hooks/useCart";
 
 interface ProductCardProps {
   product: StoreProduct;
@@ -36,20 +38,29 @@ export function ProductCard({ product }: ProductCardProps) {
     ? `${product.weight}g/pcs` 
     : null;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const { addToCart } = useCart();
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!isLoggedIn) {
       toast.info("Please login to add items to cart");
       return;
     }
-    
+
     if (isOutOfStock) return;
-    
-    // TODO: Add to cart logic
-    toast.success(`Added ${product.name} to cart`);
-    console.log("Add to cart:", product.id);
+
+    try {
+      setIsAdding(true);
+      await addToCart(product.id, 1);
+      console.log("Add to cart:", product.id);
+    } catch (error) {
+      console.error("Add to cart failed:", error);
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   return (
@@ -114,13 +125,13 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Quick Add Button */}
       <div className="px-3 sm:px-4 pb-3 sm:pb-4">
         <Button
-          disabled={isOutOfStock}
+          disabled={isOutOfStock || isAdding}
           size="sm"
           className="w-full h-9 sm:h-10 rounded-full"
           onClick={handleAddToCart}
         >
           <Plus className="h-4 w-4 mr-1.5" />
-          Add
+          {isAdding ? "Adding..." : "Add"}
         </Button>
       </div>
     </div>
