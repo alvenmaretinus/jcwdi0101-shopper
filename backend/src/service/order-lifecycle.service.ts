@@ -3,6 +3,8 @@ import { BadRequestError } from "../error/BadRequestError";
 import type { PrismaClient, Prisma } from "../../prisma/generated/client";
 import { getDistance } from "geolib";
 import { PricingCalculationService } from "./pricing-calculation.service";
+import { StoreOrderCapacityService } from "./store-order-capacity.service";
+import { OrderRewardService } from "./order-reward.service";
 
 type StoreWithDistance = {
   store: any;
@@ -17,6 +19,94 @@ type StoreWithDistance = {
  * - Cancel order: user cancellation
  */
 export class OrderLifecycleService {
+  private static async redeemAppliedVouchers(
+    tx: Prisma.TransactionClient,
+    params: {
+      userId: string;
+      voucherIdentifiers: string[];
+    },
+  ) {
+    const voucherIdentifiers = params.voucherIdentifiers
+      .map((identifier) => identifier.trim())
+      .filter((identifier) => identifier.length > 0);
+
+    if (voucherIdentifiers.length === 0) {
+      return;
+    }
+
+    const vouchers = await tx.voucher.findMany({
+      where: {
+        isSoftDeleted: false,
+        isRedeemed: false,
+        OR: [
+          { id: { in: voucherIdentifiers } },
+          { code: { in: voucherIdentifiers } },
+        ],
+        discount: {
+          isSoftDeleted: false,
+        },
+      },
+      include: {
+        discount: {
+          select: {
+            id: true,
+            isLimited: true,
+            limit: true,
+          },
+        },
+      },
+    });
+
+    if (vouchers.length === 0) {
+      return;
+    }
+
+    const unauthorizedVoucher = vouchers.find(
+      (voucher) => voucher.userId !== null && voucher.userId !== params.userId,
+    );
+    if (unauthorizedVoucher) {
+      throw new BadRequestError("Assigned voucher does not belong to this user");
+    }
+
+    const now = new Date();
+    await tx.voucher.updateMany({
+      where: {
+        id: { in: vouchers.map((voucher) => voucher.id) },
+        isRedeemed: false,
+      },
+      data: {
+        isRedeemed: true,
+        redeemedAt: now,
+      },
+    });
+
+    const limitedDiscountIds = Array.from(
+      new Set(
+        vouchers
+          .filter((voucher) => voucher.discount.isLimited && voucher.discount.limit !== null)
+          .map((voucher) => voucher.discount.id),
+      ),
+    );
+
+    await Promise.all(
+      limitedDiscountIds.map((discountId) =>
+        tx.discount.updateMany({
+          where: {
+            id: discountId,
+            isLimited: true,
+            limit: { not: null },
+            useCounter: {
+              lt: tx.discount.fields.limit,
+            },
+          },
+          data: {
+            useCounter: { increment: 1 },
+          },
+        }),
+      ),
+    );
+  }
+
   /**
    * Confirm payment - decrement stock atomically and move to PROCESSING
    * @param orderId Order ID to confirm
@@ -74,6 +164,12 @@ export class OrderLifecycleService {
       throw new BadRequestError("No store within 5 km can fulfill the entire order.");
     }
 
+    const maxActiveOrdersPerStore = StoreOrderCapacityService.getMaxActiveOrdersPerStore();
+    const activeOrderCountByStoreId = await StoreOrderCapacityService.getActiveOrderCountByStoreIds(
+      db,
+      storesWithDistance.map((s) => s.store.id),
+    );
+
     const productIds = items.map((i) => i.productId);
     const products = await db.product.findMany({
       where: { id: { in: productIds } },
@@ -101,6 +197,17 @@ export class OrderLifecycleService {
     // Try candidate stores (nearest first)
     for (const candidate of storesWithDistance) {
       const store = candidate.store;
+      const activeOrderCount = activeOrderCountByStoreId.get(store.id) ?? 0;
+      if (
+        !StoreOrderCapacityService.canAssignExistingOrderToStore({
+          candidateStoreId: store.id,
+          currentOrderStoreId: order.storeId,
+          activeOrderCount,
+          maxActiveOrdersPerStore,
+        })
+      ) {
+        continue;
+      }
 
       // Batch load productStore records for this store to avoid N+1 query
       const storeProducts = await db.productStore.findMany({
@@ -134,6 +241,13 @@ export class OrderLifecycleService {
           });
           if (!["PAYMENT_PENDING", "PAYMENT_WAITING_CONFIRMATION"].includes(txOrder?.status ?? "")) {
             throw new BadRequestError("Order already processed or cancelled");
+          }
+
+          if (store.id !== order.storeId) {
+            const latestActiveOrderCount = await StoreOrderCapacityService.getActiveOrderCountByStoreId(tx, store.id);
+            if (!StoreOrderCapacityService.canAcceptNewOrder(latestActiveOrderCount, maxActiveOrdersPerStore)) {
+              throw new BadRequestError("STORE_CAPACITY_FULL");
+            }
           }
 
           // Atomically decrement stock (including BOGO bonus items)
@@ -198,10 +312,12 @@ export class OrderLifecycleService {
 
             await tx.productMovement.create({
               data: {
+                orderId,
                 quantityChange: -totalQuantityToDeduct,
                 movementType: "SOLD",
                 productId: it.productId,
                 fromStoreId: store.id,
+                description: "Stock deducted after payment confirmation",
               },
             });
           }
@@ -215,9 +331,16 @@ export class OrderLifecycleService {
               where: {
                 cartId: userCart.id,
                 productId: { in: items.map((it) => it.productId) },
+                // Keep new cart changes added after checkout creation.
+                updatedAt: { lte: order.createdAt },
               },
             });
           }
+
+          await this.redeemAppliedVouchers(tx, {
+            userId: order.userId,
+            voucherIdentifiers: order.voucherCodes,
+          });
 
           return updated;
         });
@@ -230,7 +353,7 @@ export class OrderLifecycleService {
     }
 
     // Could not fulfill from any store - mark for refund
-    const refundReason = "No store within 5 km can fulfill the entire order after payment approval";
+    const refundReason = "No store within 5 km can fulfill the entire order after payment approval or store capacity is full";
     await db.order.update({
       where: { id: orderId },
       data: {
@@ -309,31 +432,46 @@ export class OrderLifecycleService {
    */
   static async confirmOrder(orderId: string, userId: string) {
     const db: PrismaClient = prisma;
-    const order = await db.order.findUnique({ where: { id: orderId } });
-
-    if (!order) {
-      throw new BadRequestError("Order not found");
-    }
-
-    if (order.userId !== userId) {
-      throw new BadRequestError("Unauthorized - order does not belong to user");
-    }
-
-    if (order.status !== "SHIPPED") {
-      throw new BadRequestError(`Cannot confirm order with status ${order.status}. Only SHIPPED orders can be confirmed.`);
-    }
-
     const now = new Date();
-    const updated = await db.order.update({
-      where: { id: orderId },
-      data: {
-        status: "COMPLETED",
-        deliveredAt: now,
-        confirmedAt: now,
-      },
-    });
 
-    return updated;
+    return db.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({ where: { id: orderId } });
+
+      if (!order) {
+        throw new BadRequestError("Order not found");
+      }
+
+      if (order.userId !== userId) {
+        throw new BadRequestError("Unauthorized - order does not belong to user");
+      }
+
+      if (order.status !== "SHIPPED") {
+        throw new BadRequestError(`Cannot confirm order with status ${order.status}. Only SHIPPED orders can be confirmed.`);
+      }
+
+      const updated = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: "COMPLETED",
+          deliveredAt: now,
+          confirmedAt: now,
+        },
+      });
+
+      const rewardResult = await OrderRewardService.grantCompletionRewardVoucher(tx, {
+        id: updated.id,
+        userId: updated.userId,
+        subtotal: updated.subtotal,
+      });
+
+      if (rewardResult.granted) {
+        console.info(
+          `[OrderLifecycleService] Reward voucher granted for completed order ${updated.id}: ${rewardResult.voucherCode}`,
+        );
+      }
+
+      return updated;
+    });
   }
 
   /**

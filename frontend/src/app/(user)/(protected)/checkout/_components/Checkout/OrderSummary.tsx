@@ -20,6 +20,8 @@ export interface OrderSummaryProps {
   discount: number;
   discountNote?: string;
   shippingCost: number;
+  shippingOriginalCost?: number;
+  shippingDiscount?: number;
   total: number;
   onPlaceOrder: () => void;
   isCreatingOrder?: boolean;
@@ -31,10 +33,24 @@ export const OrderSummary = ({
   discount,
   discountNote,
   shippingCost,
+  shippingOriginalCost,
+  shippingDiscount = 0,
   total,
   onPlaceOrder,
   isCreatingOrder = false,
 }: OrderSummaryProps) => {
+  const originalShipping = Math.max(
+    0,
+    shippingOriginalCost !== undefined ? shippingOriginalCost : shippingCost
+  );
+  const appliedShippingDiscount = Math.max(
+    0,
+    Math.min(shippingDiscount, originalShipping)
+  );
+  const finalShipping = Math.max(0, shippingCost);
+  const hasShippingDiscount =
+    appliedShippingDiscount > 0 && originalShipping > finalShipping;
+
   return (
     <div className="bg-card rounded-2xl border border-border p-6 shadow-soft sticky top-24">
       <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
@@ -91,7 +107,16 @@ export const OrderSummary = ({
         )}
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Shipping Cost</span>
-          <span>Rp {shippingCost.toLocaleString("id-ID")}</span>
+          {hasShippingDiscount ? (
+            <span className="flex items-center gap-2">
+              <span className="line-through text-muted-foreground">
+                Rp {originalShipping.toLocaleString("id-ID")}
+              </span>
+              <span>Rp {finalShipping.toLocaleString("id-ID")}</span>
+            </span>
+          ) : (
+            <span>Rp {finalShipping.toLocaleString("id-ID")}</span>
+          )}
         </div>
         <Separator className="my-2" />
         <div className="flex justify-between font-semibold text-lg">

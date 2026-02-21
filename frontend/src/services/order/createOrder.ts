@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/apiFetch";
+import { apiFetch, HttpMethod } from "@/lib/apiFetch";
 import { ReadonlyHeaders } from "next/dist/server/web/spec-extension/adapters/headers";
 
 export interface CreateOrderRequest {
@@ -29,6 +29,8 @@ export interface CreateOrderResponse {
   shippingCost: number;
   totalDiscount: number;
   grandTotal: number;
+  voucherCodes: string[];
+  discountNames: string[];
   paymentType: "BANK_TRANSFER" | "PAYMENT_GATEWAY";
   status:
     | "PAYMENT_PENDING"
@@ -75,7 +77,7 @@ export const createOrder = async (
   const response = await apiFetch<
     ApiWrapper<CreateOrderResponse> | CreateOrderResponse
   >("/order/checkout", {
-    method: "POST",
+    method: HttpMethod.POST,
     headers,
     body: data,
   });

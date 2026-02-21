@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/apiFetch";
+import { apiFetch, HttpMethod } from "@/lib/apiFetch";
 import type {
   CreateOrderResponse,
   OrderItem as OrderServiceItem,
@@ -10,6 +10,7 @@ import OrderTabs from "./_components/OrderTabs";
 import OrderCard from "./_components/OrderCard";
 import EmptyOrdersState from "./_components/EmptyOrdersState";
 import OrderPagination from "./_components/OrderPagination";
+import OrderFilters from "./_components/OrderFilters";
 
 type UIOrderItem = {
   name: string;
@@ -21,6 +22,7 @@ type UIOrderItem = {
 type UIOrder = {
   id: string;
   date: string;
+  dateKey: string;
   status: string;
   statusLabel: string;
   rawStatus?: string;
@@ -34,12 +36,21 @@ type UIOrder = {
 
 const ITEMS_PER_PAGE = 5;
 
+const toDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const Orders = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [orders, setOrders] = useState<UIOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmingIds, setConfirmingIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [orderNumberQuery, setOrderNumberQuery] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
 
   // Extracted loader so it can be reused after actions
   const loadOrders = async () => {
@@ -48,7 +59,7 @@ const Orders = () => {
       const resp = await apiFetch<
         | { success?: boolean; data?: CreateOrderResponse[] }
         | CreateOrderResponse[]
-      >("/order", { method: "GET" });
+      >("/order", { method: HttpMethod.GET });
       const maybe = resp as { data?: CreateOrderResponse[] };
       const data = maybe.data ?? (resp as CreateOrderResponse[]);
 
@@ -66,10 +77,12 @@ const Orders = () => {
           };
 
           const status = statusMap[o.status] ?? "processing";
+          const createdAtDate = new Date(o.createdAt);
 
           return {
             id: o.id,
-            date: new Date(o.createdAt).toLocaleDateString(),
+            date: createdAtDate.toLocaleDateString(),
+            dateKey: toDateKey(createdAtDate),
             status,
             rawStatus: o.status,
             statusLabel: status.charAt(0).toUpperCase() + status.slice(1),
@@ -116,11 +129,20 @@ const Orders = () => {
     };
   }, []);
 
-  // Filter orders by tab
-  const filteredOrders =
-    activeTab === "all"
-      ? orders
-      : orders.filter((order) => order.status === activeTab);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [orderNumberQuery, selectedDate]);
+
+  const searchTerm = orderNumberQuery.trim().toLowerCase();
+  const isExtraFilterActive = searchTerm.length > 0 || selectedDate.length > 0;
+
+  // Filter orders by tab + search query + date
+  const filteredOrders = orders.filter((order) => {
+    if (activeTab !== "all" && order.status !== activeTab) return false;
+    if (searchTerm && !order.id.toLowerCase().includes(searchTerm)) return false;
+    if (selectedDate && order.dateKey !== selectedDate) return false;
+    return true;
+  });
 
   // Pagination logic
   const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -133,6 +155,16 @@ const Orders = () => {
         <h1 className="text-3xl font-bold text-foreground mb-8">My Orders</h1>
 
         <OrderTabs activeTab={activeTab} onTabChange={handleTabChange} />
+        <OrderFilters
+          orderNumberQuery={orderNumberQuery}
+          selectedDate={selectedDate}
+          onOrderNumberChange={setOrderNumberQuery}
+          onDateChange={setSelectedDate}
+          onClearFilters={() => {
+            setOrderNumberQuery("");
+            setSelectedDate("");
+          }}
+        />
 
         <div className="space-y-4">
           {loading ? (
@@ -166,7 +198,7 @@ const Orders = () => {
               />
             </>
           ) : (
-            <EmptyOrdersState />
+            <EmptyOrdersState isSearchActive={isExtraFilterActive} />
           )}
         </div>
       </div>

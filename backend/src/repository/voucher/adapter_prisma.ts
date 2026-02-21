@@ -148,7 +148,10 @@ export class PrismaVoucherRepository implements VoucherRepo {
 
   /**
    * Format filter to support both regular field filtering AND active date filtering.
-   * Special handling: Referral vouchers are only visible to their designated user.
+   * Special handling:
+   * - Vouchers with userId are private and only visible to that user.
+   * - Public vouchers (userId null) remain visible to everyone.
+   * - Referral vouchers stay private (always tied to userId).
    */
   private formatFilter(filter: Partial<VoucherFilter>, options?: VoucherQueryOptions): Prisma.VoucherWhereInput {
     const { activeOnDate, name, percentage, amount, type, isWithMinimum, minimumPrice, userId, ...voucherFields } = filter;
@@ -158,21 +161,21 @@ export class PrismaVoucherRepository implements VoucherRepo {
       ...voucherFields,
     };
 
-    // Filter referral vouchers to only show to their designated user
-    // Non-referral vouchers are always visible
+    // Filter user-assigned vouchers to only show to their designated user.
+    // Public vouchers are userId=null.
     if (!includeAllReferral) {
       if (userId) {
         formattedFilter.OR = [
-          // Non-referral vouchers visible to everyone
-          { voucherType: { not: "REFERRAL" } },
-          // Referral vouchers only visible to designated user
+          // Public non-referral vouchers visible to everyone
+          { userId: null, voucherType: { not: "REFERRAL" } },
+          // All private vouchers for current user (including referral/reward vouchers)
           {
-            voucherType: "REFERRAL",
             userId: userId,
           },
         ];
       } else {
-        // If no userId provided, only show non-referral vouchers
+        // Unauthenticated users can only see public non-referral vouchers
+        formattedFilter.userId = null;
         formattedFilter.voucherType = { not: "REFERRAL" };
       }
     }
@@ -263,6 +266,7 @@ export class PrismaVoucherRepository implements VoucherRepo {
       where: {
         code,
         isSoftDeleted: false,
+        isRedeemed: false,
         discount: {
           isSoftDeleted: false,
         },
@@ -281,6 +285,7 @@ export class PrismaVoucherRepository implements VoucherRepo {
       where: {
         id: { in: ids },
         isSoftDeleted: false,
+        isRedeemed: false,
         discount: {
           isSoftDeleted: false,
         },
@@ -305,6 +310,7 @@ export class PrismaVoucherRepository implements VoucherRepo {
           code: { equals: code, mode: "insensitive" },
         })),
         isSoftDeleted: false,
+        isRedeemed: false,
         discount: {
           isSoftDeleted: false,
         },

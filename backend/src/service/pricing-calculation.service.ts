@@ -144,9 +144,17 @@ export class PricingCalculationService {
    * @param discountIds Array of discount IDs to apply
    * @param voucherIds Array of voucher IDs to apply (applied after discounts)
    * @param db PrismaClient instance
+   * @param shippingCost Shipping cost used for FREEDELIVERY voucher calculation
    * @returns Total discount amount
    */
-  static async calculateTotalDiscount(subtotal: number, discountIds: string[] | undefined, voucherIds: string[] | undefined, db: PrismaClient, userId?: string): Promise<number> {
+  static async calculateTotalDiscount(
+    subtotal: number,
+    discountIds: string[] | undefined,
+    voucherIds: string[] | undefined,
+    db: PrismaClient,
+    userId?: string,
+    shippingCost: number = 0,
+  ): Promise<number> {
     let totalDiscount = 0;
 
     // Calculate discount using percentage and amount discounts (applied before vouchers)
@@ -159,7 +167,13 @@ export class PricingCalculationService {
     // Vouchers are applied after discounts
     if (voucherIds && voucherIds.length > 0) {
       const priceAfterDiscounts = subtotal - totalDiscount;
-      const voucherAmount = await this.calculateVouchers(priceAfterDiscounts, voucherIds, db, userId);
+      const voucherAmount = await this.calculateVouchers(
+        priceAfterDiscounts,
+        voucherIds,
+        db,
+        userId,
+        shippingCost,
+      );
       totalDiscount += voucherAmount;
     }
 
@@ -258,13 +272,25 @@ export class PricingCalculationService {
    * @param priceAfterDiscounts The price after discount calculations
    * @param voucherIds Array of voucher IDs to apply
    * @param db PrismaClient instance
+   * @param shippingCost Shipping cost used for FREEDELIVERY voucher calculation
    * @returns Total voucher discount amount
    */
-  private static async calculateVouchers(priceAfterDiscounts: number, voucherIds: string[], db: PrismaClient, userId?: string): Promise<number> {
+  private static async calculateVouchers(
+    priceAfterDiscounts: number,
+    voucherIds: string[],
+    db: PrismaClient,
+    userId?: string,
+    shippingCost: number = 0,
+  ): Promise<number> {
     const { VoucherService } = await import("./voucher/voucher.service");
     const { PrismaVoucherRepository } = await import("../repository/voucher/adapter_prisma");
     const voucherRepo = new PrismaVoucherRepository(db);
     const voucherService = new VoucherService(voucherRepo);
-    return voucherService.calculateVoucherDiscount(voucherIds, priceAfterDiscounts, userId);
+    return voucherService.calculateVoucherDiscount(
+      voucherIds,
+      priceAfterDiscounts,
+      userId,
+      shippingCost,
+    );
   }
 }

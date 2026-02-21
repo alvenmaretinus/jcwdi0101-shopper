@@ -30,6 +30,7 @@ export default function CheckoutShell() {
     loading: isCartLoading,
     subtotal,
     serverPricingDiscount,
+    refetch: refetchCart,
   } = useCart();
 
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
@@ -40,10 +41,12 @@ export default function CheckoutShell() {
     "BANK_TRANSFER" | "PAYMENT_GATEWAY"
   >("BANK_TRANSFER");
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [isNavigatingToPayment, setIsNavigatingToPayment] = useState(false);
 
   const [voucherInput, setVoucherInput] = useState("");
   const [appliedVouchers, setAppliedVouchers] = useState<string[]>([]);
-  const [voucherDiscount, setVoucherDiscount] = useState(0);
+  const [voucherProductDiscount, setVoucherProductDiscount] = useState(0);
+  const [voucherShippingDiscount, setVoucherShippingDiscount] = useState(0);
 
   // Early Store Selection state
   const [shippingData, setShippingData] = useState<ShippingCost | null>(null);
@@ -118,9 +121,10 @@ export default function CheckoutShell() {
   }, [selectedAddress?.id, fetchShippingInfo]);
 
   useEffect(() => {
-    if (!isCartLoading && (!cartItems || cartItems.length === 0))
+    if (isNavigatingToPayment) return;
+    if (!isCartLoading && !isCreatingOrder && (!cartItems || cartItems.length === 0))
       router.push("/cart");
-  }, [cartItems, isCartLoading, router]);
+  }, [cartItems, isCartLoading, isCreatingOrder, isNavigatingToPayment, router]);
 
   // Handle shipping method selection — extract cost from selected method
   const handleShippingMethodSelect = (methodKey: string, cost: number) => {
@@ -142,8 +146,11 @@ export default function CheckoutShell() {
 
       if (!order) return;
 
-      router.push(`/order/${order.id}/payment`);
+      setIsNavigatingToPayment(true);
+      await refetchCart(true);
+      router.replace(`/order/${order.id}/payment`);
     } catch (err) {
+      setIsNavigatingToPayment(false);
       console.error("[CheckoutShell] Error creating order:", err);
     } finally {
       setIsCreatingOrder(false);
@@ -153,15 +160,29 @@ export default function CheckoutShell() {
   const baseSubtotal = subtotal || 0;
   const productDiscount = serverPricingDiscount || 0;
   const cartSubtotal = Math.max(0, baseSubtotal - productDiscount);
-  const discount = productDiscount + voucherDiscount;
-  const discountNote =
-    productDiscount > 0
-      ? voucherDiscount > 0
-        ? "Includes product promo/BOGO and voucher discount"
-        : "Includes product promo/BOGO discount"
-      : undefined;
+  const discount = voucherProductDiscount;
   const shippingCost = selectedShippingCost;
-  const total = Math.max(0, baseSubtotal - discount + shippingCost);
+  const appliedShippingDiscount = Math.max(
+    0,
+    Math.min(voucherShippingDiscount, shippingCost)
+  );
+  const finalShippingCost = Math.max(0, shippingCost - appliedShippingDiscount);
+  const discountNote =
+    discount > 0 && productDiscount > 0
+      ? "Subtotal already includes product promo/BOGO"
+      : undefined;
+  const total = Math.max(0, cartSubtotal - discount + finalShippingCost);
+
+  const readVoucherResult = useCallback((resp: unknown): CalculateVoucherResponse => {
+    const isApiWrapper = (
+      value: unknown
+    ): value is { data: CalculateVoucherResponse } =>
+      typeof value === "object" && value !== null && "data" in value;
+
+    return isApiWrapper(resp)
+      ? resp.data
+      : (resp as CalculateVoucherResponse);
+  }, []);
 
   const applyVoucher = async (): Promise<void> => {
     const normalizedCode = voucherInput.trim().toUpperCase();
@@ -176,17 +197,22 @@ export default function CheckoutShell() {
       const resp = await calculateVoucher({
         voucherCodes: ids,
         subtotal: cartSubtotal,
+        shippingCost: selectedShippingCost,
       });
-      const isApiWrapper = (
-        v: unknown
-      ): v is { data: CalculateVoucherResponse } =>
-        typeof v === "object" && v !== null && "data" in v;
-      const result: CalculateVoucherResponse = isApiWrapper(resp)
-        ? resp.data
-        : (resp as CalculateVoucherResponse);
-      const totalDiscount = result.totalDiscount ?? 0;
+      const result = readVoucherResult(resp);
+      const rawTotalDiscount = result.totalDiscount ?? 0;
+      const rawShippingDiscount = result.shippingDiscount ?? 0;
+      const shippingDiscount = Math.max(
+        0,
+        Math.min(rawShippingDiscount, selectedShippingCost)
+      );
+      const productDiscountValue = Math.max(
+        0,
+        (result.productDiscount ?? rawTotalDiscount - shippingDiscount) || 0
+      );
       setAppliedVouchers(ids);
-      setVoucherDiscount(totalDiscount);
+      setVoucherProductDiscount(productDiscountValue);
+      setVoucherShippingDiscount(shippingDiscount);
       setVoucherInput("");
     } catch (err) {
       console.error("[CheckoutShell] Apply voucher failed:", err);
@@ -196,22 +222,76 @@ export default function CheckoutShell() {
   const removeVoucher = (id: string) => {
     const ids = appliedVouchers.filter((v) => v !== id);
     setAppliedVouchers(ids);
-    if (ids.length === 0) setVoucherDiscount(0);
-    else {
-      calculateVoucher({ voucherCodes: ids, subtotal: cartSubtotal })
+    if (ids.length === 0) {
+      setVoucherProductDiscount(0);
+      setVoucherShippingDiscount(0);
+    } else {
+      calculateVoucher({
+        voucherCodes: ids,
+        subtotal: cartSubtotal,
+        shippingCost: selectedShippingCost,
+      })
         .then((resp) => {
-          const isApiWrapper = (
-            v: unknown
-          ): v is { data: CalculateVoucherResponse } =>
-            typeof v === "object" && v !== null && "data" in v;
-          const result: CalculateVoucherResponse = isApiWrapper(resp)
-            ? resp.data
-            : (resp as CalculateVoucherResponse);
-          setVoucherDiscount(result.totalDiscount ?? 0);
+          const result = readVoucherResult(resp);
+          const rawTotalDiscount = result.totalDiscount ?? 0;
+          const rawShippingDiscount = result.shippingDiscount ?? 0;
+          const shippingDiscount = Math.max(
+            0,
+            Math.min(rawShippingDiscount, selectedShippingCost)
+          );
+          const productDiscountValue = Math.max(
+            0,
+            (result.productDiscount ?? rawTotalDiscount - shippingDiscount) || 0
+          );
+          setVoucherProductDiscount(productDiscountValue);
+          setVoucherShippingDiscount(shippingDiscount);
         })
-        .catch(() => setVoucherDiscount(0));
+        .catch(() => {
+          setVoucherProductDiscount(0);
+          setVoucherShippingDiscount(0);
+        });
     }
   };
+
+  useEffect(() => {
+    if (appliedVouchers.length === 0) {
+      setVoucherProductDiscount(0);
+      setVoucherShippingDiscount(0);
+      return;
+    }
+
+    let cancelled = false;
+    calculateVoucher({
+      voucherCodes: appliedVouchers,
+      subtotal: cartSubtotal,
+      shippingCost: selectedShippingCost,
+    })
+      .then((resp) => {
+        if (cancelled) return;
+        const result = readVoucherResult(resp);
+        const rawTotalDiscount = result.totalDiscount ?? 0;
+        const rawShippingDiscount = result.shippingDiscount ?? 0;
+        const shippingDiscount = Math.max(
+          0,
+          Math.min(rawShippingDiscount, selectedShippingCost)
+        );
+        const productDiscountValue = Math.max(
+          0,
+          (result.productDiscount ?? rawTotalDiscount - shippingDiscount) || 0
+        );
+        setVoucherProductDiscount(productDiscountValue);
+        setVoucherShippingDiscount(shippingDiscount);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setVoucherProductDiscount(0);
+        setVoucherShippingDiscount(0);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appliedVouchers, cartSubtotal, readVoucherResult, selectedShippingCost]);
 
   const orderItems = (cartItems || []).map((it) => ({
     id: String(it.id),
@@ -265,16 +345,12 @@ export default function CheckoutShell() {
               subtotal={cartSubtotal}
               discount={discount}
               discountNote={discountNote}
-              shippingCost={shippingCost}
+              shippingCost={finalShippingCost}
+              shippingOriginalCost={shippingCost}
+              shippingDiscount={appliedShippingDiscount}
               total={total}
               onPlaceOrder={handlePlaceOrder}
               isCreatingOrder={isCreatingOrder}
-              isCartLoading={isCartLoading}
-              disablePlace={
-                !selectedAddress ||
-                !selectedShippingMethod ||
-                (cartItems && cartItems.length === 0)
-              }
             />
           </div>
         </div>
