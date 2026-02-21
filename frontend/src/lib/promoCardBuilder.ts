@@ -1,5 +1,4 @@
 import { Voucher } from "@/types/Voucher";
-import { Discount } from "@/types/Discount";
 
 export interface PromoCard {
   title: string;
