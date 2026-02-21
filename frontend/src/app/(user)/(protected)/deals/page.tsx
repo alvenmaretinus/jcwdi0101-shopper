@@ -6,23 +6,27 @@ import { ProductCard } from "@/components/products/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Percent, Gift, ChevronLeft, ChevronRight } from "lucide-react";
 import { getVouchers } from "@/services/voucher";
-import { getProductsWithDiscounts, type ProductWithDiscount } from "@/services/discount";
+import { getDiscounts, getProductsWithDiscounts, type ProductWithDiscount } from "@/services/discount";
 import { VoucherCard } from "@/components/cards/VoucherCard";
-import { buildPromoCards, buildReferralCards } from "@/lib/promoCardBuilder";
+import { buildPromoCards, buildReferralCards, buildStorewideDiscountCards } from "@/lib/promoCardBuilder";
 import type { Voucher } from "@/types/Voucher";
+import type { Discount } from "@/types/Discount";
 
 const Deals = () => {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [storewideDiscounts, setStorewideDiscounts] = useState<Discount[]>([]);
   const [flashDeals, setFlashDeals] = useState<ProductWithDiscount[]>([]);
   const [bogoProducts, setBogoProducts] = useState<ProductWithDiscount[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Pagination states
   const [promoPage, setPromoPage] = useState(1);
+  const [storewidePage, setStorewidePage] = useState(1);
   const [referralPage, setReferralPage] = useState(1);
   const [flashPage, setFlashPage] = useState(1);
   
   const PROMO_PER_PAGE = 3;
+  const STOREWIDE_PER_PAGE = 3;
   const REFERRAL_PER_PAGE = 3;
   const DEALS_PER_PAGE = 4;
 
@@ -41,14 +45,20 @@ const Deals = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [vouchersResponse, percentageDealsResponse, amountDealsResponse, bogoResponse] = await Promise.all([
+        const [vouchersResponse, storewideResponse, percentageDealsResponse, amountDealsResponse, bogoResponse] = await Promise.all([
           getVouchers({ isRedeemed: false }),
+          getDiscounts({ isActive: true }),
           getProductsWithDiscounts({ isActive: true, type: "PERCENTAGE" }),
           getProductsWithDiscounts({ isActive: true, type: "FIXED_AMOUNT" }),
           getProductsWithDiscounts({ isActive: true, type: "QUANTITY" }),
         ]);
         
         setVouchers(vouchersResponse.data);
+        setStorewideDiscounts(
+          storewideResponse.data.filter(
+            (discount) => !discount.isTiedToProduct && !discount.isVoucher
+          )
+        );
         setFlashDeals([...percentageDealsResponse.data, ...amountDealsResponse.data]);
         setBogoProducts(bogoResponse.data);
       } catch (error) {
@@ -63,6 +73,7 @@ const Deals = () => {
 
   // Transform vouchers into promo cards using shared utility
   const promoCards = buildPromoCards(vouchers);
+  const storewideCards = buildStorewideDiscountCards(storewideDiscounts);
   const referralCards = buildReferralCards(vouchers);
 
   // Pagination logic
@@ -78,6 +89,20 @@ const Deals = () => {
 
   const handlePromoPrev = () => {
     if (promoPage > 1) setPromoPage(promoPage - 1);
+  };
+
+  const totalStorewidePages = Math.ceil(storewideCards.length / STOREWIDE_PER_PAGE);
+  const paginatedStorewide = storewideCards.slice(
+    (storewidePage - 1) * STOREWIDE_PER_PAGE,
+    storewidePage * STOREWIDE_PER_PAGE
+  );
+
+  const handleStorewideNext = () => {
+    if (storewidePage < totalStorewidePages) setStorewidePage(storewidePage + 1);
+  };
+
+  const handleStorewidePrev = () => {
+    if (storewidePage > 1) setStorewidePage(storewidePage - 1);
   };
 
   const totalReferralPages = Math.ceil(referralCards.length / REFERRAL_PER_PAGE);
@@ -361,6 +386,54 @@ const Deals = () => {
                   gradient={gradientsPink[((promoPage - 1) * PROMO_PER_PAGE + index) % gradientsPink.length]}
                 />
               ))}
+            </div>
+          </section>
+
+          {/* Storewide Discounts */}
+          <section className="mb-16">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <span className="text-2xl">🛍️</span>
+                Storewide Discounts
+              </h2>
+              {totalStorewidePages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleStorewidePrev}
+                    disabled={storewidePage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {storewidePage} / {totalStorewidePages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleStorewideNext}
+                    disabled={storewidePage === totalStorewidePages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="grid md:grid-cols-3 gap-6">
+              {paginatedStorewide.length > 0 ? (
+                paginatedStorewide.map((promo, index) => (
+                  <VoucherCard
+                    key={promo.id || index}
+                    promo={promo}
+                    gradient={gradientsBlue[((storewidePage - 1) * STOREWIDE_PER_PAGE + index) % gradientsBlue.length]}
+                  />
+                ))
+              ) : (
+                <div className="col-span-3 text-center py-8 text-muted-foreground">
+                  No storewide discounts available at the moment
+                </div>
+              )}
             </div>
           </section>
 

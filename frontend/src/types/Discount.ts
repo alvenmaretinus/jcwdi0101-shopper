@@ -9,6 +9,7 @@ export interface Discount {
   isLimited: boolean;
   limit?: number;
   useCounter?: number;
+  isVoucher?: boolean;
   isTiedToProduct: boolean;
   productId?: string;
   buyQuantity?: number;

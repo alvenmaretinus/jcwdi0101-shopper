@@ -1,3 +1,4 @@
+import { Discount } from "@/types/Discount";
 import { Voucher } from "@/types/Voucher";
 
 export interface PromoCard {
@@ -60,6 +61,16 @@ export function getEmojiForVoucher(
   }
   
   return "🎁";
+}
+
+export function getEmojiForDiscount(discount: Discount): string {
+  if (discount.type === "QUANTITY") {
+    return "🎁";
+  }
+  if (discount.type === "FIXED_AMOUNT") {
+    return "💸";
+  }
+  return "🏷️";
 }
 
 /**
@@ -154,4 +165,48 @@ export function buildReferralCards(vouchers: Voucher[]): PromoCard[] {
         ),
       };
     });
+}
+
+/**
+ * Builds promo cards from non-voucher storewide discounts (for display in UI)
+ */
+export function buildStorewideDiscountCards(discounts: Discount[]): PromoCard[] {
+  return discounts.map((discount) => {
+    let discountDisplay = "";
+    let description = "";
+
+    if (discount.type === "PERCENTAGE" && discount.percentage) {
+      discountDisplay = `${discount.percentage}%`;
+      description = `Get ${discount.percentage}% off`;
+    } else if (
+      discount.type === "QUANTITY" &&
+      discount.buyQuantity &&
+      discount.freeQuantity
+    ) {
+      discountDisplay = `B${discount.buyQuantity}G${discount.freeQuantity}`;
+      description = `Buy ${discount.buyQuantity}, get ${discount.freeQuantity} free`;
+    } else if (discount.type === "FIXED_AMOUNT") {
+      const amount = discount.amount ?? 0;
+      discountDisplay = amount === 0 ? "FREE" : formatRupiah(amount);
+      description = amount === 0 ? "Free delivery" : `Get ${formatRupiah(amount)} off`;
+    }
+
+    if (discount.isWithMinimum && discount.minimumPrice) {
+      description += ` (min. ${formatRupiah(discount.minimumPrice)})`;
+    }
+
+    return {
+      id: discount.id,
+      title: discount.name || "Storewide Discount",
+      description,
+      discount: discountDisplay,
+      emoji: getEmojiForDiscount(discount),
+      expiresIn: getExpiresInLabel(discount.endsAt),
+      remainingUses: getRemainingUsesLabel(
+        discount.isLimited,
+        discount.limit,
+        discount.useCounter
+      ),
+    };
+  });
 }
