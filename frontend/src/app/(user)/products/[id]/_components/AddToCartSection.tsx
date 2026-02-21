@@ -13,18 +13,15 @@ export function AddToCartSection({ productId, totalStock }: AddToCartSectionProp
 
   return (
     <>
-      <div className="flex gap-3 pt-6">
+      <div className="pt-6">
         <Button
           size="lg"
-          className="flex-1"
+          className="w-full"
           disabled={totalStock === 0}
           onClick={() => addToCart(productId)}
         >
           <ShoppingCart className="h-5 w-5 mr-2" />
           Add to Cart
-        </Button>
-        <Button size="lg" variant="outline">
-          Buy Now
         </Button>
       </div>
 

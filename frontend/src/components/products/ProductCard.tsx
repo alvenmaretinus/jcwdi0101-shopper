@@ -1,6 +1,6 @@
 "use client";
 import  Link  from "next/link";
-import { Plus, Heart } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductWithDetails } from "@/services/product/getProducts";
@@ -85,11 +85,6 @@ export function ProductCard({ product, discountBadge, bugoBadge }: ProductCardPr
           </div>
         )}
       </div>
-
-      {/* Wishlist button */}
-      <button className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-card/80 backdrop-blur-sm flex items-center justify-center shadow-soft opacity-0 group-hover:opacity-100 transition-opacity hover:bg-berry hover:text-white">
-        <Heart className="h-4 w-4" />
-      </button>
 
       {/* Image */}
       <Link href={`/products/${product.id}`}>

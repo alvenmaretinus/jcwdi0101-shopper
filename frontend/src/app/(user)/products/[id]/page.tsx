@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Store, Package, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { AddToCartSection } from "./_components/AddToCartSection";
+import { QuantityDiscountsSection } from "./_components/QuantityDiscountsSection";
 
 interface ProductDetailPageProps {
   params: Promise<{ id: string }>;
@@ -129,6 +130,11 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                   </div>
                 )}
               </div>
+
+              {/* Quantity Discounts */}
+              {bestDiscount?.quantityDiscounts && (
+                <QuantityDiscountsSection quantityDiscounts={bestDiscount.quantityDiscounts} />
+              )}
 
               {/* Stock Info */}
               <div className="space-y-3">
