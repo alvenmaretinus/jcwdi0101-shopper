@@ -45,16 +45,18 @@ export function getExpiresInLabel(endsAt?: string | Date | null): string {
   return "Expires soon";
 }
 
-export function getEmojiForDiscount(discount: Discount | { name?: string | null; type?: string }): string {
-  const name = "name" in discount ? discount.name || "" : "";
-  
-  if ("type" in discount && discount.type === "FREEDELIVERY") {
+export function getEmojiForVoucher(
+  voucher: Voucher | { voucherType?: string; discount: { name?: string | null } }
+): string {
+  if (voucher.voucherType === "FREEDELIVERY") {
     return "🚚";
   }
   
-  if (name.toLowerCase().includes("dairy")) {
+  const name = voucher.discount.name?.toLowerCase() || "";
+  
+  if (name.includes("dairy")) {
     return "🧀";
-  } else if (name.toLowerCase().includes("produce") || name.toLowerCase().includes("fresh")) {
+  } else if (name.includes("produce") || name.includes("fresh")) {
     return "🥗";
   }
   
@@ -72,7 +74,6 @@ export function buildPromoCards(vouchers: Voucher[]): PromoCard[] {
       const discount = voucher.discount;
       let discountDisplay = "";
       let description = "";
-      let emoji = "🎁";
 
       if (discount.type === "PERCENTAGE" && discount.percentage) {
         discountDisplay = `${discount.percentage}%`;
@@ -91,17 +92,7 @@ export function buildPromoCards(vouchers: Voucher[]): PromoCard[] {
           : "Free delivery";
       }
 
-      if (voucher.voucherType === "FREEDELIVERY") {
-        emoji = "🚚";
-      } else if (discount.name?.toLowerCase().includes("dairy")) {
-        emoji = "🧀";
-      } else if (
-        discount.name?.toLowerCase().includes("produce") ||
-        discount.name?.toLowerCase().includes("fresh")
-      ) {
-        emoji = "🥗";
-      }
-
+      const emoji = getEmojiForVoucher(voucher);
       const expiresIn = getExpiresInLabel(discount.endsAt);
 
       return {

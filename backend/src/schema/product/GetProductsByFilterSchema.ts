@@ -45,6 +45,17 @@ export const GetProductsByFilterSchema = z
       }, z.boolean())
       .optional()
       .default(false),
+    withDiscounts: z
+      .preprocess((v) => {
+        if (v === undefined) return false;
+        if (typeof v === "boolean") return v;
+        const s = String(v).toLowerCase();
+        if (s === "true" || s === "1") return true;
+        if (s === "false" || s === "0") return false;
+        return false;
+      }, z.boolean())
+      .optional()
+      .default(false),
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   })
@@ -57,6 +68,7 @@ export const GetProductsByFilterSchema = z
       inStockOnly: raw.inStockOnly ?? false,
     },
     withStock: raw.withStock ?? false,
+    withDiscounts: raw.withDiscounts ?? false,
     pagination: {
       page: raw.page,
       limit: raw.limit,

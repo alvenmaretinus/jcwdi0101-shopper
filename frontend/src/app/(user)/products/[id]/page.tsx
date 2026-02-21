@@ -1,6 +1,5 @@
 import { Layout } from "@/components/layout/Layout";
 import { getProducts } from "@/services/product/getProducts";
-import { getProductsWithDiscounts } from "@/services/discount";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -17,10 +16,8 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
   const { id } = await params;
   const nextHeaders = await headers();
 
-  const [response, productDiscountsResponse] = await Promise.all([
-    getProducts({ id, withStock: true }, nextHeaders),
-    getProductsWithDiscounts({ productId: id, isActive: true, limit: 100 }),
-  ]);
+  // Fetch product with stock and discounts calculated on backend
+  const response = await getProducts({ id, withStock: true, withDiscounts: true }, nextHeaders);
 
   const product = response.data[0];
 
@@ -45,124 +42,8 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
     }).format(price);
   };
 
-  const getDiscountedPrice = (price: number) => {
-    const applicableDiscounts = productDiscountsResponse.data.filter((discount) => {
-      if (!discount.isTiedToProduct || discount.productId !== product.id) return false;
-      if (discount.isWithMinimum && discount.minimumPrice && price < discount.minimumPrice) {
-        return false;
-      }
-      return discount.type === "PERCENTAGE" || discount.type === "FIXED_AMOUNT";
-    });
-
-    if (applicableDiscounts.length === 0) {
-      return null;
-    }
-
-    const percentageDiscounts = applicableDiscounts
-      .filter((discount) => discount.type === "PERCENTAGE")
-      .sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
-
-    const amountDiscounts = applicableDiscounts
-      .filter((discount) => discount.type === "FIXED_AMOUNT")
-      .sort((a, b) => Number(b.amount ?? 0) - Number(a.amount ?? 0));
-
-    let totalDiscount = 0;
-    let remainingPrice = price;
-    let appliedCount = 0;
-    const appliedDiscounts: Array<{
-      id: string;
-      name: string;
-      label: string;
-      savedAmount: number;
-    }> = [];
-
-    const trackAppliedDiscount = (
-      discount: (typeof applicableDiscounts)[number],
-      actualDiscount: number
-    ) => {
-      if (actualDiscount <= 0) return;
-      const label =
-        discount.type === "PERCENTAGE"
-          ? `${Number(discount.percentage ?? 0)}%`
-          : formatPrice(Number(discount.amount ?? 0));
-
-      appliedDiscounts.push({
-        id: discount.id,
-        name: discount.name,
-        label,
-        savedAmount: Math.round(actualDiscount),
-      });
-    };
-
-    while (percentageDiscounts.length > 0 && amountDiscounts.length > 0 && remainingPrice > 0) {
-      const pctDiscount = percentageDiscounts[0];
-      const amtDiscount = amountDiscounts[0];
-
-      const pctAmount = remainingPrice * (Number(pctDiscount.percentage ?? 0) / 100);
-      const amtAmount = Number(amtDiscount.amount ?? 0);
-
-      if (pctAmount >= amtAmount) {
-        const actualDiscount = Math.min(pctAmount, remainingPrice);
-        if (actualDiscount > 0) {
-          totalDiscount += actualDiscount;
-          remainingPrice -= actualDiscount;
-          appliedCount += 1;
-          trackAppliedDiscount(pctDiscount, actualDiscount);
-        }
-        percentageDiscounts.shift();
-      } else {
-        const actualDiscount = Math.min(amtAmount, remainingPrice);
-        if (actualDiscount > 0) {
-          totalDiscount += actualDiscount;
-          remainingPrice -= actualDiscount;
-          appliedCount += 1;
-          trackAppliedDiscount(amtDiscount, actualDiscount);
-        }
-        amountDiscounts.shift();
-      }
-    }
-
-    while (percentageDiscounts.length > 0 && remainingPrice > 0) {
-      const pctDiscount = percentageDiscounts.shift();
-      if (!pctDiscount) break;
-      const pctAmount = remainingPrice * (Number(pctDiscount.percentage ?? 0) / 100);
-      const actualDiscount = Math.min(pctAmount, remainingPrice);
-      if (actualDiscount > 0) {
-        totalDiscount += actualDiscount;
-        remainingPrice -= actualDiscount;
-        appliedCount += 1;
-        trackAppliedDiscount(pctDiscount, actualDiscount);
-      }
-    }
-
-    while (amountDiscounts.length > 0 && remainingPrice > 0) {
-      const amtDiscount = amountDiscounts.shift();
-      if (!amtDiscount) break;
-      const amtAmount = Number(amtDiscount.amount ?? 0);
-      const actualDiscount = Math.min(amtAmount, remainingPrice);
-      if (actualDiscount > 0) {
-        totalDiscount += actualDiscount;
-        remainingPrice -= actualDiscount;
-        appliedCount += 1;
-        trackAppliedDiscount(amtDiscount, actualDiscount);
-      }
-    }
-
-    const discountedPrice = Math.max(0, Math.round(price - totalDiscount));
-
-    if (discountedPrice >= price || appliedCount === 0) {
-      return null;
-    }
-
-    return {
-      discountedPrice,
-      totalDiscount: Math.round(totalDiscount),
-      appliedCount,
-      appliedDiscounts,
-    };
-  };
-
-  const bestDiscount = getDiscountedPrice(product.price);
+  // Get discount pricing from backend calculation
+  const bestDiscount = product.discountedPricing;
 
   return (
     <Layout>

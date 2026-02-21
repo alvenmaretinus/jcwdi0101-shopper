@@ -1,4 +1,3 @@
-import Decimal from "decimal.js";
 import { DiscountResponse } from "../../repository/discount/entity";
 
 export interface CalculatedDiscount {
@@ -57,6 +56,14 @@ export function calculateStackedDiscount(
   let appliedCount = 0;
   const appliedDiscounts: CalculatedDiscount[] = [];
 
+  const formatPrice = (amount: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
   // Track applied discounts
   const trackAppliedDiscount = (
     discount: DiscountResponse,
@@ -66,7 +73,7 @@ export function calculateStackedDiscount(
     const label =
       discount.type === "PERCENTAGE"
         ? `${Number(discount.percentage ?? 0)}%`
-        : `Rp ${Number(discount.amount ?? 0).toLocaleString("id-ID")}`;
+        : formatPrice(Number(discount.amount ?? 0));
 
     appliedDiscounts.push({
       id: discount.id,

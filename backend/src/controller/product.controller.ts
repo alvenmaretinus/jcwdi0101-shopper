@@ -9,7 +9,7 @@ import { isAuth } from '../middleware/isAuth';
 import { isSuperAdmin } from '../middleware/isSuperAdmin';
 
 const productsRepo = new PrismaRepository(prisma);
-const productService = new ProductService(productsRepo);
+const productService = new ProductService(productsRepo, prisma);
 
 const router = Router();
 
@@ -17,14 +17,24 @@ const router = Router();
 router.get("/",  async (req, res) => {
     const inputData: GetProductsByFilterInput = GetProductsByFilterSchema.parse(req.query);
     const filter: FilterInput = inputData.filter;
-    const result = await productService.getProductsByFilterWithOptionalStock(filter, inputData.withStock, inputData.pagination);
+    const result = await productService.getProductsByFilterWithOptionalStock(
+        filter, 
+        inputData.withStock, 
+        inputData.withDiscounts,
+        inputData.pagination
+    );
     return res.json(result);    
 });
 
 // Non-logged in users can view products by id
 router.get("/:id", async (req, res) => {
     const inputData: GetProductByIdInput = GetProductByIdSchema.parse(req.params);
-    const result = await productService.getProductsByFilterWithOptionalStock({ id: inputData.id }, false);
+    const withDiscounts = req.query.withDiscounts === 'true' || req.query.withDiscounts === '1';
+    const result = await productService.getProductsByFilterWithOptionalStock(
+        { id: inputData.id }, 
+        false,
+        withDiscounts
+    );
     // For single product lookup, return just the data array (without pagination metadata)
     return res.json(result.data);
 });
