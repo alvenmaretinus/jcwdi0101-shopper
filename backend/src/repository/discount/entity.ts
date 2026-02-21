@@ -68,6 +68,20 @@ export type DiscountFilter = {
     activeOnDate?: Date;
 }
 
+export type AppliedDiscount = {
+    id: string;
+    name: string;
+    label: string;
+    savedAmount: number;
+};
+
+export type CalculatedPricing = {
+    discountedPrice: number;
+    totalDiscount: number;
+    appliedCount: number;
+    appliedDiscounts: AppliedDiscount[];
+};
+
 export type  DiscountResponse = {
     id: string;
 
@@ -112,7 +126,20 @@ export type  DiscountResponse = {
             id: string;
             url: string;
         }>;
+        productStores?: Array<{
+            id: string;
+            quantity: number;
+            storeId: string;
+            productId: string;
+            store: {
+                id: string;
+                name: string;
+            };
+        }>;
     };
+
+    // Optional: calculated pricing information when fetching products with discounts
+    calculatedPricing?: CalculatedPricing;
 }
     
 

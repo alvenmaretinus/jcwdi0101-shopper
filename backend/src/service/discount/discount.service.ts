@@ -3,6 +3,7 @@ import { DiscountCreateReq, DiscountFilter, DiscountResponse, DiscountUpdateReq 
 import { Service } from "./interface";
 import { DiscountRepo, PaginatedResponse } from "../../repository/discount/interface";
 import Decimal from "decimal.js";
+import { calculateStackedDiscount } from "../../lib/discount/calculateStackedDiscount";
 
 export class DiscountService implements Service {
    private repo: DiscountRepo;
@@ -56,7 +57,38 @@ export class DiscountService implements Service {
             ...(percentage !== undefined ? { percentage: new Decimal(percentage) } : {}),
         };
 
-        return this.repo.getProductsWithDiscounts(formattedFilter, { page, limit });
+        const result = await this.repo.getProductsWithDiscounts(formattedFilter, { page, limit });
+
+        // Group discounts by product and calculate pricing
+        const discountsByProduct = new Map<string, DiscountResponse[]>();
+        
+        result.data.forEach(discount => {
+            const productId = discount.product?.id;
+            if (productId) {
+                if (!discountsByProduct.has(productId)) {
+                    discountsByProduct.set(productId, []);
+                }
+                discountsByProduct.get(productId)!.push(discount);
+            }
+        });
+
+        // Calculate pricing for each discount group
+        const enhancedData = result.data.map(discount => {
+            if (discount.product?.id) {
+                const productDiscounts = discountsByProduct.get(discount.product.id) || [];
+                const pricing = calculateStackedDiscount(discount.product.price, productDiscounts);
+                return {
+                    ...discount,
+                    calculatedPricing: pricing,
+                };
+            }
+            return discount;
+        });
+
+        return {
+            data: enhancedData,
+            meta: result.meta,
+        };
     }
     
     async getDiscountById(id: string): Promise<DiscountResponse | null> {

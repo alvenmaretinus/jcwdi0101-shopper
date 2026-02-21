@@ -498,7 +498,7 @@ const Deals = () => {
           {/* Promo Cards */}
           <section className="mb-16">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="section-title flex items-center gap-2">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
                 <Gift className="h-6 w-6 text-primary" />
                 Promo Codes
               </h2>
@@ -579,7 +579,7 @@ const Deals = () => {
           {/* Referral Voucher Cards */}
           <section className="mb-16">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="section-title flex items-center gap-2">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
                 <span className="text-2xl">🤝</span>
                 Referral Vouchers
               </h2>
@@ -662,7 +662,7 @@ const Deals = () => {
           <section className="mb-16">
             <div className="mb-6">
               <div className="flex items-center justify-between">
-                <h2 className="section-title flex items-center gap-2">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
                   <Percent className="h-6 w-6 text-pink-600" />
                   Deals
                 </h2>
@@ -720,7 +720,7 @@ const Deals = () => {
           {/* Buy One Get One */}
           <section className="mb-16">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="section-title flex items-center gap-2">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
                 <span className="text-2xl">🎁</span>
                 Buy X Get Y Free
               </h2>

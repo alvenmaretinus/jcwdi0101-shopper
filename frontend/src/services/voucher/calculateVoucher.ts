@@ -1,7 +1,7 @@
 import { apiFetch } from "@/lib/apiFetch";
 
 export interface CalculateVoucherRequest {
-  voucherIds: string[];
+  voucherCodes: string[];
   subtotal: number;
 }
 

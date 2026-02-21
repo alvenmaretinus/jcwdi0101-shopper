@@ -10,6 +10,20 @@ export interface GetDiscountsParams {
   limit?: number;
 }
 
+export interface AppliedDiscount {
+  id: string;
+  name: string;
+  label: string;
+  savedAmount: number;
+}
+
+export interface CalculatedPricing {
+  discountedPrice: number;
+  totalDiscount: number;
+  appliedCount: number;
+  appliedDiscounts: AppliedDiscount[];
+}
+
 export interface ProductWithDiscount extends Discount {
   product?: {
     id: string;
@@ -37,6 +51,8 @@ export interface ProductWithDiscount extends Discount {
       };
     }>;
   };
+
+  calculatedPricing?: CalculatedPricing;
 }
 
 export interface PaginatedProductsWithDiscountsResponse {

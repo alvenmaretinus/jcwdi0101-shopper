@@ -1,0 +1,167 @@
+import { Voucher } from "@/types/Voucher";
+import { Discount } from "@/types/Discount";
+
+export interface PromoCard {
+  title: string;
+  description: string;
+  discount: string;
+  code?: string;
+  emoji: string;
+  expiresIn: string;
+  remainingUses: string;
+  id?: string;
+}
+
+export function getRemainingUsesLabel(
+  isLimited?: boolean,
+  limit?: number,
+  useCounter?: number
+): string {
+  if (!isLimited) return "Unlimited";
+  const totalLimit = typeof limit === "number" ? limit : 0;
+  const used = typeof useCounter === "number" ? useCounter : 0;
+  return String(Math.max(0, totalLimit - used));
+}
+
+export function formatRupiah(amount: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(Math.round(amount));
+}
+
+export function getExpiresInLabel(endsAt?: string | Date | null): string {
+  if (!endsAt) return "Ongoing";
+  const endDate = new Date(endsAt);
+  if (Number.isNaN(endDate.getTime())) return "Ongoing";
+  const now = new Date();
+  const diffTime = endDate.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays > 0) {
+    return `${diffDays} day${diffDays > 1 ? "s" : ""}`;
+  }
+  return "Expires soon";
+}
+
+export function getEmojiForDiscount(discount: Discount | { name?: string | null; type?: string }): string {
+  const name = "name" in discount ? discount.name || "" : "";
+  
+  if ("type" in discount && discount.type === "FREEDELIVERY") {
+    return "🚚";
+  }
+  
+  if (name.toLowerCase().includes("dairy")) {
+    return "🧀";
+  } else if (name.toLowerCase().includes("produce") || name.toLowerCase().includes("fresh")) {
+    return "🥗";
+  }
+  
+  return "🎁";
+}
+
+/**
+ * Builds promo cards from vouchers (for display in UI)
+ * Filters out referral vouchers
+ */
+export function buildPromoCards(vouchers: Voucher[]): PromoCard[] {
+  return vouchers
+    .filter((voucher) => voucher.voucherType !== "REFERRAL")
+    .map((voucher) => {
+      const discount = voucher.discount;
+      let discountDisplay = "";
+      let description = "";
+      let emoji = "🎁";
+
+      if (discount.type === "PERCENTAGE" && discount.percentage) {
+        discountDisplay = `${discount.percentage}%`;
+        description = `Get ${discount.percentage}% off`;
+      } else if (
+        discount.type === "QUANTITY" &&
+        discount.buyQuantity &&
+        discount.freeQuantity
+      ) {
+        discountDisplay = `B${discount.buyQuantity}G${discount.freeQuantity}`;
+        description = `Buy ${discount.buyQuantity}, get ${discount.freeQuantity} free`;
+      } else if (discount.type === "FIXED_AMOUNT") {
+        discountDisplay = "FREE";
+        description = discount.isWithMinimum
+          ? `Free delivery on orders above ${formatRupiah(discount.minimumPrice || 0)}`
+          : "Free delivery";
+      }
+
+      if (voucher.voucherType === "FREEDELIVERY") {
+        emoji = "🚚";
+      } else if (discount.name?.toLowerCase().includes("dairy")) {
+        emoji = "🧀";
+      } else if (
+        discount.name?.toLowerCase().includes("produce") ||
+        discount.name?.toLowerCase().includes("fresh")
+      ) {
+        emoji = "🥗";
+      }
+
+      const expiresIn = getExpiresInLabel(discount.endsAt);
+
+      return {
+        id: voucher.id,
+        title: discount.name || "Discount",
+        description,
+        discount: discountDisplay,
+        code: voucher.code,
+        emoji,
+        expiresIn,
+        remainingUses: getRemainingUsesLabel(
+          discount.isLimited,
+          discount.limit,
+          discount.useCounter
+        ),
+      };
+    });
+}
+
+/**
+ * Builds referral promo cards from vouchers (for display in UI)
+ * Filters only referral vouchers
+ */
+export function buildReferralCards(vouchers: Voucher[]): PromoCard[] {
+  return vouchers
+    .filter((voucher) => voucher.voucherType === "REFERRAL")
+    .map((voucher) => {
+      const discount = voucher.discount;
+      const roleLabel =
+        voucher.referralRole === "REFERRER" ? "For Referrer" : "For Referred User";
+      let discountDisplay = "REF";
+      let description = `${roleLabel}: referral reward voucher`;
+
+      if (discount.type === "PERCENTAGE" && discount.percentage) {
+        discountDisplay = `${discount.percentage}%`;
+        description = `${roleLabel}: ${discount.percentage}% off`;
+      } else if (discount.type === "FIXED_AMOUNT" && discount.amount) {
+        discountDisplay = formatRupiah(discount.amount);
+        description = `${roleLabel}: ${formatRupiah(discount.amount)} off`;
+      }
+
+      if (discount.isWithMinimum && discount.minimumPrice) {
+        description += ` (min. ${formatRupiah(discount.minimumPrice)})`;
+      }
+
+      const expiresIn = getExpiresInLabel(discount.endsAt);
+
+      return {
+        id: voucher.id,
+        title: `${discount.name || "Discount"} (${roleLabel})`,
+        description,
+        discount: discountDisplay,
+        code: voucher.code,
+        emoji: voucher.referralRole === "REFERRER" ? "🎉" : "🎁",
+        expiresIn,
+        remainingUses: getRemainingUsesLabel(
+          discount.isLimited,
+          discount.limit,
+          discount.useCounter
+        ),
+      };
+    });
+}
