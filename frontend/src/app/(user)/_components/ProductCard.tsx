@@ -34,9 +34,7 @@ export function ProductCard({ product }: ProductCardProps) {
     : 0;
 
   // Format weight display from product data
-  const weightDisplay = product.weight 
-    ? `${product.weight}g/pcs` 
-    : null;
+  const weightDisplay = product.weight ? `${product.weight}g/pcs` : null;
 
   const { addToCart } = useCart();
   const [isAdding, setIsAdding] = useState(false);
