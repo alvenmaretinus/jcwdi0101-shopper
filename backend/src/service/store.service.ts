@@ -14,6 +14,7 @@ import { GetNearestProductsInput } from "../schema/store/GetNearestProductsSchem
 import { prisma } from "../lib/db/prisma";
 import { AppError } from "../error/AppError";
 import { GetStoresWithEmployeeCountInput } from "../schema/store/GetStoresWithEmployeeCountSchema";
+import { calculateStackedDiscount } from "../lib/discount/calculateStackedDiscount";
 
 type StoreProduct = {
   id: string;
@@ -24,6 +25,12 @@ type StoreProduct = {
   category: string;
   images: string[];
   quantity: number;
+};
+
+type StoreProductWithPricing = StoreProduct & {
+  originalPrice: number;
+  discountAmount: number;
+  finalPrice: number;
 };
 
 export class StoreService {
@@ -61,7 +68,9 @@ export class StoreService {
     return await StoreRepository.getStoresWithEmployeeCount(data);
   }
 
-  static async getNearestProducts(data: GetNearestProductsInput) {
+  static async getNearestProducts(
+    data: GetNearestProductsInput,
+  ): Promise<StoreProductWithPricing[]> {
     const limit = data.limit;
     const stores = await StoreRepository.getStoresWithProducts();
 
@@ -114,7 +123,46 @@ export class StoreService {
       .map((id) => productMap.get(id))
       .filter((product) => product !== undefined);
 
-    return uniqueProducts.slice(0, limit);
+    const nearestProducts = uniqueProducts.slice(0, limit);
+    if (nearestProducts.length === 0) return [];
+
+    const now = new Date();
+    const productIds = nearestProducts.map((product) => product.id);
+    const discounts = await prisma.discount.findMany({
+      where: {
+        isTiedToProduct: true,
+        productId: { in: productIds },
+        isSoftDeleted: false,
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+        AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
+      },
+    });
+
+    const discountsByProduct = new Map<string, typeof discounts>();
+    discounts.forEach((discount) => {
+      if (!discount.productId) return;
+      const productDiscounts = discountsByProduct.get(discount.productId) ?? [];
+      productDiscounts.push(discount);
+      discountsByProduct.set(discount.productId, productDiscounts);
+    });
+
+    return nearestProducts.map((product) => {
+      const productDiscounts = discountsByProduct.get(product.id) ?? [];
+      const discountedPricing = calculateStackedDiscount(
+        product.price,
+        productDiscounts,
+      );
+      const originalPrice = product.price;
+      const finalPrice = discountedPricing.discountedPrice;
+
+      return {
+        ...product,
+        price: finalPrice,
+        originalPrice,
+        discountAmount: discountedPricing.totalDiscount,
+        finalPrice,
+      };
+    });
   }
 
   static async updateStore(data: UpdateStoreInput) {
