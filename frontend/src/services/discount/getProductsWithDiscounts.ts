@@ -36,6 +36,26 @@ export interface ProductWithDiscount extends Discount {
         name: string;
       };
     }>;
+    discountedPricing?: {
+      discountedPrice: number;
+      totalDiscount: number;
+      appliedCount: number;
+      appliedDiscounts: Array<{
+        id: string;
+        name: string;
+        label: string;
+        savedAmount: number;
+        endsAt?: string | Date | null;
+      }>;
+      earliestEndsAt?: string | Date | null;
+      quantityDiscounts?: Array<{
+        id: string;
+        name: string;
+        buyQuantity: number;
+        freeQuantity: number;
+        endsAt?: string | Date | null;
+      }>;
+    };
   };
 }
 

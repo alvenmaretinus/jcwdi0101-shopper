@@ -59,7 +59,7 @@ export async function seedDiscounts() {
       endsAt: thirtyDaysLater,
     },
     {
-      name: "Mega Weekend Sale",
+      name: "Mega Sale 25% Off",
       percentage: 25,
       type: "PERCENTAGE",
       isVoucher: true,
@@ -69,7 +69,7 @@ export async function seedDiscounts() {
       endsAt: twoDaysLater,
     },
     {
-      name: "Fruit Basket Special",
+      name: "Special 15% Off All Items",
       percentage: 15,
       type: "PERCENTAGE",
       isVoucher: true,

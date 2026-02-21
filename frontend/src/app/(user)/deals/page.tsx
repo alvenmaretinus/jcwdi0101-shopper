@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { ProductCard } from "@/components/products/ProductCard";
 import { Button } from "@/components/ui/button";
-import { Clock, Sparkles, Percent, Gift, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sparkles, Percent, Gift, ChevronLeft, ChevronRight } from "lucide-react";
 import { getVouchers } from "@/services/voucher";
 import { getProductsWithDiscounts, type ProductWithDiscount } from "@/services/discount";
 import { VoucherCard } from "@/components/cards/VoucherCard";
-import { buildPromoCards, buildReferralCards, formatRupiah } from "@/lib/promoCardBuilder";
+import { buildPromoCards, buildReferralCards } from "@/lib/promoCardBuilder";
 import type { Voucher } from "@/types/Voucher";
 
 const Deals = () => {
@@ -21,12 +21,10 @@ const Deals = () => {
   const [promoPage, setPromoPage] = useState(1);
   const [referralPage, setReferralPage] = useState(1);
   const [flashPage, setFlashPage] = useState(1);
-  const [bogoPage, setBogoPage] = useState(1);
   
   const PROMO_PER_PAGE = 3;
   const REFERRAL_PER_PAGE = 3;
   const DEALS_PER_PAGE = 4;
-  const BOGO_PER_PAGE = 4;
 
   const formatEndsIn = (endsAt?: string | Date | null) => {
     if (!endsAt) return "";
@@ -119,31 +117,23 @@ const Deals = () => {
       const discounts = group;
       if (discounts.length === 0) return null;
 
-      // Calculate the best discount available
-      let totalDiscount = 0;
-      let discountedPrice = product.price;
-      const appliedDiscounts: Array<{ label: string }> = [];
-
-      for (const discount of discounts) {
-        let discountAmount = 0;
-        if (discount.type === 'PERCENTAGE' && discount.percentage) {
-          discountAmount = (product.price * Number(discount.percentage)) / 100;
-          appliedDiscounts.push({ label: `${discount.percentage}% off` });
-        } else if (discount.type === 'FIXED_AMOUNT' && discount.amount) {
-          discountAmount = discount.amount;
-          appliedDiscounts.push({ label: `${formatRupiah(discount.amount)} off` });
-        }
-        totalDiscount += discountAmount;
+      const pricing = product.discountedPricing;
+      if (!pricing || pricing.appliedCount === 0) {
+        return null;
       }
 
-      discountedPrice = Math.max(0, product.price - totalDiscount);
-
-      const endsAtList = group
-        .map((discount) => (discount.endsAt ? new Date(discount.endsAt) : null))
-        .filter((date): date is Date => !!date && !Number.isNaN(date.getTime()))
-        .sort((a, b) => a.getTime() - b.getTime());
-
-      const earliestEndsAt = endsAtList[0] ?? null;
+      const totalDiscount = pricing.totalDiscount;
+      const discountedPrice = pricing.discountedPrice;
+      const earliestEndsAt = pricing.earliestEndsAt ?? null;
+      const discountBadge = pricing.appliedCount > 1
+        ? `${pricing.appliedCount} discounts applied`
+        : (pricing.appliedDiscounts[0]?.label || `${Math.round((pricing.totalDiscount / product.price) * 100)}% off`);
+      const bugoBadge = pricing.quantityDiscounts && pricing.quantityDiscounts.length > 0 ? {
+        label: pricing.quantityDiscounts.length > 1
+          ? `${pricing.quantityDiscounts.length} BXGY offers`
+          : `Buy ${pricing.quantityDiscounts[0].buyQuantity} get ${pricing.quantityDiscounts[0].freeQuantity} free`,
+        endsAt: pricing.quantityDiscounts[0].endsAt ?? null,
+      } : undefined;
 
       return {
         id: product.id,
@@ -171,56 +161,94 @@ const Deals = () => {
         createAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         discountBadge:
-          discounts.length > 1
-            ? `${discounts.length} discounts applied`
-            : (appliedDiscounts[0]?.label || `${formatRupiah(totalDiscount)} off`),
+          discountBadge,
+        bugoBadge,
         endsAt: earliestEndsAt,
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== null);
 
-  // Transform BOGO products - only show in-stock products
-  const transformedBogoProducts = bogoProducts
-    .filter((item) => {
-      if (!item.product) return false;
-      // Check if product has stock in any store
-      const hasStock = item.product.productStores?.some(
-        (store) => store.quantity > 0
-      );
-      return hasStock;
-    })
-    .map((item) => {
-      const product = item.product!;
+  const flashDealCards = transformedFlashDeals.map((product) => ({
+    product,
+    discountBadge: {
+      label: product.discountBadge || "",
+      endsAt: product.endsAt,
+    },
+    bugoBadge: product.bugoBadge,
+  }));
+
+  const bogoDealGroups = bogoProducts.reduce((acc, item) => {
+    const productId = item.product?.id;
+    if (!productId || !item.product) return acc;
+    if (!acc[productId]) {
+      acc[productId] = [];
+    }
+    acc[productId].push(item);
+    return acc;
+  }, {} as Record<string, ProductWithDiscount[]>);
+
+  const bogoDealCards = Object.values(bogoDealGroups)
+    .map((group) => {
+      const product = group[0]?.product;
+      if (!product) return null;
+
+      const hasStock = product.productStores?.some((store) => store.quantity > 0);
+      if (!hasStock) return null;
+
+      const bogoDiscount = group[0];
+      if (!bogoDiscount.buyQuantity || !bogoDiscount.freeQuantity) return null;
+
+      const endsAtList = group
+        .map((discount) => (discount.endsAt ? new Date(discount.endsAt) : null))
+        .filter((date): date is Date => !!date && !Number.isNaN(date.getTime()))
+        .sort((a, b) => a.getTime() - b.getTime());
+
+      const earliestEndsAt = endsAtList[0] ?? null;
 
       return {
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        weight: product.weight,
-        categoryId: product.categoryId,
-        category: {
-          id: product.category?.id || product.categoryId,
-          category: product.category?.category || "Products",
-          createdAt: new Date().toISOString(),
+        product: {
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          weight: product.weight,
+          categoryId: product.categoryId,
+          category: {
+            id: product.category?.id || product.categoryId,
+            category: product.category?.category || "Products",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          productImages: (product.productImages || []).map((img) => ({
+            ...img,
+            productId: product.id,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })),
+          productStores: product.productStores || [],
+          isSoftDeleted: false,
+          createAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
-        productImages: (product.productImages || []).map(img => ({
-          ...img,
-          productId: product.id,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })),
-        productStores: product.productStores || [],
-        isSoftDeleted: false,
-        createAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        discountBadge: {
+          label: "BXGY",
+          endsAt: earliestEndsAt,
+        },
+        bugoBadge: {
+          label: group.length > 1
+            ? `${group.length} BXGY offers`
+            : `Buy ${bogoDiscount.buyQuantity} get ${bogoDiscount.freeQuantity} free`,
+          endsAt: earliestEndsAt,
+        },
       };
-    });
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
-  // Flash deals pagination
-  const totalFlashPages = Math.ceil(transformedFlashDeals.length / DEALS_PER_PAGE);
-  const paginatedFlashDeals = transformedFlashDeals.slice(
+  const combinedDeals = [...flashDealCards, ...bogoDealCards];
+
+  // Deals pagination
+  const totalFlashPages = Math.ceil(combinedDeals.length / DEALS_PER_PAGE);
+  const paginatedFlashDeals = combinedDeals.slice(
     (flashPage - 1) * DEALS_PER_PAGE,
     flashPage * DEALS_PER_PAGE
   );
@@ -231,25 +259,6 @@ const Deals = () => {
 
   const handleFlashPrev = () => {
     if (flashPage > 1) setFlashPage(flashPage - 1);
-  };
-
-  // BOGO products pagination
-  const totalBogoPages = Math.ceil(transformedBogoProducts.length / BOGO_PER_PAGE);
-  const paginatedBogoProducts = transformedBogoProducts.slice(
-    (bogoPage - 1) * BOGO_PER_PAGE,
-    bogoPage * BOGO_PER_PAGE
-  );
-  const paginatedBogoData = bogoProducts.slice(
-    (bogoPage - 1) * BOGO_PER_PAGE,
-    bogoPage * BOGO_PER_PAGE
-  );
-
-  const handleBogoNext = () => {
-    if (bogoPage < totalBogoPages) setBogoPage(bogoPage + 1);
-  };
-
-  const handleBogoPrev = () => {
-    if (bogoPage > 1) setBogoPage(bogoPage - 1);
   };
 
   // Gradient colors for voucher cards
@@ -438,18 +447,14 @@ const Deals = () => {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
               {paginatedFlashDeals.length > 0 ? (
-                paginatedFlashDeals.map((product) => {
-                  return (
-                    <ProductCard 
-                      key={product.id} 
-                      product={product}
-                      discountBadge={{
-                        label: product.discountBadge || '',
-                        endsAt: product.endsAt
-                      }}
-                    />
-                  );
-                })
+                paginatedFlashDeals.map((deal) => (
+                  <ProductCard 
+                    key={deal.product.id} 
+                    product={deal.product}
+                    discountBadge={deal.discountBadge}
+                    bugoBadge={deal.bugoBadge}
+                  />
+                ))
               ) : (
                 <div className="col-span-4 text-center py-8 text-muted-foreground">
                   No deals available at the moment
@@ -458,61 +463,6 @@ const Deals = () => {
             </div>
           </section>
 
-          {/* Buy One Get One */}
-          <section className="mb-16">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <span className="text-2xl">🎁</span>
-                Buy X Get Y Free
-              </h2>
-              {totalBogoPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleBogoPrev}
-                    disabled={bogoPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    {bogoPage} / {totalBogoPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleBogoNext}
-                    disabled={bogoPage === totalBogoPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {paginatedBogoProducts.length > 0 ? (
-                paginatedBogoData.map((item, index) => {
-                  const product = paginatedBogoProducts[index];
-                  if (!product) return null;
-                  
-                  return (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      bugoBadge={{
-                        label: `Buy ${item.buyQuantity} get ${item.freeQuantity} free`,
-                        endsAt: item.endsAt
-                      }}
-                    />
-                  );
-                })
-              ) : (
-                <div className="col-span-4 text-center py-8 text-muted-foreground">
-                  No BXGY deals available at the moment
-                </div>
-              )}
-            </div>
-          </section>
         </div>
       </div>
     </Layout>

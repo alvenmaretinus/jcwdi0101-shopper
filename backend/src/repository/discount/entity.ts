@@ -1,4 +1,5 @@
 import Decimal from "decimal.js";
+import { StackedDiscountResult } from "../../lib/discount/calculateStackedDiscount";
 
 export type DiscountCreateReq = {
     name: string;
@@ -112,6 +113,7 @@ export type  DiscountResponse = {
             id: string;
             url: string;
         }>;
+        discountedPricing?: StackedDiscountResult;
     };
 }
     

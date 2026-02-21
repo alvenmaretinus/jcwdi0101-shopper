@@ -329,7 +329,9 @@ export function ProductsList({
 
                       // Build BOGO badge if quantity discounts exist
                       const bugoBadge = product.discountedPricing?.quantityDiscounts && product.discountedPricing.quantityDiscounts.length > 0 ? {
-                        label: `Buy ${product.discountedPricing.quantityDiscounts[0].buyQuantity} get ${product.discountedPricing.quantityDiscounts[0].freeQuantity} free`,
+                        label: product.discountedPricing.quantityDiscounts.length > 1
+                          ? `${product.discountedPricing.quantityDiscounts.length} BXGY offers`
+                          : `Buy ${product.discountedPricing.quantityDiscounts[0].buyQuantity} get ${product.discountedPricing.quantityDiscounts[0].freeQuantity} free`,
                         endsAt: product.discountedPricing.quantityDiscounts[0].endsAt,
                       } : undefined;
 

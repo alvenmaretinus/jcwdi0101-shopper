@@ -4,6 +4,8 @@ import { Service } from "./interface";
 import { VoucherRepo, PaginatedResponse, VoucherQueryOptions } from "../../repository/voucher/interface";
 import Decimal from "decimal.js";
 import { BadRequestError } from "../../error/BadRequestError";
+import { calculateStackedDiscount } from "../../lib/discount/calculateStackedDiscount";
+import { DiscountResponse } from "../../repository/discount/entity";
 
 export class VoucherService implements Service {
     private repo: VoucherRepo;
@@ -108,38 +110,30 @@ export class VoucherService implements Service {
             throw new BadRequestError("Referral voucher can only be used by its assigned user");
         }
 
-        const availableVouchers = vouchers.filter((voucher) => {
-            if (!voucher.discount.isLimited) return true;
-            if (voucher.discount.limit === null) return false;
-            return voucher.discount.useCounter < voucher.discount.limit;
+        const now = new Date();
+        const applicableVouchers = vouchers.filter((voucher) => {
+            const discount = voucher.discount;
+            const hasStarted = !discount.startsAt || discount.startsAt <= now;
+            const hasNotEnded = !discount.endsAt || discount.endsAt >= now;
+            const minimumPassed = !discount.isWithMinimum || discount.minimumPrice === null || subtotal >= discount.minimumPrice;
+            const available = !discount.isLimited || (discount.limit !== null && discount.useCounter < discount.limit);
+            return hasStarted && hasNotEnded && minimumPassed && available;
         });
 
-        // Filter out vouchers that don't meet minimum price requirement
-        const applicableVouchers = availableVouchers.filter(v => {
-            if (v.discount.isWithMinimum && v.discount.minimumPrice !== null) {
-                return subtotal >= v.discount.minimumPrice;
-            }
-            return true;
-        });
+        if (applicableVouchers.length === 0) {
+            return 0;
+        }
 
-        // Calculate discount for each voucher
-        const vouchersWithDiscount = applicableVouchers.map(v => {
-            let discount = 0;
-            if (v.discount.type === 'PERCENTAGE' && v.discount.percentage !== null) {
-                discount = Math.floor((subtotal * Number(v.discount.percentage)) / 100);
-            } else if (v.discount.type === 'FIXED_AMOUNT' && v.discount.amount !== null) {
-                discount = v.discount.amount;
-            }
-            return { ...v, calculatedDiscount: discount };
-        });
+        const applicableDiscounts: DiscountResponse[] = applicableVouchers.map((voucher) => ({
+            ...voucher.discount,
+            name: voucher.discount.name ?? voucher.code ?? "Voucher",
+            isTiedToProduct: false,
+            productId: null,
+            buyQuantity: null,
+            freeQuantity: null,
+        }));
 
-        // Sort by highest discount amount first (business requirement)
-        vouchersWithDiscount.sort((a, b) => b.calculatedDiscount - a.calculatedDiscount);
-
-        // Sum all applicable discounts
-        const totalDiscount = vouchersWithDiscount.reduce((sum, v) => sum + v.calculatedDiscount, 0);
-
-        // Ensure discount doesn't exceed subtotal
-        return Math.min(totalDiscount, subtotal);
+        const stackedResult = calculateStackedDiscount(subtotal, applicableDiscounts);
+        return Math.min(stackedResult.totalDiscount, subtotal);
     }
 }
