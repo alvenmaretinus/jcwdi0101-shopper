@@ -38,6 +38,7 @@ export interface CreateOrderResponse {
     | "PROCESSING"
     | "SHIPPED"
     | "DELIVERED"
+    | "COMPLETED"
     | "CANCELLED"
     | "PAID";
   paymentDueAt: string;

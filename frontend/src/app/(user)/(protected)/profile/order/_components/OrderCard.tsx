@@ -93,7 +93,7 @@ export const OrderCard = ({
                   try {
                     onConfirming(order.id);
                     await confirmOrder(order.id);
-                    toast.success("Pesanan dikonfirmasi — Terima kasih");
+                    toast.success("Pesanan selesai. Terima kasih.");
                     await onReload();
                   } catch (err: unknown) {
                     console.error("Failed to confirm order", err);
@@ -107,7 +107,7 @@ export const OrderCard = ({
               >
                 {confirmingIds.includes(order.id)
                   ? "Confirming..."
-                  : "Confirm Receipt"}
+                  : "Complete Order"}
               </Button>
             )}
           </div>

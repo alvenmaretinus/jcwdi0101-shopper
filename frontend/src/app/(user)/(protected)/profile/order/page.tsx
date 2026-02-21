@@ -61,6 +61,7 @@ const Orders = () => {
             PROCESSING: "processing",
             SHIPPED: "shipping",
             DELIVERED: "delivered",
+            COMPLETED: "completed",
             CANCELLED: "cancelled",
           };
 

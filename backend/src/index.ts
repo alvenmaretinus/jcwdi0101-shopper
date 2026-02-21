@@ -87,12 +87,21 @@ app.listen(port, () => {
     }
   });
 
-  // Auto-confirm orders 2 days after shipping (check every 6 hours)
+  // Auto-deliver orders 2 days after shipping (check every 6 hours)
   cron.schedule("0 */6 * * *", async () => {
     try {
-      await OrderService.autoConfirmOrders();
+      await OrderService.autoDeliverOrders();
     } catch (err) {
-      console.error("[Cron] Error auto-confirming orders:", err);
+      console.error("[Cron] Error auto-delivering orders:", err);
+    }
+  });
+
+  // Auto-complete delivered orders 7 days after shipping (check every 6 hours)
+  cron.schedule("15 */6 * * *", async () => {
+    try {
+      await OrderService.autoCompleteOrders();
+    } catch (err) {
+      console.error("[Cron] Error auto-completing orders:", err);
     }
   });
 });

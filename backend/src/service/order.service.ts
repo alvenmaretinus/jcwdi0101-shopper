@@ -488,10 +488,10 @@ export class OrderService {
   }
 
   /**
-   * Confirm order delivery by customer
+   * Confirm order completion by customer
    * @param orderId Order ID
    * @param userId User ID (authorization)
-   * @returns Updated order with DELIVERED status
+   * @returns Updated order with COMPLETED status
    * @throws UnauthorizedError if user doesn't own order
    * @throws BadRequestError if order not in SHIPPED status
    * @desc Delegates to OrderLifecycleService.confirmOrder()
@@ -502,14 +502,33 @@ export class OrderService {
   }
 
   /**
-   * Auto-confirm shipped orders after 2 days
-   * @returns Array of auto-confirmed orders
-   * @desc Delegates to OrderLifecycleService.autoConfirmOrders()
+   * Auto-deliver shipped orders after 2 days
+   * @returns Result with count of auto-delivered orders
+   * @desc Delegates to OrderLifecycleService.autoDeliverOrders()
    * @note Admin scheduled task, triggered every 6 hours
    */
-  static async autoConfirmOrders() {
+  static async autoDeliverOrders() {
     const { OrderLifecycleService } = await import("./order-lifecycle.service");
-    return OrderLifecycleService.autoConfirmOrders();
+    return OrderLifecycleService.autoDeliverOrders();
+  }
+
+  /**
+   * Auto-complete delivered orders after 7 days (counted from shippedAt)
+   * @returns Result with count of auto-completed orders
+   * @desc Delegates to OrderLifecycleService.autoCompleteOrders()
+   * @note Admin scheduled task, triggered every 6 hours
+   */
+  static async autoCompleteOrders() {
+    const { OrderLifecycleService } = await import("./order-lifecycle.service");
+    return OrderLifecycleService.autoCompleteOrders();
+  }
+
+  /**
+   * Backward-compatible alias for older call sites
+   * @deprecated Use autoDeliverOrders()
+   */
+  static async autoConfirmOrders() {
+    return this.autoDeliverOrders();
   }
 
   /**

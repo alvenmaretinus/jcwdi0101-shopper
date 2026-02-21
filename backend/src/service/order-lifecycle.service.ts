@@ -305,7 +305,7 @@ export class OrderLifecycleService {
   }
 
   /**
-   * User confirms delivery
+   * User confirms order completion
    */
   static async confirmOrder(orderId: string, userId: string) {
     const db: PrismaClient = prisma;
@@ -323,11 +323,13 @@ export class OrderLifecycleService {
       throw new BadRequestError(`Cannot confirm order with status ${order.status}. Only SHIPPED orders can be confirmed.`);
     }
 
+    const now = new Date();
     const updated = await db.order.update({
       where: { id: orderId },
       data: {
-        status: "DELIVERED",
-        deliveredAt: new Date(),
+        status: "COMPLETED",
+        deliveredAt: now,
+        confirmedAt: now,
       },
     });
 
@@ -343,7 +345,24 @@ export class OrderLifecycleService {
   }
 
   /**
-   * Auto-confirm orders - delegates to admin service (cron job)
+   * Auto-deliver orders - delegates to admin service (cron job)
+   */
+  static async autoDeliverOrders() {
+    const { OrderAdminService } = await import("./order-admin.service");
+    return OrderAdminService.autoDeliverOrders();
+  }
+
+  /**
+   * Auto-complete orders - delegates to admin service (cron job)
+   */
+  static async autoCompleteOrders() {
+    const { OrderAdminService } = await import("./order-admin.service");
+    return OrderAdminService.autoCompleteOrders();
+  }
+
+  /**
+   * Backward-compatible alias for older call sites
+   * @deprecated Use autoDeliverOrders()
    */
   static async autoConfirmOrders() {
     const { OrderAdminService } = await import("./order-admin.service");

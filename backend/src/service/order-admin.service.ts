@@ -6,7 +6,7 @@ import { MovementType } from "../../prisma/generated/client";
 /**
  * OrderAdminService handles admin-specific order operations
  * - Admin cancel order with stock refund
- * - Auto-confirm orders (cron)
+ * - Auto-deliver + auto-complete orders (cron)
  * - Expire pending orders (cron)
  */
 export class OrderAdminService {
@@ -103,17 +103,17 @@ export class OrderAdminService {
   }
 
   /**
-   * Auto-confirm orders 2 days after shipping
-   * @returns Result with count of auto-confirmed orders
+   * Auto-deliver orders after shipping window
+   * @returns Result with count of auto-delivered orders
    * @note Scheduled cron job - runs automatically
-   * @desc Sets status to DELIVERED when shippedAt > 2 days ago
+   * @desc Sets status to DELIVERED when shippedAt > configured days (default: 2)
    */
-  static async autoConfirmOrders() {
+  static async autoDeliverOrders() {
     const db: PrismaClient = prisma;
-    const days = Number(process.env.AUTO_CONFIRM_DAYS ?? 7);
+    const days = Number(process.env.AUTO_DELIVER_DAYS ?? 2);
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    const confirmedOrders = await db.order.updateMany({
+    const deliveredOrders = await db.order.updateMany({
       where: {
         status: "SHIPPED",
         shippedAt: { lt: cutoff },
@@ -124,11 +124,48 @@ export class OrderAdminService {
       },
     });
 
-    if (confirmedOrders.count > 0) {
-      console.info(`[OrderAdminService] auto-confirmed ${confirmedOrders.count} orders past ${days}-day shipping window`);
+    if (deliveredOrders.count > 0) {
+      console.info(`[OrderAdminService] auto-delivered ${deliveredOrders.count} orders past ${days}-day shipping window`);
     }
 
-    return confirmedOrders;
+    return deliveredOrders;
+  }
+
+  /**
+   * Auto-complete delivered orders after shipping window
+   * @returns Result with count of auto-completed orders
+   * @note Scheduled cron job - runs automatically
+   * @desc Sets status to COMPLETED when shippedAt > configured days (default: 7)
+   */
+  static async autoCompleteOrders() {
+    const db: PrismaClient = prisma;
+    const days = Number(process.env.AUTO_COMPLETE_DAYS ?? 7);
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const completedOrders = await db.order.updateMany({
+      where: {
+        status: "DELIVERED",
+        shippedAt: { lt: cutoff },
+      },
+      data: {
+        status: "COMPLETED",
+        confirmedAt: new Date(),
+      },
+    });
+
+    if (completedOrders.count > 0) {
+      console.info(`[OrderAdminService] auto-completed ${completedOrders.count} orders past ${days}-day shipping window`);
+    }
+
+    return completedOrders;
+  }
+
+  /**
+   * Backward-compatible alias for older call sites
+   * @deprecated Use autoDeliverOrders()
+   */
+  static async autoConfirmOrders() {
+    return this.autoDeliverOrders();
   }
 
   /**
