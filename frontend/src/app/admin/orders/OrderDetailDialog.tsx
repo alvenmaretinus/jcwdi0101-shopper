@@ -67,8 +67,13 @@ export default function OrderDetailDialog({
           <>
             <DialogHeader>
               <DialogTitle>Order Details</DialogTitle>
-              <DialogDescription>
-                Order #{selectedOrder.id.slice(0, 8)}
+              <DialogDescription className="mt-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Order ID
+                </span>
+                <span className="mt-1 block rounded-md border bg-muted px-2 py-1 font-mono text-xs text-foreground break-all">
+                  {selectedOrder.id}
+                </span>
               </DialogDescription>
             </DialogHeader>
 
