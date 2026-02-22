@@ -130,11 +130,21 @@ export class PricingCalculationService {
         continue;
       }
 
-      const stacked = calculateStackedDiscount(item.unitPrice, availableDiscounts);
+      // Calculate price discount at line level so minimum purchase and
+      // capped percentage discounts are evaluated against total line value.
+      // Fixed amount discounts are scaled by quantity to keep per-unit semantics.
+      const discountsForLinePricing = availableDiscounts.map((discount) => {
+        if (discount.type === "FIXED_AMOUNT" && discount.amount !== null) {
+          return {
+            ...discount,
+            amount: discount.amount * item.quantity,
+          };
+        }
+        return discount;
+      });
 
-      const unitPriceAfterPriceDiscount = stacked.discountedPrice;
-      const perUnitDiscount = Math.max(0, item.unitPrice - unitPriceAfterPriceDiscount);
-      const priceDiscountTotal = perUnitDiscount * item.quantity;
+      const stacked = calculateStackedDiscount(lineSubtotal, discountsForLinePricing);
+      const priceDiscountTotal = Math.min(stacked.totalDiscount, lineSubtotal);
 
       const bogoFreeQuantity = this.calculateBestBogoFreeQuantity(item.quantity, stacked.quantityDiscounts);
       // BOGO doesn't reduce the price user pays - they get bonus items for free
