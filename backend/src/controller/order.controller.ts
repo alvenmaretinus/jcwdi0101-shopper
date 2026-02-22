@@ -114,6 +114,54 @@ router.post("/admin/expire-pending", isAuth, isAdmin, async (req: Request, res: 
 });
 
 /**
+ * @route POST /admin/auto-deliver
+ * @desc Manually trigger auto-delivery job for shipped orders past threshold
+ * @access Private (Superadmin)
+ */
+router.post("/admin/auto-deliver", isAuth, isAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userRole = req.user?.role as string;
+
+    if (userRole !== "SUPERADMIN") {
+      throw new UnauthorizedError("Only SUPERADMIN can trigger auto-deliver");
+    }
+
+    const result = await OrderService.autoDeliverOrders();
+    return res.status(200).json({
+      success: true,
+      data: result,
+      message: `Auto-delivered ${result.count} orders`,
+    });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+/**
+ * @route POST /admin/auto-complete
+ * @desc Manually trigger auto-completion job for delivered orders past threshold
+ * @access Private (Superadmin)
+ */
+router.post("/admin/auto-complete", isAuth, isAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userRole = req.user?.role as string;
+
+    if (userRole !== "SUPERADMIN") {
+      throw new UnauthorizedError("Only SUPERADMIN can trigger auto-complete");
+    }
+
+    const result = await OrderService.autoCompleteOrders();
+    return res.status(200).json({
+      success: true,
+      data: result,
+      message: `Auto-completed ${result.count} orders`,
+    });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+/**
  * @route POST /webhook/midtrans
  * @desc Handle Midtrans payment gateway webhooks
  * @access Public (Midtrans server + signature verification)
