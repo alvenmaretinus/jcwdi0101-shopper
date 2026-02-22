@@ -71,7 +71,7 @@ export function useCart({ autoFetch = true }: UseCartOptions = {}) {
             stock:
               typeof it.stockQuantity === "number"
                 ? it.stockQuantity
-                : Number(it.productTotal) || 0,
+                : Number(it.stockQuantity) || 0,
             bogoFreeQuantity: it.bogoFreeQuantity ?? 0,
             outOfStock: it.outOfStock ?? false,
           }));
