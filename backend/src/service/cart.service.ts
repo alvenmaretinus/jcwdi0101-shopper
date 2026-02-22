@@ -39,7 +39,18 @@ export class CartService {
   static async getCart(userId: string, recommendedStoreId?: string, discountIds?: string[], voucherIds?: string[]) {
     const cartWithItems = await CartRepository.findCartWithItemsAndProduct(userId);
     if (!cartWithItems) {
-      return { cartId: null, cartItems: [], pricing: { subtotal: 0, totalDiscount: 0, shippingCost: 0, grandTotal: 0 } };
+      return {
+        cartId: null,
+        cartItems: [],
+        pricing: {
+          subtotal: 0,
+          totalDiscount: 0,
+          productPromotionDiscount: 0,
+          globalDiscount: 0,
+          shippingCost: 0,
+          grandTotal: 0,
+        },
+      };
     }
 
     // Calculate subtotal
@@ -59,8 +70,10 @@ export class CartService {
     const subtotalAfterProductPromotion = Math.max(0, subtotal - productPromotionDiscount);
 
     const bogoFreeQuantityByProductId = new Map<string, number>();
+    const productPromotionDiscountByProductId = new Map<string, number>();
     productPromotionBreakdown.lines.forEach((line) => {
       bogoFreeQuantityByProductId.set(line.productId, line.bogoFreeQuantity);
+      productPromotionDiscountByProductId.set(line.productId, line.totalDiscount);
     });
 
     // Calculate total discount (discounts + vouchers)
@@ -70,15 +83,36 @@ export class CartService {
       price: item.product.price,
     }));
 
+    const autoGlobalDiscountIds =
+      await PricingCalculationService.getAutoAppliedGlobalDiscountIds(
+        subtotalAfterProductPromotion,
+        prisma,
+      );
+    const combinedDiscountIds = Array.from(
+      new Set([...(discountIds ?? []), ...autoGlobalDiscountIds]),
+    );
+
     const additionalDiscount = await PricingCalculationService.calculateTotalDiscount(
       subtotalAfterProductPromotion,
-      discountIds,
+      combinedDiscountIds.length > 0 ? combinedDiscountIds : undefined,
       voucherIds,
       prisma,
       userId,
       0,
       cartItemsForDiscount,
     );
+    const globalDiscount =
+      autoGlobalDiscountIds.length > 0
+        ? await PricingCalculationService.calculateTotalDiscount(
+            subtotalAfterProductPromotion,
+            autoGlobalDiscountIds,
+            undefined,
+            prisma,
+            userId,
+            0,
+            cartItemsForDiscount,
+          )
+        : 0;
     const totalDiscount = productPromotionDiscount + additionalDiscount;
 
     // Shipping cost is estimated as 0 in cart (calculated during checkout)
@@ -99,6 +133,18 @@ export class CartService {
 
         const product = item.product as any;
         const image = product?.productImages && product.productImages.length > 0 ? product.productImages[0].url : null;
+        const originalUnitPrice = product?.price ?? 0;
+        const linePromotionDiscount =
+          productPromotionDiscountByProductId.get(item.productId) ?? 0;
+        const lineOriginalTotal = originalUnitPrice * item.quantity;
+        const lineDiscountedTotal = Math.max(
+          0,
+          lineOriginalTotal - linePromotionDiscount,
+        );
+        const discountedUnitPrice =
+          item.quantity > 0
+            ? Math.round(lineDiscountedTotal / item.quantity)
+            : originalUnitPrice;
 
         return {
           id: item.id,
@@ -106,7 +152,10 @@ export class CartService {
           quantity: item.quantity,
           // expose product summary fields for frontend
           name: product?.name ?? null,
-          price: product?.price ?? null,
+          price: originalUnitPrice,
+          originalPrice: originalUnitPrice,
+          discountedPrice: discountedUnitPrice,
+          productPromotionDiscount: linePromotionDiscount,
           image,
           unit: "item",
 
@@ -125,6 +174,8 @@ export class CartService {
       pricing: {
         subtotal,
         totalDiscount,
+        productPromotionDiscount,
+        globalDiscount,
         shippingCost,
         grandTotal,
       },

@@ -5,6 +5,8 @@ export interface CartItem {
   name: string;
   price: number;
   originalPrice?: number;
+  discountedPrice?: number;
+  productPromotionDiscount?: number;
   image?: string;
   quantity: number;
   unit?: string;
@@ -25,6 +27,8 @@ export interface CartResponse {
         pricing?: {
           subtotal: number;
           totalDiscount: number;
+          productPromotionDiscount?: number;
+          globalDiscount?: number;
           shippingCost: number;
           grandTotal: number;
         };
@@ -43,6 +47,9 @@ export interface RawBackendCartItem {
   unit?: string;
   stockQuantity?: number | string;
   productTotal?: number | string;
+  originalPrice?: number | string;
+  discountedPrice?: number | string;
+  productPromotionDiscount?: number | string;
   bogoFreeQuantity?: number;
   outOfStock?: boolean;
 }

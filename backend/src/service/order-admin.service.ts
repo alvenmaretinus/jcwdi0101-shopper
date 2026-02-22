@@ -128,14 +128,25 @@ export class OrderAdminService {
             data: { quantity: { increment: entry.quantity } },
           });
 
+          let endingStock = entry.quantity;
           if (updatedStock.count === 0) {
-            await tx.productStore.create({
+            const createdProductStore = await tx.productStore.create({
               data: {
                 productId: entry.productId,
                 storeId: entry.storeId,
                 quantity: entry.quantity,
               },
             });
+            endingStock = createdProductStore.quantity;
+          } else {
+            const productStore = await tx.productStore.findFirst({
+              where: {
+                productId: entry.productId,
+                storeId: entry.storeId,
+              },
+              select: { quantity: true },
+            });
+            endingStock = productStore?.quantity ?? entry.quantity;
           }
 
           // Create ProductMovement record for audit trail
@@ -149,6 +160,7 @@ export class OrderAdminService {
               description: reason
                 ? `Stock restored from cancelled order: ${reason}`
                 : "Stock restored from cancelled order",
+              endStock: endingStock,
             },
           });
         }

@@ -139,6 +139,54 @@ export class PricingCalculationService {
   }
 
   /**
+   * Resolve active non-voucher global discounts that should be auto-applied
+   * during cart/checkout pricing.
+   */
+  static async getAutoAppliedGlobalDiscountIds(
+    subtotal: number,
+    db: PrismaClient,
+  ): Promise<string[]> {
+    const now = new Date();
+    const discounts = await db.discount.findMany({
+      where: {
+        isSoftDeleted: false,
+        isVoucher: false,
+        isTiedToProduct: false,
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+        AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
+      },
+      select: {
+        id: true,
+        isWithMinimum: true,
+        minimumPrice: true,
+        isLimited: true,
+        limit: true,
+        useCounter: true,
+        isLimitedDiscount: true,
+        discountLimitAmt: true,
+      },
+    });
+
+    return discounts
+      .filter((discount) => {
+        const minimumPassed =
+          !discount.isWithMinimum ||
+          discount.minimumPrice === null ||
+          subtotal >= discount.minimumPrice;
+        const available =
+          !discount.isLimited ||
+          (discount.limit !== null && discount.useCounter < discount.limit);
+        const limitedDiscountAvailable =
+          !discount.isLimitedDiscount ||
+          (discount.discountLimitAmt !== null &&
+            discount.useCounter < discount.discountLimitAmt);
+
+        return minimumPassed && available && limitedDiscountAvailable;
+      })
+      .map((discount) => discount.id);
+  }
+
+  /**
    * Calculate total discount from discount IDs and voucher IDs
    * @param subtotal The base price before any discounts (can be ignored if cartItems provided)
    * @param discountIds Array of discount IDs to apply

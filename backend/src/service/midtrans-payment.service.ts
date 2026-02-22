@@ -8,6 +8,161 @@ import type { PrismaClient } from "../../prisma/generated/client";
  * - Handle Midtrans webhooks
  */
 export class MidtransPaymentService {
+  private static parseNamedDiscountAmount(discountNames: string[], key: string): number {
+    const prefix = `${key}:`;
+
+    return discountNames.reduce((total, name) => {
+      if (!name.startsWith(prefix)) return total;
+
+      const rawAmount = Number(name.slice(prefix.length));
+      if (!Number.isFinite(rawAmount)) return total;
+
+      return total + Math.max(0, Math.round(rawAmount));
+    }, 0);
+  }
+
+  private static allocateLineTotals(
+    lines: Array<{ id: string; name: string; gross: number }>,
+    targetTotal: number,
+  ): Array<{ id: string; name: string; price: number; quantity: number }> {
+    const safeTargetTotal = Math.max(0, Math.round(targetTotal));
+    const normalizedLines = lines
+      .map((line) => ({
+        id: line.id,
+        name: line.name,
+        gross: Math.max(0, Math.round(line.gross)),
+      }))
+      .filter((line) => line.gross > 0);
+
+    if (safeTargetTotal === 0) {
+      return [];
+    }
+
+    if (normalizedLines.length === 0) {
+      return [{ id: "order_total", name: "Order Total", price: safeTargetTotal, quantity: 1 }];
+    }
+
+    const grossTotal = normalizedLines.reduce((sum, line) => sum + line.gross, 0);
+    if (grossTotal <= 0) {
+      return [{ id: "order_total", name: "Order Total", price: safeTargetTotal, quantity: 1 }];
+    }
+
+    const withAllocation = normalizedLines.map((line, index) => {
+      const proportional = (line.gross * safeTargetTotal) / grossTotal;
+      const base = Math.floor(proportional);
+      return {
+        index,
+        id: line.id,
+        name: line.name,
+        price: base,
+        fractional: proportional - base,
+      };
+    });
+
+    let remainder = safeTargetTotal - withAllocation.reduce((sum, line) => sum + line.price, 0);
+
+    withAllocation
+      .slice()
+      .sort((a, b) => {
+        if (b.fractional !== a.fractional) return b.fractional - a.fractional;
+        return a.index - b.index;
+      })
+      .forEach((line) => {
+        if (remainder <= 0) return;
+        line.price += 1;
+        remainder -= 1;
+      });
+
+    return withAllocation
+      .filter((line) => line.price > 0)
+      .map((line) => ({
+        id: line.id,
+        name: line.name,
+        price: line.price,
+        quantity: 1,
+      }));
+  }
+
+  private static buildMidtransItemDetails(order: {
+    grandTotal: number;
+    shippingCost: number;
+    discountNames: string[];
+    orderItems: Array<{ productId: string; productName: string; unitPrice: number; quantity: number }>;
+  }): Array<{ id: string; name: string; price: number; quantity: number }> {
+    const grossAmount = Math.max(0, Math.round(order.grandTotal));
+    const shippingCost = Math.max(0, Math.round(order.shippingCost));
+
+    const legacyProductItems = order.orderItems
+      .map((item) => ({
+        id: item.productId,
+        name: item.productName,
+        price: Math.max(0, Math.round(item.unitPrice)),
+        quantity: Math.max(0, Math.round(item.quantity)),
+      }))
+      .filter((item) => item.price > 0 && item.quantity > 0);
+    const legacyItems = [
+      ...legacyProductItems,
+      ...(shippingCost > 0
+        ? [
+            {
+              id: "shipping",
+              name: "Shipping Cost",
+              price: shippingCost,
+              quantity: 1,
+            },
+          ]
+        : []),
+    ];
+    const legacyTotal = legacyItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    if (legacyTotal === grossAmount) {
+      return legacyItems;
+    }
+
+    const shippingDiscount = Math.min(
+      shippingCost,
+      this.parseNamedDiscountAmount(order.discountNames, "SHIPPING_DISCOUNT"),
+    );
+    const netShippingCost = Math.max(0, shippingCost - shippingDiscount);
+
+    const productLines = order.orderItems.map((item) => ({
+      id: item.productId,
+      name: item.productName,
+      gross: Math.max(0, Math.round(item.unitPrice * item.quantity)),
+    }));
+
+    const targetProductTotal = grossAmount - netShippingCost;
+    if (targetProductTotal >= 0) {
+      const productItems = this.allocateLineTotals(productLines, targetProductTotal);
+      if (netShippingCost <= 0) {
+        return productItems;
+      }
+      return [
+        ...productItems,
+        {
+          id: "shipping",
+          name: "Shipping Cost",
+          price: netShippingCost,
+          quantity: 1,
+        },
+      ];
+    }
+
+    const fallbackLines = [
+      ...productLines,
+      ...(shippingCost > 0
+        ? [
+            {
+              id: "shipping",
+              name: "Shipping Cost",
+              gross: shippingCost,
+            },
+          ]
+        : []),
+    ];
+
+    return this.allocateLineTotals(fallbackLines, grossAmount);
+  }
+
   /**
    * Create Midtrans payment charge for PAYMENT_GATEWAY order
    * @param orderId Order ID
@@ -42,20 +197,17 @@ export class MidtransPaymentService {
       throw new BadRequestError("User email and name are required");
     }
 
-    // Prepare item details for Midtrans
-    const itemDetails = order.orderItems.map((item) => ({
-      id: item.productId,
-      name: item.productName,
-      price: item.unitPrice,
-      quantity: item.quantity,
-    }));
-
-    // Add shipping cost as item
-    itemDetails.push({
-      id: "shipping",
-      name: "Shipping Cost",
-      price: order.shippingCost,
-      quantity: 1,
+    // Midtrans requires gross_amount to match sum(item_details) exactly.
+    const itemDetails = this.buildMidtransItemDetails({
+      grandTotal: order.grandTotal,
+      shippingCost: order.shippingCost,
+      discountNames: order.discountNames,
+      orderItems: order.orderItems.map((item) => ({
+        productId: item.productId,
+        productName: item.productName,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+      })),
     });
 
     try {

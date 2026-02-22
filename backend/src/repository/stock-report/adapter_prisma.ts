@@ -191,6 +191,34 @@ export class PrismaRepository implements StockReportRepository {
       groupedByProduct[movement.productId].movements.push(movement);
     }
 
+    const missingEndStockProductIds = Object.entries(groupedByProduct)
+      .filter(([, data]) => data.movements[data.movements.length - 1]?.endStock === null)
+      .map(([productId]) => productId);
+
+    const fallbackEndingStockByProductId = new Map<string, number>();
+    if (missingEndStockProductIds.length > 0) {
+      const productStoreWhere: Prisma.ProductStoreWhereInput = {
+        productId: { in: missingEndStockProductIds },
+      };
+
+      if (filter.storeId) {
+        productStoreWhere.storeId = filter.storeId;
+      }
+
+      const productStoreRows = await this.prisma.productStore.findMany({
+        where: productStoreWhere,
+        select: {
+          productId: true,
+          quantity: true,
+        },
+      });
+
+      for (const row of productStoreRows) {
+        const current = fallbackEndingStockByProductId.get(row.productId) ?? 0;
+        fallbackEndingStockByProductId.set(row.productId, current + row.quantity);
+      }
+    }
+
     // Calculate summary for each product
     const summarizedReports: SummaryStockReportItem[] = Object.entries(groupedByProduct).map(([productId, data]) => {
       let totalAdditions = 0;
@@ -221,8 +249,11 @@ export class PrismaRepository implements StockReportRepository {
         }
       }
 
-      // Get ending stock from the last movement. If none, we'll need to fetch from ProductStore
-      let endingStock = data.movements[data.movements.length - 1]?.endStock || 0;
+      // Prefer movement endStock. Fallback to ProductStore for historical rows with null endStock.
+      const endingStock =
+        data.movements[data.movements.length - 1]?.endStock
+        ?? fallbackEndingStockByProductId.get(productId)
+        ?? 0;
 
       return {
         productId,
@@ -266,6 +297,15 @@ export class PrismaRepository implements StockReportRepository {
       return { items: [], startingStock: 0, endingStock: 0, total: 0 };
     }
 
+    const productStore = await this.prisma.productStore.findFirst({
+      where: {
+        productId: filter.productId,
+        storeId: filter.storeId,
+      },
+      select: { quantity: true },
+    });
+    const currentStock = productStore?.quantity ?? 0;
+
     // Get movements involving this store for this product in the month
     const movements = await this.prisma.productMovement.findMany({
       where: {
@@ -295,42 +335,54 @@ export class PrismaRepository implements StockReportRepository {
       orderBy: { createdAt: 'asc' },
     });
 
+    const getSignedQuantityChange = (movement: { quantityChange: number; fromStoreId: string | null; toStoreId: string | null }): number => {
+      const fromMatches = movement.fromStoreId === filter.storeId;
+      const toMatches = movement.toStoreId === filter.storeId;
+      const baseQuantity = Math.abs(movement.quantityChange);
+
+      if (fromMatches && toMatches) return 0;
+      if (fromMatches) return -baseQuantity;
+      if (toMatches) return baseQuantity;
+      return movement.quantityChange;
+    };
+
     // Get the starting stock: first movement of month, calculate backwards from endStock and quantityChange
     let startingStock = 0;
     if (movements.length > 0) {
       const firstMovement = movements[0];
-      // Starting stock = first movement's endStock - quantity change (to get stock before this movement)
-      if (firstMovement.toStoreId === filter.storeId) {
-        startingStock = (firstMovement.endStock || 0) - firstMovement.quantityChange;
-      } else if (firstMovement.fromStoreId === filter.storeId) {
-        startingStock = (firstMovement.endStock || 0) + firstMovement.quantityChange;
-      }
+      const firstMovementSignedChange = getSignedQuantityChange(firstMovement);
+      // Starting stock = ending stock after first movement - net change caused by first movement
+      startingStock = firstMovement.endStock !== null
+        ? firstMovement.endStock - firstMovementSignedChange
+        : currentStock;
     } else {
-      // No movements this month, check ProductStore current quantity as reference
-      const productStore = await this.prisma.productStore.findFirst({
-        where: {
-          productId: filter.productId,
-          storeId: filter.storeId,
-        },
-        select: { quantity: true },
-      });
-      startingStock = productStore?.quantity || 0;
+      // No movements this month: use current ProductStore quantity as reference
+      startingStock = currentStock;
     }
 
-    // Ending stock is from the last movement's endStock
-    const endingStock = movements.length > 0 ? (movements[movements.length - 1].endStock || 0) : startingStock;
+    // Create detailed records, normalizing movement sign by store direction.
+    // If historical movement endStock is null, infer from running stock.
+    let runningStock = startingStock;
+    const detailedRecords: DetailedMovementRecord[] = movements.map((m) => {
+      const signedChange = getSignedQuantityChange(m);
+      const movementEndStock = m.endStock ?? (runningStock + signedChange);
+      runningStock = movementEndStock;
 
-    // Create detailed records, adjusting quantityChange sign based on store direction
-    const detailedRecords: DetailedMovementRecord[] = movements.map(m => ({
-      id: m.id,
-      date: m.createdAt,
-      movementType: m.movementType,
-      description: m.description,
-      fromStoreName: m.fromStore?.name || null,
-      toStoreName: m.toStore?.name || null,
-      quantityChange: m.toStoreId === filter.storeId ? m.quantityChange : -m.quantityChange,
-      endStock: m.endStock,
-    }));
+      return {
+        id: m.id,
+        date: m.createdAt,
+        movementType: m.movementType,
+        description: m.description,
+        fromStoreName: m.fromStore?.name || null,
+        toStoreName: m.toStore?.name || null,
+        quantityChange: signedChange,
+        endStock: movementEndStock,
+      };
+    });
+
+    const endingStock = detailedRecords.length > 0
+      ? (detailedRecords[detailedRecords.length - 1].endStock ?? currentStock)
+      : startingStock;
 
     // Apply pagination to the detailed records after calculation
     const total = detailedRecords.length;

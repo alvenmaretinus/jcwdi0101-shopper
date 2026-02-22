@@ -250,6 +250,8 @@ export class OrderLifecycleService {
             }
           }
 
+          const endingStockByProductId = new Map<string, number>();
+
           // Atomically decrement stock (including BOGO bonus items)
           for (const it of items) {
             const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
@@ -264,6 +266,16 @@ export class OrderLifecycleService {
               data: { quantity: { decrement: totalQuantityToDeduct } },
             });
             if (upd.count === 0) throw new BadRequestError("Stock changed during confirmation");
+
+            const productStoreAfterDeduction = await tx.productStore.findFirst({
+              where: {
+                productId: it.productId,
+                storeId: store.id,
+              },
+              select: { quantity: true },
+            });
+
+            endingStockByProductId.set(it.productId, productStoreAfterDeduction?.quantity ?? 0);
           }
 
           // Update order status to PROCESSING and store info if store changed
@@ -318,6 +330,7 @@ export class OrderLifecycleService {
                 productId: it.productId,
                 fromStoreId: store.id,
                 description: process.env.PRODUCT_MOVEMENT_SOLD_MESSAGE || "Stock deducted after payment confirmation",
+                endStock: endingStockByProductId.get(it.productId) ?? 0,
               },
             });
           }

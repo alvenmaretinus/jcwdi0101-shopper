@@ -9,6 +9,7 @@ export interface OrderItem {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
   quantity: number;
   bogoFreeQuantity?: number;
   image: string;
@@ -17,8 +18,9 @@ export interface OrderItem {
 export interface OrderSummaryProps {
   items: OrderItem[];
   subtotal: number;
-  discount: number;
-  discountNote?: string;
+  productDiscount: number;
+  globalDiscount: number;
+  voucherDiscount: number;
   shippingCost: number;
   shippingOriginalCost?: number;
   shippingDiscount?: number;
@@ -30,8 +32,9 @@ export interface OrderSummaryProps {
 export const OrderSummary = ({
   items,
   subtotal,
-  discount,
-  discountNote,
+  productDiscount,
+  globalDiscount,
+  voucherDiscount,
   shippingCost,
   shippingOriginalCost,
   shippingDiscount = 0,
@@ -79,9 +82,19 @@ export const OrderSummary = ({
                   +{item.bogoFreeQuantity} item bonus (BOGO)
                 </p>
               )}
-              <p className="text-sm font-semibold mt-1">
-                Rp {item.price.toLocaleString("id-ID")}
-              </p>
+              {typeof item.originalPrice === "number" &&
+              item.originalPrice > item.price ? (
+                <p className="text-sm font-semibold mt-1 flex items-center gap-2">
+                  <span className="text-muted-foreground line-through text-xs">
+                    Rp {item.originalPrice.toLocaleString("id-ID")}
+                  </span>
+                  <span>Rp {item.price.toLocaleString("id-ID")}</span>
+                </p>
+              ) : (
+                <p className="text-sm font-semibold mt-1">
+                  Rp {item.price.toLocaleString("id-ID")}
+                </p>
+              )}
             </div>
           </div>
         ))}
@@ -94,16 +107,29 @@ export const OrderSummary = ({
           <span className="text-muted-foreground">Subtotal</span>
           <span>Rp {subtotal.toLocaleString("id-ID")}</span>
         </div>
-        <div
-          className={`flex justify-between text-sm ${discount > 0 ? "" : "hidden"}`}
-        >
-          <span className="text-muted-foreground">Discount</span>
-          <span className="text-red-500">
-            Rp {discount.toLocaleString("id-ID")}
-          </span>
-        </div>
-        {discount > 0 && discountNote && (
-          <p className="text-xs text-muted-foreground">{discountNote}</p>
+        {productDiscount > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Product Promo</span>
+            <span className="text-red-500">
+              -Rp {productDiscount.toLocaleString("id-ID")}
+            </span>
+          </div>
+        )}
+        {globalDiscount > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Global Discount</span>
+            <span className="text-red-500">
+              -Rp {globalDiscount.toLocaleString("id-ID")}
+            </span>
+          </div>
+        )}
+        {voucherDiscount > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Voucher Discount</span>
+            <span className="text-red-500">
+              -Rp {voucherDiscount.toLocaleString("id-ID")}
+            </span>
+          </div>
         )}
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Shipping Cost</span>

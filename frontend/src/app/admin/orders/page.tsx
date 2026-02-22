@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { getOrders } from "@/services/admin/getOrders";
 import { getStores } from "@/services/store/getStores";
 import { authClient } from "@/lib/authClient";
@@ -10,6 +11,8 @@ import {
   shipOrder,
   adminCancelOrder,
   rejectPaymentProof,
+  triggerAutoComplete,
+  triggerAutoDeliver,
 } from "@/services/admin/orderActions";
 import type { AdminOrder } from "@/services/admin/getOrders";
 import type { Store } from "@/types/Store";
@@ -17,6 +20,8 @@ import OrdersFilters from "./OrdersFilters";
 import OrdersTable from "./OrdersTable";
 import OrderDetailDialog from "./OrderDetailDialog";
 import PaginationControls from "./PaginationControls";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 export default function Orders() {
   const { data } = authClient.useSession();
@@ -33,6 +38,7 @@ export default function Orders() {
     []
   );
   const [loading, setLoading] = useState(false);
+  const [triggeringJob, setTriggeringJob] = useState<"deliver" | "complete" | null>(null);
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(15);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -148,13 +154,76 @@ export default function Orders() {
     setSelectedOrder(null);
   };
 
+  const handleTriggerAutoDeliver = async () => {
+    try {
+      setTriggeringJob("deliver");
+      const result = await triggerAutoDeliver();
+      const count = result?.data?.count ?? 0;
+      toast.success(`Auto-deliver selesai: ${count} order diperbarui`);
+      await fetchOrders(page, limit);
+    } catch (err: unknown) {
+      console.error("Failed to trigger auto-deliver", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg || "Gagal trigger auto-deliver");
+    } finally {
+      setTriggeringJob(null);
+    }
+  };
+
+  const handleTriggerAutoComplete = async () => {
+    try {
+      setTriggeringJob("complete");
+      const result = await triggerAutoComplete();
+      const count = result?.data?.count ?? 0;
+      const rewardCount = result?.data?.rewardGrantedCount ?? 0;
+      toast.success(
+        `Auto-complete selesai: ${count} order, voucher reward ${rewardCount}`
+      );
+      await fetchOrders(page, limit);
+    } catch (err: unknown) {
+      console.error("Failed to trigger auto-complete", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg || "Gagal trigger auto-complete");
+    } finally {
+      setTriggeringJob(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Orders</h1>
-        <p className="text-muted-foreground">
-          Manage and track customer orders
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Orders</h1>
+          <p className="text-muted-foreground">
+            Manage and track customer orders
+          </p>
+        </div>
+        {isSuperAdmin && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleTriggerAutoDeliver}
+              disabled={triggeringJob !== null}
+            >
+              {triggeringJob === "deliver" && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              Run Auto Deliver
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleTriggerAutoComplete}
+              disabled={triggeringJob !== null}
+            >
+              {triggeringJob === "complete" && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              Run Auto Complete
+            </Button>
+          </div>
+        )}
       </div>
 
       <Card>
