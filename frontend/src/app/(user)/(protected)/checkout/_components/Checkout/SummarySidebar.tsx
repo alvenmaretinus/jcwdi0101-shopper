@@ -6,24 +6,26 @@ interface Props {
   items: OrderItem[];
   subtotal: number;
   discount: number;
+  discountNote?: string;
   shippingCost: number;
+  shippingOriginalCost?: number;
+  shippingDiscount?: number;
   total: number;
   onPlaceOrder: () => void;
   isCreatingOrder: boolean;
-  isCartLoading: boolean;
-  disablePlace?: boolean;
 }
 
 export const SummarySidebar = ({
   items,
   subtotal,
   discount,
+  discountNote,
   shippingCost,
+  shippingOriginalCost,
+  shippingDiscount,
   total,
   onPlaceOrder,
   isCreatingOrder,
-  isCartLoading,
-  disablePlace,
 }: Props) => {
   // OrderSummary already contains styling and Place Order button
   return (
@@ -31,7 +33,10 @@ export const SummarySidebar = ({
       items={items}
       subtotal={subtotal}
       discount={discount}
+      discountNote={discountNote}
       shippingCost={shippingCost}
+      shippingOriginalCost={shippingOriginalCost}
+      shippingDiscount={shippingDiscount}
       total={total}
       onPlaceOrder={onPlaceOrder}
       isCreatingOrder={isCreatingOrder}

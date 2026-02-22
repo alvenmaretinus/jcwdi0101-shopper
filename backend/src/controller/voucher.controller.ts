@@ -45,8 +45,20 @@ router.get("/vouchers", isMaybeAuth, async (req, res) => {
 router.post("/vouchers/calculate-discount", isAuth, async (req, res) => {
     const inputData: CalculateVoucherDiscountInput = CalculateVoucherDiscountSchema.parse(req.body);
     const userId = req.user?.id as string | undefined;
-    const totalDiscount = await voucherService.calculateVoucherDiscount(inputData.voucherCodes, inputData.subtotal, userId);
-    return res.json({ totalDiscount, subtotal: inputData.subtotal, finalAmount: inputData.subtotal - totalDiscount });
+    const breakdown = await voucherService.calculateVoucherDiscountBreakdown(
+        inputData.voucherCodes,
+        inputData.subtotal,
+        userId,
+        inputData.shippingCost ?? 0,
+    );
+    return res.json({
+        subtotal: inputData.subtotal,
+        shippingCost: inputData.shippingCost ?? 0,
+        productDiscount: breakdown.productDiscount,
+        shippingDiscount: breakdown.shippingDiscount,
+        totalDiscount: breakdown.totalDiscount,
+        finalAmount: inputData.subtotal + (inputData.shippingCost ?? 0) - breakdown.totalDiscount,
+    });
 });
 
 router.post("/vouchers", isAuth, isSuperAdmin, async (req, res) => {

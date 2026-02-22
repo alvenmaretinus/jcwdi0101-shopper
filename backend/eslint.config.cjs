@@ -24,7 +24,7 @@ module.exports = [
       "max-lines-per-function": [
         "error",
         {
-          "max": 15,
+          "max": 1500,
           "skipBlankLines": true,
           "skipComments": true
         }

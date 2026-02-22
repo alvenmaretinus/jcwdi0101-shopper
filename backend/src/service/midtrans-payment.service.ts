@@ -135,15 +135,52 @@ export class MidtransPaymentService {
 
       // Handle refund status - mark order for potential refund processing
       if (orderStatus === "REFUND") {
-        await db.order.update({
-          where: { id: orderId },
-          data: {
-            status: "CANCELLED",
-            refundRequired: true,
-            refundReason: "Refund processed by payment gateway",
-            cancelledAt: new Date(),
-          },
-        });
+        if (order.status === "PROCESSING") {
+          const { OrderAdminService } = await import("./order-admin.service");
+          try {
+            await OrderAdminService.adminCancelOrder(
+              orderId,
+              "Refund processed by payment gateway",
+            );
+          } catch (error) {
+            // Idempotency guard for concurrent refund webhooks.
+            if (
+              !(error instanceof BadRequestError) ||
+              !String(error.message).includes("no longer in PROCESSING")
+            ) {
+              throw error;
+            }
+          }
+          await db.order.update({
+            where: { id: orderId },
+            data: {
+              refundRequired: true,
+              refundReason: "Refund processed by payment gateway",
+            },
+          });
+        } else if (
+          order.status === "PAYMENT_PENDING" ||
+          order.status === "PAYMENT_WAITING_CONFIRMATION"
+        ) {
+          await db.order.update({
+            where: { id: orderId },
+            data: {
+              status: "CANCELLED",
+              refundRequired: true,
+              refundReason: "Refund processed by payment gateway",
+              cancelledAt: new Date(),
+            },
+          });
+        } else {
+          // Avoid invalid status rollback (e.g. SHIPPED/COMPLETED); keep status and log refund flag.
+          await db.order.update({
+            where: { id: orderId },
+            data: {
+              refundRequired: true,
+              refundReason: "Refund processed by payment gateway",
+            },
+          });
+        }
 
         console.info(`[MidtransPaymentService] Order ${orderId} refunded from Midtrans - marked for refund processing`);
         return;

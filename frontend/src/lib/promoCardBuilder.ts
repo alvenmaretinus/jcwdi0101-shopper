@@ -96,10 +96,23 @@ export function buildPromoCards(vouchers: Voucher[]): PromoCard[] {
         discountDisplay = `B${discount.buyQuantity}G${discount.freeQuantity}`;
         description = `Buy ${discount.buyQuantity}, get ${discount.freeQuantity} free`;
       } else if (discount.type === "FIXED_AMOUNT") {
-        discountDisplay = "FREE";
-        description = discount.isWithMinimum
-          ? `Free delivery on orders above ${formatRupiah(discount.minimumPrice || 0)}`
-          : "Free delivery";
+        const amount = discount.amount ?? 0;
+        discountDisplay = amount === 0 ? "FREE" : formatRupiah(amount);
+
+        if (voucher.voucherType === "FREEDELIVERY") {
+          description =
+            amount > 0
+              ? `Free delivery up to ${formatRupiah(amount)}`
+              : "Free delivery";
+          if (discount.isWithMinimum) {
+            description += ` (min. ${formatRupiah(discount.minimumPrice || 0)})`;
+          }
+        } else {
+          description = amount === 0 ? "Free delivery" : `Get ${formatRupiah(amount)} off`;
+          if (discount.isWithMinimum) {
+            description += ` (min. ${formatRupiah(discount.minimumPrice || 0)})`;
+          }
+        }
       }
 
       const emoji = getEmojiForVoucher(voucher);

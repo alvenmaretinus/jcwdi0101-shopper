@@ -10,6 +10,7 @@ export type OrderStatus =
   | 'PROCESSING'
   | 'SHIPPED'
   | 'DELIVERED'
+  | 'COMPLETED'
   | 'CANCELLED';
 
 export type OrderPaymentType = 'BANK_TRANSFER' | 'PAYMENT_GATEWAY';

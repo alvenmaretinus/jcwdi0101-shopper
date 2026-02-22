@@ -4,8 +4,10 @@ export type StoreProduct = {
   name: string;
   description: string | null;
   updatedAt: string;
-  price: number;
-  originalPrice?: number; // For discount display
+  price: number; // Final/displayed price
+  originalPrice?: number;
+  discountAmount?: number;
+  finalPrice?: number;
   createAt: string;
   category: string;
   images: string[];

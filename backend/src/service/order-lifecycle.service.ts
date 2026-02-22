@@ -2,6 +2,9 @@ import { prisma } from "../lib/db/prisma";
 import { BadRequestError } from "../error/BadRequestError";
 import type { PrismaClient, Prisma } from "../../prisma/generated/client";
 import { getDistance } from "geolib";
+import { PricingCalculationService } from "./pricing-calculation.service";
+import { StoreOrderCapacityService } from "./store-order-capacity.service";
+import { OrderRewardService } from "./order-reward.service";
 
 type StoreWithDistance = {
   store: any;
@@ -16,6 +19,94 @@ type StoreWithDistance = {
  * - Cancel order: user cancellation
  */
 export class OrderLifecycleService {
+  private static async redeemAppliedVouchers(
+    tx: Prisma.TransactionClient,
+    params: {
+      userId: string;
+      voucherIdentifiers: string[];
+    },
+  ) {
+    const voucherIdentifiers = params.voucherIdentifiers
+      .map((identifier) => identifier.trim())
+      .filter((identifier) => identifier.length > 0);
+
+    if (voucherIdentifiers.length === 0) {
+      return;
+    }
+
+    const vouchers = await tx.voucher.findMany({
+      where: {
+        isSoftDeleted: false,
+        isRedeemed: false,
+        OR: [
+          { id: { in: voucherIdentifiers } },
+          { code: { in: voucherIdentifiers } },
+        ],
+        discount: {
+          isSoftDeleted: false,
+        },
+      },
+      include: {
+        discount: {
+          select: {
+            id: true,
+            isLimited: true,
+            limit: true,
+          },
+        },
+      },
+    });
+
+    if (vouchers.length === 0) {
+      return;
+    }
+
+    const unauthorizedVoucher = vouchers.find(
+      (voucher) => voucher.userId !== null && voucher.userId !== params.userId,
+    );
+    if (unauthorizedVoucher) {
+      throw new BadRequestError("Assigned voucher does not belong to this user");
+    }
+
+    const now = new Date();
+    await tx.voucher.updateMany({
+      where: {
+        id: { in: vouchers.map((voucher) => voucher.id) },
+        isRedeemed: false,
+      },
+      data: {
+        isRedeemed: true,
+        redeemedAt: now,
+      },
+    });
+
+    const limitedDiscountIds = Array.from(
+      new Set(
+        vouchers
+          .filter((voucher) => voucher.discount.isLimited && voucher.discount.limit !== null)
+          .map((voucher) => voucher.discount.id),
+      ),
+    );
+
+    await Promise.all(
+      limitedDiscountIds.map((discountId) =>
+        tx.discount.updateMany({
+          where: {
+            id: discountId,
+            isLimited: true,
+            limit: { not: null },
+            useCounter: {
+              lt: tx.discount.fields.limit,
+            },
+          },
+          data: {
+            useCounter: { increment: 1 },
+          },
+        }),
+      ),
+    );
+  }
+
   /**
    * Confirm payment - decrement stock atomically and move to PROCESSING
    * @param orderId Order ID to confirm
@@ -73,6 +164,12 @@ export class OrderLifecycleService {
       throw new BadRequestError("No store within 5 km can fulfill the entire order.");
     }
 
+    const maxActiveOrdersPerStore = StoreOrderCapacityService.getMaxActiveOrdersPerStore();
+    const activeOrderCountByStoreId = await StoreOrderCapacityService.getActiveOrderCountByStoreIds(
+      db,
+      storesWithDistance.map((s) => s.store.id),
+    );
+
     const productIds = items.map((i) => i.productId);
     const products = await db.product.findMany({
       where: { id: { in: productIds } },
@@ -81,9 +178,36 @@ export class OrderLifecycleService {
     const productMap: Record<string, any> = {};
     for (const p of products) productMap[p.id] = p;
 
+    // Calculate BOGO promotion breakdown once to determine total quantities needed
+    const promotionBreakdown = await PricingCalculationService.calculateProductPromotionBreakdown(
+      items.map((it) => ({
+        productId: it.productId,
+        quantity: it.quantity,
+        unitPrice: productMap[it.productId]?.price ?? 0,
+      })),
+      db,
+    );
+
+    // Create map of productId -> bogoFreeQuantity for easy lookup
+    const bogoFreeQuantityMap: Record<string, number> = {};
+    for (const line of promotionBreakdown.lines) {
+      bogoFreeQuantityMap[line.productId] = line.bogoFreeQuantity;
+    }
+
     // Try candidate stores (nearest first)
     for (const candidate of storesWithDistance) {
       const store = candidate.store;
+      const activeOrderCount = activeOrderCountByStoreId.get(store.id) ?? 0;
+      if (
+        !StoreOrderCapacityService.canAssignExistingOrderToStore({
+          candidateStoreId: store.id,
+          currentOrderStoreId: order.storeId,
+          activeOrderCount,
+          maxActiveOrdersPerStore,
+        })
+      ) {
+        continue;
+      }
 
       // Batch load productStore records for this store to avoid N+1 query
       const storeProducts = await db.productStore.findMany({
@@ -95,11 +219,14 @@ export class OrderLifecycleService {
       const psMap: Record<string, any> = {};
       for (const ps of storeProducts) psMap[ps.productId] = ps;
 
-      // Check if all items can be fulfilled
+      // Check if all items can be fulfilled (including BOGO bonus items)
       let canFulfill = true;
       for (const it of items) {
         const ps = psMap[it.productId];
-        if (!ps || ps.quantity < it.quantity) {
+        const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
+        const totalQuantityNeeded = it.quantity + bogoFreeQuantity;
+
+        if (!ps || ps.quantity < totalQuantityNeeded) {
           canFulfill = false;
           break;
         }
@@ -116,15 +243,25 @@ export class OrderLifecycleService {
             throw new BadRequestError("Order already processed or cancelled");
           }
 
-          // Atomically decrement stock
+          if (store.id !== order.storeId) {
+            const latestActiveOrderCount = await StoreOrderCapacityService.getActiveOrderCountByStoreId(tx, store.id);
+            if (!StoreOrderCapacityService.canAcceptNewOrder(latestActiveOrderCount, maxActiveOrdersPerStore)) {
+              throw new BadRequestError("STORE_CAPACITY_FULL");
+            }
+          }
+
+          // Atomically decrement stock (including BOGO bonus items)
           for (const it of items) {
+            const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
+            const totalQuantityToDeduct = it.quantity + bogoFreeQuantity;
+
             const upd = await tx.productStore.updateMany({
               where: {
                 productId: it.productId,
                 storeId: store.id,
-                quantity: { gte: it.quantity },
+                quantity: { gte: totalQuantityToDeduct },
               },
-              data: { quantity: { decrement: it.quantity } },
+              data: { quantity: { decrement: totalQuantityToDeduct } },
             });
             if (upd.count === 0) throw new BadRequestError("Stock changed during confirmation");
           }
@@ -168,15 +305,19 @@ export class OrderLifecycleService {
             data: updateData,
           });
 
-          // Record product movement for audit trail
+          // Record product movement for audit trail (including BOGO bonus items)
           for (const it of items) {
-            
+            const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
+            const totalQuantityToDeduct = it.quantity + bogoFreeQuantity;
+
             await tx.productMovement.create({
               data: {
-                quantityChange: -it.quantity,
+                orderId,
+                quantityChange: -totalQuantityToDeduct,
                 movementType: "SOLD",
                 productId: it.productId,
-                description: process.env.PRODUCT_MOVEMENT_SOLD_MESSAGE || "Product sold through order",
+                fromStoreId: store.id,
+                description: process.env.PRODUCT_MOVEMENT_SOLD_MESSAGE || "Stock deducted after payment confirmation",
               },
             });
           }
@@ -190,9 +331,16 @@ export class OrderLifecycleService {
               where: {
                 cartId: userCart.id,
                 productId: { in: items.map((it) => it.productId) },
+                // Keep new cart changes added after checkout creation.
+                updatedAt: { lte: order.createdAt },
               },
             });
           }
+
+          await this.redeemAppliedVouchers(tx, {
+            userId: order.userId,
+            voucherIdentifiers: order.voucherCodes,
+          });
 
           return updated;
         });
@@ -205,7 +353,7 @@ export class OrderLifecycleService {
     }
 
     // Could not fulfill from any store - mark for refund
-    const refundReason = "No store within 5 km can fulfill the entire order after payment approval";
+    const refundReason = "No store within 5 km can fulfill the entire order after payment approval or store capacity is full";
     await db.order.update({
       where: { id: orderId },
       data: {
@@ -280,33 +428,50 @@ export class OrderLifecycleService {
   }
 
   /**
-   * User confirms delivery
+   * User confirms order completion
    */
   static async confirmOrder(orderId: string, userId: string) {
     const db: PrismaClient = prisma;
-    const order = await db.order.findUnique({ where: { id: orderId } });
+    const now = new Date();
 
-    if (!order) {
-      throw new BadRequestError("Order not found");
-    }
+    return db.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({ where: { id: orderId } });
 
-    if (order.userId !== userId) {
-      throw new BadRequestError("Unauthorized - order does not belong to user");
-    }
+      if (!order) {
+        throw new BadRequestError("Order not found");
+      }
 
-    if (order.status !== "SHIPPED") {
-      throw new BadRequestError(`Cannot confirm order with status ${order.status}. Only SHIPPED orders can be confirmed.`);
-    }
+      if (order.userId !== userId) {
+        throw new BadRequestError("Unauthorized - order does not belong to user");
+      }
 
-    const updated = await db.order.update({
-      where: { id: orderId },
-      data: {
-        status: "DELIVERED",
-        deliveredAt: new Date(),
-      },
+      if (order.status !== "SHIPPED") {
+        throw new BadRequestError(`Cannot confirm order with status ${order.status}. Only SHIPPED orders can be confirmed.`);
+      }
+
+      const updated = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: "COMPLETED",
+          deliveredAt: now,
+          confirmedAt: now,
+        },
+      });
+
+      const rewardResult = await OrderRewardService.grantCompletionRewardVoucher(tx, {
+        id: updated.id,
+        userId: updated.userId,
+        subtotal: updated.subtotal,
+      });
+
+      if (rewardResult.granted) {
+        console.info(
+          `[OrderLifecycleService] Reward voucher granted for completed order ${updated.id}: ${rewardResult.voucherCode}`,
+        );
+      }
+
+      return updated;
     });
-
-    return updated;
   }
 
   /**
@@ -318,7 +483,24 @@ export class OrderLifecycleService {
   }
 
   /**
-   * Auto-confirm orders - delegates to admin service (cron job)
+   * Auto-deliver orders - delegates to admin service (cron job)
+   */
+  static async autoDeliverOrders() {
+    const { OrderAdminService } = await import("./order-admin.service");
+    return OrderAdminService.autoDeliverOrders();
+  }
+
+  /**
+   * Auto-complete orders - delegates to admin service (cron job)
+   */
+  static async autoCompleteOrders() {
+    const { OrderAdminService } = await import("./order-admin.service");
+    return OrderAdminService.autoCompleteOrders();
+  }
+
+  /**
+   * Backward-compatible alias for older call sites
+   * @deprecated Use autoDeliverOrders()
    */
   static async autoConfirmOrders() {
     const { OrderAdminService } = await import("./order-admin.service");

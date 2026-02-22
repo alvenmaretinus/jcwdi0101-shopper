@@ -27,16 +27,19 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   const isOutOfStock = product.quantity === 0;
-  const hasDiscount =
-    product.originalPrice && product.originalPrice > product.price;
+  const displayPrice = product.finalPrice ?? product.price;
+  const originalPrice = product.originalPrice ?? product.price;
+  const discountAmount =
+    product.discountAmount ?? Math.max(0, originalPrice - displayPrice);
+  const hasDiscount = discountAmount > 0 && originalPrice > displayPrice;
   const discountPercentage = hasDiscount
-    ? Math.round((1 - product.price / product.originalPrice!) * 100)
+    ? Math.round((1 - displayPrice / originalPrice) * 100)
     : 0;
 
   // Format weight display from product data
   const weightDisplay = product.weight ? `${product.weight}g/pcs` : null;
 
-  const { addToCart } = useCart();
+  const { addToCart } = useCart({ autoFetch: false });
   const [isAdding, setIsAdding] = useState(false);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
@@ -97,11 +100,11 @@ export function ProductCard({ product }: ProductCardProps) {
           {/* Price */}
           <div className="flex items-center gap-1.5 sm:gap-2 mt-2 flex-wrap">
             <span className="text-sm sm:text-base font-bold text-primary">
-              {formatPrice(product.price)}
+              {formatPrice(displayPrice)}
             </span>
             {hasDiscount && (
               <span className="text-[10px] sm:text-xs text-muted-foreground line-through">
-                {formatPrice(product.originalPrice!)}
+                {formatPrice(originalPrice)}
               </span>
             )}
           </div>

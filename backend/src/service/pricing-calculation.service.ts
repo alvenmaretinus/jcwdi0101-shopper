@@ -1,16 +1,152 @@
 import { PrismaClient } from "../../prisma/generated/client";
 import { PrismaRepository as DiscountRepository } from "../repository/discount/adapter_prisma";
 import { DiscountResponse } from "../repository/discount/entity";
+import { calculateStackedDiscount } from "../lib/discount/calculateStackedDiscount";
+
+type ProductLineItem = {
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+};
+
+type ProductPromotionLineBreakdown = {
+  productId: string;
+  totalDiscount: number;
+  bogoFreeQuantity: number;
+};
+
+type ProductPromotionBreakdown = {
+  totalDiscount: number;
+  lines: ProductPromotionLineBreakdown[];
+};
 
 export class PricingCalculationService {
+  private static calculateBestBogoFreeQuantity(
+    quantity: number,
+    quantityDiscounts?: Array<{
+      buyQuantity: number;
+      freeQuantity: number;
+    }>,
+  ): number {
+    if (!quantityDiscounts || quantityDiscounts.length === 0 || quantity <= 0) {
+      return 0;
+    }
+
+    let bestFreeQuantity = 0;
+    for (const quantityDiscount of quantityDiscounts) {
+      if (quantityDiscount.buyQuantity <= 0 || quantityDiscount.freeQuantity <= 0) {
+        continue;
+      }
+
+      const freeUnits = Math.floor(quantity / quantityDiscount.buyQuantity) * quantityDiscount.freeQuantity;
+      if (freeUnits > bestFreeQuantity) {
+        bestFreeQuantity = freeUnits;
+      }
+    }
+
+    return bestFreeQuantity;
+  }
+
+  static async calculateProductPromotionBreakdown(items: ProductLineItem[], db: PrismaClient): Promise<ProductPromotionBreakdown> {
+    if (!items || items.length === 0) {
+      return { totalDiscount: 0, lines: [] };
+    }
+
+    const productIds = Array.from(new Set(items.map((item) => item.productId)));
+    if (productIds.length === 0) {
+      return { totalDiscount: 0, lines: [] };
+    }
+
+    const now = new Date();
+    const discounts = (await db.discount.findMany({
+      where: {
+        isSoftDeleted: false,
+        isVoucher: false,
+        isTiedToProduct: true,
+        productId: { in: productIds },
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+        AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
+      },
+    })) as DiscountResponse[];
+
+    const discountsByProduct = new Map<string, DiscountResponse[]>();
+    discounts.forEach((discount) => {
+      if (!discount.productId) return;
+      const current = discountsByProduct.get(discount.productId) ?? [];
+      current.push(discount);
+      discountsByProduct.set(discount.productId, current);
+    });
+
+    let totalDiscount = 0;
+    const lines: ProductPromotionLineBreakdown[] = [];
+
+    for (const item of items) {
+      if (item.quantity <= 0 || item.unitPrice <= 0) {
+        lines.push({
+          productId: item.productId,
+          totalDiscount: 0,
+          bogoFreeQuantity: 0,
+        });
+        continue;
+      }
+
+      const lineSubtotal = item.unitPrice * item.quantity;
+      const availableDiscounts = (discountsByProduct.get(item.productId) ?? []).filter((discount) => {
+        const available = !discount.isLimited || (discount.limit !== null && discount.useCounter < discount.limit);
+        const minimumPassed = !discount.isWithMinimum || discount.minimumPrice === null || lineSubtotal >= discount.minimumPrice;
+        return available && minimumPassed;
+      });
+
+      if (availableDiscounts.length === 0) {
+        lines.push({
+          productId: item.productId,
+          totalDiscount: 0,
+          bogoFreeQuantity: 0,
+        });
+        continue;
+      }
+
+      const stacked = calculateStackedDiscount(item.unitPrice, availableDiscounts);
+
+      const unitPriceAfterPriceDiscount = stacked.discountedPrice;
+      const perUnitDiscount = Math.max(0, item.unitPrice - unitPriceAfterPriceDiscount);
+      const priceDiscountTotal = perUnitDiscount * item.quantity;
+
+      const bogoFreeQuantity = this.calculateBestBogoFreeQuantity(item.quantity, stacked.quantityDiscounts);
+      // BOGO doesn't reduce the price user pays - they get bonus items for free
+      // So bogoDiscountTotal should be 0 for pricing but bogoFreeQuantity tracks bonus items for stock
+      const bogoDiscountTotal = 0;
+
+      const lineDiscount = priceDiscountTotal + bogoDiscountTotal;
+      totalDiscount += lineDiscount;
+
+      lines.push({
+        productId: item.productId,
+        totalDiscount: Math.round(lineDiscount),
+        bogoFreeQuantity,
+      });
+    }
+
+    return {
+      totalDiscount: Math.round(totalDiscount),
+      lines,
+    };
+  }
+
+  static async calculateProductPromotionDiscount(items: ProductLineItem[], db: PrismaClient): Promise<number> {
+    const breakdown = await this.calculateProductPromotionBreakdown(items, db);
+    return breakdown.totalDiscount;
+  }
+
   /**
    * Calculate total discount from discount IDs and voucher IDs
    * @param subtotal The base price before any discounts (can be ignored if cartItems provided)
    * @param discountIds Array of discount IDs to apply
    * @param voucherIds Array of voucher IDs to apply (applied after discounts)
    * @param db PrismaClient instance
-   * @param userId User ID for voucher validation
-   * @param cartItems Optional cart items for product-specific discount calculation
+    * @param userId User ID for voucher validation
+    * @param shippingCost Shipping cost used for FREEDELIVERY voucher calculation
+    * @param cartItems Optional cart items for product-specific discount calculation
    * @returns Total discount amount
    */
   static async calculateTotalDiscount(
@@ -19,6 +155,7 @@ export class PricingCalculationService {
     voucherIds: string[] | undefined,
     db: PrismaClient,
     userId?: string,
+    shippingCost: number = 0,
     cartItems?: Array<{ productId: string; quantity: number; price: number }>,
   ): Promise<number> {
     let totalDiscount = 0;
@@ -33,7 +170,13 @@ export class PricingCalculationService {
     // Vouchers are applied after discounts
     if (voucherIds && voucherIds.length > 0) {
       const priceAfterDiscounts = subtotal - totalDiscount;
-      const voucherAmount = await this.calculateVouchers(priceAfterDiscounts, voucherIds, db, userId);
+      const voucherAmount = await this.calculateVouchers(
+        priceAfterDiscounts,
+        voucherIds,
+        db,
+        userId,
+        shippingCost,
+      );
       totalDiscount += voucherAmount;
     }
 
@@ -58,15 +201,13 @@ export class PricingCalculationService {
     const discountRepo = new DiscountRepository(db);
 
     // Fetch all discounts by IDs and filter for active ones
-    const allDiscounts = await Promise.all(
-      discountIds.map(id => discountRepo.getDiscountById(id))
-    );
+    const allDiscounts = await Promise.all(discountIds.map((id) => discountRepo.getDiscountById(id)));
 
     // Filter valid discounts: non-null, not vouchers, not soft-deleted, and currently active
     const now = new Date();
     const discounts = allDiscounts
       .filter((d): d is DiscountResponse => d !== null && !d.isVoucher && !d.isSoftDeleted)
-      .filter(d => {
+      .filter((d) => {
         const hasStarted = !d.startsAt || d.startsAt <= now;
         const hasNotEnded = !d.endsAt || d.endsAt >= now;
         const minimumMet = !d.isWithMinimum || (d.minimumPrice !== null && subtotal >= d.minimumPrice);
@@ -77,11 +218,11 @@ export class PricingCalculationService {
 
     // Separate discounts by type
     const globalPercentageDiscounts = discounts
-      .filter(d => d.type === 'PERCENTAGE' && !d.isTiedToProduct)
+      .filter((d) => d.type === "PERCENTAGE" && !d.isTiedToProduct)
       .sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
 
     const globalAmountDiscounts = discounts
-      .filter(d => d.type === 'FIXED_AMOUNT' && !d.isTiedToProduct)
+      .filter((d) => d.type === "FIXED_AMOUNT" && !d.isTiedToProduct)
       .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
 
     const productSpecificDiscounts = discounts.filter(d => d.isTiedToProduct && d.productId);
@@ -239,6 +380,7 @@ export class PricingCalculationService {
    * @param priceAfterDiscounts The price after discount calculations
    * @param voucherIds Array of voucher IDs to apply
    * @param db PrismaClient instance
+   * @param shippingCost Shipping cost used for FREEDELIVERY voucher calculation
    * @returns Total voucher discount amount
    */
   private static async calculateVouchers(
@@ -246,11 +388,17 @@ export class PricingCalculationService {
     voucherIds: string[],
     db: PrismaClient,
     userId?: string,
+    shippingCost: number = 0,
   ): Promise<number> {
     const { VoucherService } = await import("./voucher/voucher.service");
     const { PrismaVoucherRepository } = await import("../repository/voucher/adapter_prisma");
     const voucherRepo = new PrismaVoucherRepository(db);
     const voucherService = new VoucherService(voucherRepo);
-    return voucherService.calculateVoucherDiscount(voucherIds, priceAfterDiscounts, userId);
+    return voucherService.calculateVoucherDiscount(
+      voucherIds,
+      priceAfterDiscounts,
+      userId,
+      shippingCost,
+    );
   }
 }

@@ -276,7 +276,7 @@ router.post("/:id/ship", isAuth, isAdmin, async (req: Request, res: Response, ne
 
 /**
  * @route POST /:id/confirm
- * @desc Confirm order delivery
+ * @desc Confirm order completion
  * @access Private (User)
  */
 router.post("/:id/confirm", isAuth, async (req: Request, res: Response, next: NextFunction) => {
@@ -285,7 +285,7 @@ router.post("/:id/confirm", isAuth, async (req: Request, res: Response, next: Ne
     const userId = req.user?.id as string;
 
     const order = await OrderService.confirmOrder(orderId, userId);
-    return res.status(200).json({ success: true, data: order, message: "Order confirmed as delivered" });
+    return res.status(200).json({ success: true, data: order, message: "Order confirmed as completed" });
   } catch (err: any) {
     next(err);
   }

@@ -7,6 +7,12 @@ import { BadRequestError } from "../../error/BadRequestError";
 import { calculateStackedDiscount } from "../../lib/discount/calculateStackedDiscount";
 import { DiscountResponse } from "../../repository/discount/entity";
 
+export type VoucherDiscountBreakdown = {
+    productDiscount: number;
+    shippingDiscount: number;
+    totalDiscount: number;
+};
+
 export class VoucherService implements Service {
     private repo: VoucherRepo;
 
@@ -75,19 +81,40 @@ export class VoucherService implements Service {
         return this.repo.deleteVoucher(id);
     }
 
-    /**
-     * Calculate total voucher discount for a given subtotal.
-     * Vouchers are ranked by highest amount first (business requirement).
-     * Only applicable vouchers (meeting minimum price requirement) are applied.
-     * 
-     * @param voucherIdentifiers Array of voucher IDs or codes to apply
-     * @param subtotal Order subtotal amount
-     * @param userId Current user ID (required for referral voucher ownership validation)
-     * @returns Total discount amount from all applicable vouchers
-     */
-    async calculateVoucherDiscount(voucherIdentifiers: string[], subtotal: number, userId?: string): Promise<number> {
-        if (!voucherIdentifiers || voucherIdentifiers.length === 0) {
+    private calculateFreeDeliveryDiscount(voucher: VoucherResponse, shippingCost: number): number {
+        if (shippingCost <= 0) {
             return 0;
+        }
+
+        const discount = voucher.discount;
+        if (discount.type === "FIXED_AMOUNT") {
+            const amount = discount.amount ?? 0;
+            // amount=0 means fully free shipping
+            const rawDiscount = amount <= 0 ? shippingCost : amount;
+            return Math.max(0, Math.min(rawDiscount, shippingCost));
+        }
+
+        if (discount.type === "PERCENTAGE") {
+            const rawDiscount = shippingCost * (Number(discount.percentage ?? 0) / 100);
+            return Math.max(0, Math.min(Math.round(rawDiscount), shippingCost));
+        }
+
+        return 0;
+    }
+
+    /**
+     * Calculate voucher discount breakdown.
+     * - Non-FREEDELIVERY vouchers reduce item subtotal.
+     * - FREEDELIVERY vouchers reduce shipping cost (max one best voucher applied).
+     */
+    async calculateVoucherDiscountBreakdown(
+        voucherIdentifiers: string[],
+        subtotal: number,
+        userId?: string,
+        shippingCost: number = 0,
+    ): Promise<VoucherDiscountBreakdown> {
+        if (!voucherIdentifiers || voucherIdentifiers.length === 0) {
+            return { productDiscount: 0, shippingDiscount: 0, totalDiscount: 0 };
         }
 
         const [vouchersByIds, vouchersByCodes] = await Promise.all([
@@ -102,15 +129,16 @@ export class VoucherService implements Service {
 
         const vouchers = Array.from(vouchersMap.values());
 
-        // Filter out soft-deleted vouchers
-        const activeVouchers = vouchers.filter((voucher) => !voucher.isSoftDeleted && !voucher.discount.isSoftDeleted);
-
-        const unauthorizedReferralVouchers = activeVouchers.filter(
-            (voucher) => voucher.voucherType === "REFERRAL" && voucher.userId !== userId
+        const activeVouchers = vouchers.filter(
+            (voucher) => !voucher.isSoftDeleted && !voucher.discount.isSoftDeleted
         );
 
-        if (unauthorizedReferralVouchers.length > 0) {
-            throw new BadRequestError("Referral voucher can only be used by its assigned user");
+        const unauthorizedAssignedVouchers = activeVouchers.filter(
+            (voucher) => voucher.userId !== null && voucher.userId !== userId
+        );
+
+        if (unauthorizedAssignedVouchers.length > 0) {
+            throw new BadRequestError("Voucher can only be used by its assigned user");
         }
 
         const now = new Date();
@@ -125,19 +153,64 @@ export class VoucherService implements Service {
         });
 
         if (applicableVouchers.length === 0) {
-            return 0;
+            return { productDiscount: 0, shippingDiscount: 0, totalDiscount: 0 };
         }
 
-        const applicableDiscounts: DiscountResponse[] = applicableVouchers.map((voucher) => ({
-            ...voucher.discount,
-            name: voucher.discount.name ?? voucher.code ?? "Voucher",
-            isTiedToProduct: false,
-            productId: null,
-            buyQuantity: null,
-            freeQuantity: null,
-        }));
+        const productVouchers = applicableVouchers.filter(
+            (voucher) => voucher.voucherType !== "FREEDELIVERY"
+        );
+        const shippingVouchers = applicableVouchers.filter(
+            (voucher) => voucher.voucherType === "FREEDELIVERY"
+        );
 
-        const stackedResult = calculateStackedDiscount(subtotal, applicableDiscounts);
-        return Math.min(stackedResult.totalDiscount, subtotal);
+        let productDiscount = 0;
+        if (productVouchers.length > 0) {
+            const applicableDiscounts: DiscountResponse[] = productVouchers.map((voucher) => ({
+                ...voucher.discount,
+                name: voucher.discount.name ?? voucher.code ?? "Voucher",
+                isTiedToProduct: false,
+                productId: null,
+                buyQuantity: null,
+                freeQuantity: null,
+            }));
+
+            const stackedResult = calculateStackedDiscount(subtotal, applicableDiscounts);
+            productDiscount = Math.min(stackedResult.totalDiscount, subtotal);
+        }
+
+        let shippingDiscount = 0;
+        if (shippingCost > 0 && shippingVouchers.length > 0) {
+            shippingDiscount = shippingVouchers.reduce((best, voucher) => {
+                const candidate = this.calculateFreeDeliveryDiscount(voucher, shippingCost);
+                return Math.max(best, candidate);
+            }, 0);
+            shippingDiscount = Math.min(shippingDiscount, shippingCost);
+        }
+
+        return {
+            productDiscount,
+            shippingDiscount,
+            totalDiscount: productDiscount + shippingDiscount,
+        };
+    }
+
+    /**
+     * Calculate total voucher discount amount.
+     * FREEDELIVERY vouchers are applied against shipping cost when provided.
+     */
+    async calculateVoucherDiscount(
+        voucherIdentifiers: string[],
+        subtotal: number,
+        userId?: string,
+        shippingCost: number = 0,
+    ): Promise<number> {
+        const breakdown = await this.calculateVoucherDiscountBreakdown(
+            voucherIdentifiers,
+            subtotal,
+            userId,
+            shippingCost,
+        );
+
+        return breakdown.totalDiscount;
     }
 }

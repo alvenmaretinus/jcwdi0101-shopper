@@ -1,5 +1,5 @@
 "use client";
-import  Link  from "next/link";
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,9 +19,13 @@ interface ProductCardProps {
   };
 }
 
-export function ProductCard({ product, discountBadge, bugoBadge }: ProductCardProps) {
-  const { addToCart } = useCart();
-  
+export function ProductCard({
+  product,
+  discountBadge,
+  bugoBadge,
+}: ProductCardProps) {
+  const { addToCart } = useCart({ autoFetch: false });
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -34,37 +38,38 @@ export function ProductCard({ product, discountBadge, bugoBadge }: ProductCardPr
     if (!endsAt) return "";
     const endDate = new Date(endsAt);
     if (Number.isNaN(endDate.getTime())) return "";
-    const msPerDay = 1000 * 60 * 60 * 24;
-    const diffDays = Math.ceil((endDate.getTime() - Date.now()) / msPerDay);
-    if (diffDays <= 0) {
-      return ", ends today";
-    }
-    return `, ends in ${diffDays} day${diffDays === 1 ? "" : "s"}`;
+
+    const formattedDate = new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "short",
+    }).format(endDate);
+
+    return `, ends ${formattedDate}`;
   };
 
   const totalStock = product.productStores
     ? product.productStores.reduce((sum, ps) => sum + ps.quantity, 0)
     : 0;
   const isOutOfStock = totalStock === 0;
+  const originalPrice =
+    typeof product.originalPrice === "number" ? product.originalPrice : null;
   const hasDiscountedPrice =
-    typeof product.originalPrice === "number" && product.originalPrice > product.price;
+    originalPrice !== null && originalPrice > product.price;
   const savingsAmount =
     typeof product.savingsAmount === "number"
       ? product.savingsAmount
       : hasDiscountedPrice
-        ? product.originalPrice - product.price
+        ? originalPrice - product.price
         : 0;
-  console.log("Product:", product)
-  
+  console.log("Product:", product);
+
   const getImageUrl = (url?: string) => {
     if (!url) return "https://placehold.co/400x400?text=No+Image";
-    // If URL is already absolute (starts with http:// or https://), return as-is
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    // Otherwise, prepend API base URL for relative paths
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
     return `${apiBaseUrl}${url}`;
   };
-  
+
   const primaryImage = getImageUrl(product.productImages[0]?.url);
 
   return (
@@ -82,15 +87,27 @@ export function ProductCard({ product, discountBadge, bugoBadge }: ProductCardPr
       <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex flex-col gap-2 w-full px-4 pt-4">
         {discountBadge && (
           <div className="flex justify-center">
-            <div className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap" style={{ background: 'linear-gradient(to right, #ec4899, #db2777)' }}>
-              {discountBadge.label}{formatEndsIn(discountBadge.endsAt)}
+            <div
+              className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap"
+              style={{
+                background: "linear-gradient(to right, #ec4899, #db2777)",
+              }}
+            >
+              {discountBadge.label}
+              {formatEndsIn(discountBadge.endsAt)}
             </div>
           </div>
         )}
         {bugoBadge && (
           <div className="flex justify-center">
-            <div className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap" style={{ background: 'linear-gradient(to right, #f97316, #dc2626)' }}>
-              {bugoBadge.label}{formatEndsIn(bugoBadge.endsAt)}
+            <div
+              className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap"
+              style={{
+                background: "linear-gradient(to right, #f97316, #dc2626)",
+              }}
+            >
+              {bugoBadge.label}
+              {formatEndsIn(bugoBadge.endsAt)}
             </div>
           </div>
         )}
@@ -98,7 +115,9 @@ export function ProductCard({ product, discountBadge, bugoBadge }: ProductCardPr
 
       {/* Image */}
       <Link href={`/products/${product.id}`}>
-        <div className={`aspect-square bg-muted/30 flex items-center justify-center overflow-hidden relative ${(discountBadge || bugoBadge) ? 'pt-4' : ''}`}>
+        <div
+          className={`aspect-square bg-muted/30 flex items-center justify-center overflow-hidden relative ${discountBadge || bugoBadge ? "pt-4" : ""}`}
+        >
           <Image
             src={primaryImage}
             alt={product.name}
@@ -115,7 +134,7 @@ export function ProductCard({ product, discountBadge, bugoBadge }: ProductCardPr
         <span className="text-xs text-muted-foreground uppercase tracking-wide">
           {product.category.category}
         </span>
-        
+
         <Link href={`/products/${product.id}`}>
           <h3 className="font-semibold text-foreground mt-1 line-clamp-2 hover:text-primary transition-colors">
             {product.name}
@@ -132,9 +151,9 @@ export function ProductCard({ product, discountBadge, bugoBadge }: ProductCardPr
         {/* Price and CTA */}
         <div className="flex items-end justify-between mt-3">
           <div>
-            {hasDiscountedPrice && (
+            {hasDiscountedPrice && originalPrice !== null && (
               <span className="text-xs text-muted-foreground line-through block">
-                {formatPrice(product.originalPrice)}
+                {formatPrice(originalPrice)}
               </span>
             )}
             <span className="text-lg font-bold text-foreground">
@@ -146,7 +165,7 @@ export function ProductCard({ product, discountBadge, bugoBadge }: ProductCardPr
               </p>
             )}
           </div>
-          
+
           <Button
             size="icon"
             disabled={isOutOfStock}
@@ -155,8 +174,8 @@ export function ProductCard({ product, discountBadge, bugoBadge }: ProductCardPr
               addToCart(product.id);
             }}
             className={`h-9 w-9 rounded-full shrink-0 ${
-              isOutOfStock 
-                ? "bg-muted text-muted-foreground" 
+              isOutOfStock
+                ? "bg-muted text-muted-foreground"
                 : "bg-primary hover:bg-primary/90 text-primary-foreground"
             }`}
           >

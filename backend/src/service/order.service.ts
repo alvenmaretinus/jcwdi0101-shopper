@@ -6,17 +6,27 @@ import { ShippingCostService } from "./shipping-cost.service";
 import { GetShippingCostInput } from "../schema/shipping-cost/GetShippingCostSchema";
 import type { PrismaClient, Prisma, Store } from "../../prisma/generated/client";
 import { PricingCalculationService } from "./pricing-calculation.service";
+import { StoreOrderCapacityService } from "./store-order-capacity.service";
 
 type StoreWithDistance = {
   store: Store;
   distanceKm: number;
 };
 
+type CheckoutItem = {
+  productId: string;
+  quantity: number;
+};
+
+type ActivePendingOrderSnapshot = {
+  id: string;
+  userAddressId: string;
+  voucherCodes: string[];
+  orderItems: CheckoutItem[];
+};
+
 export class OrderService {
-  private static isDiscountApplicable(
-    discount: { startsAt: Date | null; endsAt: Date | null; isWithMinimum: boolean; minimumPrice: number | null; isLimited: boolean; limit: number | null; useCounter: number },
-    subtotal: number
-  ) {
+  private static isDiscountApplicable(discount: { startsAt: Date | null; endsAt: Date | null; isWithMinimum: boolean; minimumPrice: number | null; isLimited: boolean; limit: number | null; useCounter: number }, subtotal: number) {
     const now = new Date();
     const hasStarted = !discount.startsAt || discount.startsAt <= now;
     const hasNotEnded = !discount.endsAt || discount.endsAt >= now;
@@ -25,13 +35,7 @@ export class OrderService {
     return hasStarted && hasNotEnded && minimumPassed && available;
   }
 
-  private static async incrementAppliedDiscountCounters(
-    userId: string,
-    subtotal: number,
-    db: PrismaClient,
-    discountIds?: string[],
-    voucherIds?: string[]
-  ) {
+  private static async incrementAppliedDiscountCounters(userId: string, subtotal: number, db: PrismaClient, discountIds?: string[], voucherIds?: string[]) {
     const applicableDiscountIds = new Set<string>();
 
     if (discountIds && discountIds.length > 0) {
@@ -63,10 +67,7 @@ export class OrderService {
       const vouchers = await db.voucher.findMany({
         where: {
           isSoftDeleted: false,
-          OR: [
-            { id: { in: voucherIds } },
-            { code: { in: voucherIds } },
-          ],
+          OR: [{ id: { in: voucherIds } }, { code: { in: voucherIds } }],
           discount: {
             isSoftDeleted: false,
           },
@@ -112,8 +113,8 @@ export class OrderService {
           data: {
             useCounter: { increment: 1 },
           },
-        })
-      )
+        }),
+      ),
     );
   }
 
@@ -133,9 +134,20 @@ export class OrderService {
   }
 
   /** Shared helper: find first store that can fulfill all items */
-  private static async findFulfillableStore(db: PrismaClient, storesWithDistance: StoreWithDistance[], items: { productId: string; quantity: number }[]): Promise<StoreWithDistance | null> {
+  private static async findFulfillableStore(
+    db: PrismaClient,
+    storesWithDistance: StoreWithDistance[],
+    items: { productId: string; quantity: number }[],
+    activeOrderCountByStoreId: Map<string, number>,
+    maxActiveOrdersPerStore: number,
+  ): Promise<StoreWithDistance | null> {
     const productIds = items.map((i) => i.productId);
     for (const s of storesWithDistance) {
+      const activeOrderCount = activeOrderCountByStoreId.get(s.store.id) ?? 0;
+      if (!StoreOrderCapacityService.canAcceptNewOrder(activeOrderCount, maxActiveOrdersPerStore)) {
+        continue;
+      }
+
       const storeProducts = await db.productStore.findMany({
         where: { storeId: s.store.id, productId: { in: productIds } },
       });
@@ -153,6 +165,147 @@ export class OrderService {
       if (canFulfill) return s;
     }
     return null;
+  }
+
+  private static normalizeVoucherIdentifiers(voucherIds?: string[]): string[] {
+    if (!voucherIds || voucherIds.length === 0) {
+      return [];
+    }
+
+    const seen = new Set<string>();
+    const normalized: string[] = [];
+    for (const voucherId of voucherIds) {
+      const value = voucherId.trim();
+      if (!value) continue;
+      const key = value.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      normalized.push(value);
+    }
+
+    return normalized;
+  }
+
+  private static toItemKeyMap(items: CheckoutItem[]): Map<string, number> {
+    const map = new Map<string, number>();
+    for (const item of items) {
+      map.set(item.productId, item.quantity);
+    }
+    return map;
+  }
+
+  private static areSameItems(lhs: CheckoutItem[], rhs: CheckoutItem[]): boolean {
+    if (lhs.length !== rhs.length) return false;
+    const lhsMap = this.toItemKeyMap(lhs);
+    const rhsMap = this.toItemKeyMap(rhs);
+    if (lhsMap.size !== rhsMap.size) return false;
+
+    for (const [productId, quantity] of lhsMap.entries()) {
+      if (rhsMap.get(productId) !== quantity) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private static areSameVoucherIdentifiers(lhs: string[], rhs: string[]): boolean {
+    if (lhs.length !== rhs.length) return false;
+    const lhsSet = new Set(lhs.map((value) => value.trim().toLowerCase()));
+    const rhsSet = new Set(rhs.map((value) => value.trim().toLowerCase()));
+    if (lhsSet.size !== rhsSet.size) return false;
+
+    for (const key of lhsSet.values()) {
+      if (!rhsSet.has(key)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private static isSameCheckoutFingerprint(
+    existingOrder: ActivePendingOrderSnapshot,
+    addressId: string,
+    cartItems: CheckoutItem[],
+    voucherIdentifiers: string[],
+  ): boolean {
+    if (existingOrder.userAddressId !== addressId) {
+      return false;
+    }
+
+    if (!this.areSameItems(existingOrder.orderItems, cartItems)) {
+      return false;
+    }
+
+    return this.areSameVoucherIdentifiers(existingOrder.voucherCodes, voucherIdentifiers);
+  }
+
+  private static async findReusablePendingOrder(
+    db: PrismaClient,
+    userId: string,
+    addressId: string,
+    cartItems: CheckoutItem[],
+    voucherIdentifiers: string[],
+  ) {
+    const activePendingOrders = await db.order.findMany({
+      where: {
+        userId,
+        status: {
+          in: ["PAYMENT_PENDING", "PAYMENT_WAITING_CONFIRMATION"],
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        orderItems: {
+          select: {
+            productId: true,
+            quantity: true,
+          },
+        },
+      },
+    });
+
+    const requestedVoucherKeys = new Set(voucherIdentifiers.map((value) => value.toLowerCase()));
+    if (requestedVoucherKeys.size > 0) {
+      const conflictingOrder = activePendingOrders.find((order) =>
+        order.voucherCodes.some((voucherCode) => requestedVoucherKeys.has(voucherCode.trim().toLowerCase())),
+      );
+
+      if (conflictingOrder) {
+        const conflictSnapshot: ActivePendingOrderSnapshot = {
+          id: conflictingOrder.id,
+          userAddressId: conflictingOrder.userAddressId,
+          voucherCodes: conflictingOrder.voucherCodes,
+          orderItems: conflictingOrder.orderItems.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+        };
+
+        if (this.isSameCheckoutFingerprint(conflictSnapshot, addressId, cartItems, voucherIdentifiers)) {
+          return conflictingOrder;
+        }
+
+        throw new BadRequestError("Voucher already used in another active order. Please complete or cancel the previous order first.");
+      }
+    }
+
+    const duplicateOrder = activePendingOrders.find((order) => {
+      const snapshot: ActivePendingOrderSnapshot = {
+        id: order.id,
+        userAddressId: order.userAddressId,
+        voucherCodes: order.voucherCodes,
+        orderItems: order.orderItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+      };
+
+      return this.isSameCheckoutFingerprint(snapshot, addressId, cartItems, voucherIdentifiers);
+    });
+
+    return duplicateOrder ?? null;
   }
 
   /**
@@ -176,8 +329,20 @@ export class OrderService {
     const storesWithDistance = this.findNearbyStores(stores, addrLat, addrLon);
     if (storesWithDistance.length === 0) throw new BadRequestError("No store within 5 km of the shipping address.");
 
-    const candidate = await this.findFulfillableStore(db, storesWithDistance, items);
-    if (!candidate) throw new BadRequestError("No store within 5 km can fulfill the entire order.");
+    const maxActiveOrdersPerStore = StoreOrderCapacityService.getMaxActiveOrdersPerStore();
+    const activeOrderCountByStoreId = await StoreOrderCapacityService.getActiveOrderCountByStoreIds(
+      db,
+      storesWithDistance.map((s) => s.store.id),
+    );
+
+    const candidate = await this.findFulfillableStore(
+      db,
+      storesWithDistance,
+      items,
+      activeOrderCountByStoreId,
+      maxActiveOrdersPerStore,
+    );
+    if (!candidate) throw new BadRequestError("No store within 5 km can fulfill the entire order or store capacity is full.");
 
     const { store } = candidate;
 
@@ -254,6 +419,24 @@ export class OrderService {
       if (!cart || !cart.cartItems || cart.cartItems.length === 0) throw new BadRequestError("Cart is empty.");
 
       const items = cart.cartItems.map((ci) => ({ productId: ci.productId, quantity: ci.quantity }));
+      const normalizedVoucherIdentifiers = this.normalizeVoucherIdentifiers(voucherIds);
+
+      const reusablePendingOrder = await this.findReusablePendingOrder(
+        db,
+        userId,
+        addressId,
+        items,
+        normalizedVoucherIdentifiers,
+      );
+      if (reusablePendingOrder) {
+        await db.cartItem.deleteMany({
+          where: {
+            cartId: cart.id,
+            productId: { in: items.map((item) => item.productId) },
+          },
+        });
+        return reusablePendingOrder;
+      }
 
       // find nearby stores within 5km
       const addrLat = Number(address.latitude);
@@ -263,9 +446,21 @@ export class OrderService {
 
       if (storesWithDistance.length === 0) throw new BadRequestError("No store within 5 km of the shipping address.");
 
+      const maxActiveOrdersPerStore = StoreOrderCapacityService.getMaxActiveOrdersPerStore();
+      const activeOrderCountByStoreId = await StoreOrderCapacityService.getActiveOrderCountByStoreIds(
+        db,
+        storesWithDistance.map((s) => s.store.id),
+      );
+
       // pick nearest store that can fulfill all items
-      const candidate = await this.findFulfillableStore(db, storesWithDistance, items);
-      if (!candidate) throw new BadRequestError("No store within 5 km can fulfill the entire order.");
+      const candidate = await this.findFulfillableStore(
+        db,
+        storesWithDistance,
+        items,
+        activeOrderCountByStoreId,
+        maxActiveOrdersPerStore,
+      );
+      if (!candidate) throw new BadRequestError("No store within 5 km can fulfill the entire order or store capacity is full.");
 
       const candidateStore = candidate.store;
       const productIds = items.map((i) => i.productId);
@@ -275,6 +470,15 @@ export class OrderService {
       for (const p of products as ProductWithCategory[]) productMap[p.id] = p;
 
       const subtotal = items.reduce((s, it) => s + (productMap[it.productId]?.price ?? 0) * it.quantity, 0);
+      const productPromotionDiscount = await PricingCalculationService.calculateProductPromotionDiscount(
+        items.map((it) => ({
+          productId: it.productId,
+          quantity: it.quantity,
+          unitPrice: productMap[it.productId]?.price ?? 0,
+        })),
+        db,
+      );
+      const subtotalAfterProductPromotion = Math.max(0, subtotal - productPromotionDiscount);
 
       // Use frontend-provided shipping cost (Early Selection) or fallback to auto-calculate
       let shippingCost: number;
@@ -299,51 +503,93 @@ export class OrderService {
         }
       }
 
-      // Prepare cart items with price for discount calculation
-      const cartItemsForDiscount = items.map(it => ({
+      const cartItemsForDiscount = items.map((it) => ({
         productId: it.productId,
         quantity: it.quantity,
         price: productMap[it.productId]?.price ?? 0,
       }));
 
-      const totalDiscount = await PricingCalculationService.calculateTotalDiscount(
-        subtotal, 
-        discountIds, 
-        voucherIds, 
-        db, 
+      const additionalDiscount = await PricingCalculationService.calculateTotalDiscount(
+        subtotalAfterProductPromotion,
+        discountIds,
+        normalizedVoucherIdentifiers,
+        db,
         userId,
-        cartItemsForDiscount
+        shippingCost,
+        cartItemsForDiscount,
       );
+      const totalDiscount = productPromotionDiscount + additionalDiscount;
       const grandTotal = subtotal + shippingCost - totalDiscount;
+
+      let voucherProductDiscount = 0;
+      let voucherShippingDiscount = 0;
+      if (normalizedVoucherIdentifiers.length > 0) {
+        const { VoucherService } = await import("./voucher/voucher.service");
+        const { PrismaVoucherRepository } = await import("../repository/voucher/adapter_prisma");
+        const voucherService = new VoucherService(new PrismaVoucherRepository(db));
+        const breakdown = await voucherService.calculateVoucherDiscountBreakdown(
+          normalizedVoucherIdentifiers,
+          subtotalAfterProductPromotion,
+          userId,
+          shippingCost,
+        );
+        voucherProductDiscount = breakdown.productDiscount;
+        voucherShippingDiscount = breakdown.shippingDiscount;
+      }
+
+      const discountNames: string[] = [];
+      if (productPromotionDiscount > 0) {
+        discountNames.push(`PRODUCT_PROMO_DISCOUNT:${productPromotionDiscount}`);
+      }
+      if (voucherProductDiscount > 0) {
+        discountNames.push(`VOUCHER_PRODUCT_DISCOUNT:${voucherProductDiscount}`);
+      }
+      if (voucherShippingDiscount > 0) {
+        discountNames.push(`SHIPPING_DISCOUNT:${voucherShippingDiscount}`);
+      }
 
       const paymentDueHours = Number.isFinite(Number(process.env.PAYMENT_DUE_HOURS)) ? Number(process.env.PAYMENT_DUE_HOURS) : 1;
       const paymentDueAt = new Date(Date.now() + paymentDueHours * 60 * 60 * 1000);
 
-      const order = await db.order.create({
-        data: {
-          subtotal,
-          totalDiscount,
-          shippingCost,
-          grandTotal,
-          status: "PAYMENT_PENDING",
-          paymentType,
-          shippingAddress: `${address.recipientName} - ${address.addressName} | ${address.latitude},${address.longitude} | ${address.postCode}`,
-          storeAddress: candidateStore.addressName,
-          storeName: candidateStore.name,
-          storeId: candidateStore.id,
-          userAddressId: addressId,
-          paymentDueAt,
-          userId,
-          orderItems: {
-            create: items.map((it) => ({
-              quantity: it.quantity,
-              unitPrice: productMap[it.productId]?.price ?? 0,
-              productName: productMap[it.productId]?.name ?? "",
-              productCategory: productMap[it.productId]?.category?.category ?? "",
-              productId: it.productId,
-            })),
+      const order = await db.$transaction(async (tx) => {
+        const createdOrder = await tx.order.create({
+          data: {
+            subtotal,
+            totalDiscount,
+            shippingCost,
+            grandTotal,
+            status: "PAYMENT_PENDING",
+            paymentType,
+            voucherCodes: normalizedVoucherIdentifiers,
+            discountNames,
+            shippingAddress: `${address.recipientName} - ${address.addressName} | ${address.latitude},${address.longitude} | ${address.postCode}`,
+            storeAddress: candidateStore.addressName,
+            storeName: candidateStore.name,
+            storeId: candidateStore.id,
+            userAddressId: addressId,
+            paymentDueAt,
+            userId,
+            orderItems: {
+              create: items.map((it) => ({
+                quantity: it.quantity,
+                unitPrice: productMap[it.productId]?.price ?? 0,
+                productName: productMap[it.productId]?.name ?? "",
+                productCategory: productMap[it.productId]?.category?.category ?? "",
+                productId: it.productId,
+              })),
+            },
           },
-        },
+        });
+
+        // Remove checked-out items from cart immediately after order is placed.
+        await tx.cartItem.deleteMany({
+          where: {
+            cartId: cart.id,
+            productId: { in: items.map((item) => item.productId) },
+          },
+        });
+
+        return createdOrder;
       });
 
       return order;
@@ -504,10 +750,10 @@ export class OrderService {
   }
 
   /**
-   * Confirm order delivery by customer
+   * Confirm order completion by customer
    * @param orderId Order ID
    * @param userId User ID (authorization)
-   * @returns Updated order with DELIVERED status
+   * @returns Updated order with COMPLETED status
    * @throws UnauthorizedError if user doesn't own order
    * @throws BadRequestError if order not in SHIPPED status
    * @desc Delegates to OrderLifecycleService.confirmOrder()
@@ -518,14 +764,33 @@ export class OrderService {
   }
 
   /**
-   * Auto-confirm shipped orders after 2 days
-   * @returns Array of auto-confirmed orders
-   * @desc Delegates to OrderLifecycleService.autoConfirmOrders()
+   * Auto-deliver shipped orders after 2 days
+   * @returns Result with count of auto-delivered orders
+   * @desc Delegates to OrderLifecycleService.autoDeliverOrders()
    * @note Admin scheduled task, triggered every 6 hours
    */
-  static async autoConfirmOrders() {
+  static async autoDeliverOrders() {
     const { OrderLifecycleService } = await import("./order-lifecycle.service");
-    return OrderLifecycleService.autoConfirmOrders();
+    return OrderLifecycleService.autoDeliverOrders();
+  }
+
+  /**
+   * Auto-complete delivered orders after 7 days (counted from shippedAt)
+   * @returns Result with count of auto-completed orders
+   * @desc Delegates to OrderLifecycleService.autoCompleteOrders()
+   * @note Admin scheduled task, triggered every 6 hours
+   */
+  static async autoCompleteOrders() {
+    const { OrderLifecycleService } = await import("./order-lifecycle.service");
+    return OrderLifecycleService.autoCompleteOrders();
+  }
+
+  /**
+   * Backward-compatible alias for older call sites
+   * @deprecated Use autoDeliverOrders()
+   */
+  static async autoConfirmOrders() {
+    return this.autoDeliverOrders();
   }
 
   /**

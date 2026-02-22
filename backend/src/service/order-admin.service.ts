@@ -1,22 +1,75 @@
 import { prisma } from "../lib/db/prisma";
 import { BadRequestError } from "../error/BadRequestError";
-import type { PrismaClient } from "../../prisma/generated/client";
+import type { PrismaClient, Prisma, OrderItem } from "../../prisma/generated/client";
 import { MovementType } from "../../prisma/generated/client";
+import { OrderRewardService } from "./order-reward.service";
 
 /**
  * OrderAdminService handles admin-specific order operations
  * - Admin cancel order with stock refund
- * - Auto-confirm orders (cron)
+ * - Auto-deliver + auto-complete orders (cron)
  * - Expire pending orders (cron)
  */
 export class OrderAdminService {
+  private static async buildRestockEntries(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    fallbackStoreId: string,
+    fallbackOrderItems: OrderItem[],
+  ) {
+    const soldMovements = await tx.productMovement.findMany({
+      where: {
+        orderId,
+        movementType: MovementType.SOLD,
+      },
+      select: {
+        productId: true,
+        quantityChange: true,
+        fromStoreId: true,
+      },
+    });
+
+    const normalizedFromMovements = soldMovements
+      .filter((movement) => movement.quantityChange < 0)
+      .map((movement) => ({
+        productId: movement.productId,
+        storeId: movement.fromStoreId ?? fallbackStoreId,
+        quantity: Math.abs(movement.quantityChange),
+      }));
+
+    const sourceEntries =
+      normalizedFromMovements.length > 0
+        ? normalizedFromMovements
+        : fallbackOrderItems.map((item) => ({
+            productId: item.productId,
+            storeId: fallbackStoreId,
+            quantity: item.quantity,
+          }));
+
+    const aggregated = new Map<string, { productId: string; storeId: string; quantity: number }>();
+
+    for (const entry of sourceEntries) {
+      if (entry.quantity <= 0) continue;
+      const key = `${entry.productId}:${entry.storeId}`;
+      const existing = aggregated.get(key);
+      if (existing) {
+        existing.quantity += entry.quantity;
+        continue;
+      }
+
+      aggregated.set(key, { ...entry });
+    }
+
+    return Array.from(aggregated.values());
+  }
+
   /**
    * Admin cancels order with automatic stock refund if applicable
    * @param orderId Order ID to cancel
    * @param reason Optional reason for cancellation (logged)
    * @returns Updated order with CANCELLED status
    * @throws BadRequestError if order not found or already shipped
-   * @note Automatically refunds stock for PROCESSING/PAYMENT_WAITING_CONFIRMATION orders
+   * @note Automatically refunds stock for PROCESSING orders
    * @access Private (Admin)
    */
   static async adminCancelOrder(orderId: string, reason?: string) {
@@ -39,40 +92,66 @@ export class OrderAdminService {
     // (PAYMENT_WAITING_CONFIRMATION: stock was never decremented, so no refund needed)
     if (["PROCESSING"].includes(order.status)) {
       await db.$transaction(async (tx) => {
-        const orderItems = await tx.orderItem.findMany({
-          where: { orderId },
-        });
-
-        // Refund each item's stock
-        for (const item of orderItems) {
-          await tx.productStore.updateMany({
-            where: {
-              productId: item.productId,
-              storeId: order.storeId,
-            },
-            data: { quantity: { increment: item.quantity } },
-          });
-
-          // Create ProductMovement record for audit trail
-          await tx.productMovement.create({
-            data: {
-              productId: item.productId,
-              quantityChange: item.quantity,
-              movementType: MovementType.CANCELED,
-              description: process.env.PRODUCT_MOVEMENT_CANCELED_MESSAGE || "Order cancelled, stock refunded",
-              createdAt: new Date(),
-            },
-          });
-        }
-
-        // Update order status to CANCELLED
-        await tx.order.update({
-          where: { id: orderId },
+        // Atomically claim cancellation to prevent double-restock on concurrent requests.
+        const claimed = await tx.order.updateMany({
+          where: {
+            id: orderId,
+            status: "PROCESSING",
+          },
           data: {
             status: "CANCELLED",
             cancelledAt: new Date(),
           },
         });
+        if (claimed.count === 0) {
+          throw new BadRequestError("Order is no longer in PROCESSING status");
+        }
+
+        const orderItems = await tx.orderItem.findMany({
+          where: { orderId },
+        });
+
+        const restockEntries = await this.buildRestockEntries(
+          tx,
+          orderId,
+          order.storeId,
+          orderItems,
+        );
+
+        // Refund stock based on SOLD movement history (fallback to order item qty when no movement found)
+        for (const entry of restockEntries) {
+          const updatedStock = await tx.productStore.updateMany({
+            where: {
+              productId: entry.productId,
+              storeId: entry.storeId,
+            },
+            data: { quantity: { increment: entry.quantity } },
+          });
+
+          if (updatedStock.count === 0) {
+            await tx.productStore.create({
+              data: {
+                productId: entry.productId,
+                storeId: entry.storeId,
+                quantity: entry.quantity,
+              },
+            });
+          }
+
+          // Create ProductMovement record for audit trail
+          await tx.productMovement.create({
+            data: {
+              orderId,
+              productId: entry.productId,
+              quantityChange: entry.quantity,
+              movementType: MovementType.CANCELED,
+              toStoreId: entry.storeId,
+              description: reason
+                ? `Stock restored from cancelled order: ${reason}`
+                : "Stock restored from cancelled order",
+            },
+          });
+        }
       });
 
       console.info(`[OrderAdminService] Admin cancelled order ${orderId} (status was ${order.status}), stock refunded. Reason: ${reason || "No reason provided"}`);
@@ -104,17 +183,17 @@ export class OrderAdminService {
   }
 
   /**
-   * Auto-confirm orders 2 days after shipping
-   * @returns Result with count of auto-confirmed orders
+   * Auto-deliver orders after shipping window
+   * @returns Result with count of auto-delivered orders
    * @note Scheduled cron job - runs automatically
-   * @desc Sets status to DELIVERED when shippedAt > 2 days ago
+   * @desc Sets status to DELIVERED when shippedAt > configured days (default: 2)
    */
-  static async autoConfirmOrders() {
+  static async autoDeliverOrders() {
     const db: PrismaClient = prisma;
-    const days = Number(process.env.AUTO_CONFIRM_DAYS ?? 7);
+    const days = Number(process.env.AUTO_DELIVER_DAYS ?? 2);
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    const confirmedOrders = await db.order.updateMany({
+    const deliveredOrders = await db.order.updateMany({
       where: {
         status: "SHIPPED",
         shippedAt: { lt: cutoff },
@@ -125,11 +204,93 @@ export class OrderAdminService {
       },
     });
 
-    if (confirmedOrders.count > 0) {
-      console.info(`[OrderAdminService] auto-confirmed ${confirmedOrders.count} orders past ${days}-day shipping window`);
+    if (deliveredOrders.count > 0) {
+      console.info(`[OrderAdminService] auto-delivered ${deliveredOrders.count} orders past ${days}-day shipping window`);
     }
 
-    return confirmedOrders;
+    return deliveredOrders;
+  }
+
+  /**
+   * Auto-complete delivered orders after shipping window
+   * @returns Result with count of auto-completed orders
+   * @note Scheduled cron job - runs automatically
+   * @desc Sets status to COMPLETED when shippedAt > configured days (default: 7)
+   */
+  static async autoCompleteOrders() {
+    const db: PrismaClient = prisma;
+    const days = Number(process.env.AUTO_COMPLETE_DAYS ?? 7);
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const candidates = await db.order.findMany({
+      where: {
+        status: "DELIVERED",
+        shippedAt: { lt: cutoff },
+      },
+      select: {
+        id: true,
+        userId: true,
+        subtotal: true,
+      },
+    });
+
+    let completedCount = 0;
+    let rewardGrantedCount = 0;
+
+    for (const candidate of candidates) {
+      const completionResult = await db.$transaction(async (tx) => {
+        const claimed = await tx.order.updateMany({
+          where: {
+            id: candidate.id,
+            status: "DELIVERED",
+          },
+          data: {
+            status: "COMPLETED",
+            confirmedAt: new Date(),
+          },
+        });
+
+        if (claimed.count === 0) {
+          return { completed: false, rewardGranted: false };
+        }
+
+        const rewardResult = await OrderRewardService.grantCompletionRewardVoucher(tx, {
+          id: candidate.id,
+          userId: candidate.userId,
+          subtotal: candidate.subtotal,
+        });
+
+        return { completed: true, rewardGranted: rewardResult.granted };
+      });
+
+      if (completionResult.completed) {
+        completedCount += 1;
+      }
+      if (completionResult.rewardGranted) {
+        rewardGrantedCount += 1;
+      }
+    }
+
+    const completedOrders = {
+      count: completedCount,
+      rewardGrantedCount,
+    };
+
+    if (completedOrders.count > 0) {
+      console.info(
+        `[OrderAdminService] auto-completed ${completedOrders.count} orders past ${days}-day shipping window, granted ${completedOrders.rewardGrantedCount} reward vouchers`,
+      );
+    }
+
+    return completedOrders;
+  }
+
+  /**
+   * Backward-compatible alias for older call sites
+   * @deprecated Use autoDeliverOrders()
+   */
+  static async autoConfirmOrders() {
+    return this.autoDeliverOrders();
   }
 
   /**

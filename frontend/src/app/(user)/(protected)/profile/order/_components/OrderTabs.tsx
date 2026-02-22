@@ -41,6 +41,12 @@ export const OrderTabs = ({ activeTab, onTabChange }: OrderTabsProps) => {
         >
           Delivered
         </TabsTrigger>
+        <TabsTrigger
+          value="completed"
+          className="rounded-full px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+        >
+          Completed
+        </TabsTrigger>
       </TabsList>
     </Tabs>
   );
