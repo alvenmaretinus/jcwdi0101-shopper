@@ -317,7 +317,7 @@ export class OrderLifecycleService {
                 movementType: "SOLD",
                 productId: it.productId,
                 fromStoreId: store.id,
-                description: "Stock deducted after payment confirmation",
+                description: process.env.PRODUCT_MOVEMENT_SOLD_MESSAGE || "Stock deducted after payment confirmation",
               },
             });
           }

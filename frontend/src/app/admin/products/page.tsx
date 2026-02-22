@@ -124,33 +124,10 @@ export default function Products() {
     }
   };
 
-  const handleCreate = async () => {
-    // If we have at least one category, create a minimal product on the server
-    // so the dialog can open in "edit" mode for that product. Otherwise just open dialog.
-    if (categories && categories.length > 0) {
-      try {
-        const body = {
-          name: 'New Product',
-          description: '',
-          price: 0,
-          categoryId: categories[0].id,
-        };
-        const apiInit: ApiInit = { method: HttpMethod.POST, body };
-        const created = await apiFetch<any>(`/product`, apiInit);
-        setEditingProduct(created);
-        // refresh list and open dialog for editing
-        await fetchProducts();
-        setIsDialogOpen(true);
-      } catch (err) {
-        console.error('Failed to create product draft', err);
-        // fallback to opening empty dialog
-        setEditingProduct(null);
-        setIsDialogOpen(true);
-      }
-    } else {
-      setEditingProduct(null);
-      setIsDialogOpen(true);
-    }
+  const handleCreate = () => {
+    // Open dialog for creating a new product
+    setEditingProduct(null);
+    setIsDialogOpen(true);
   };
 
   const handlePageChange = (page: number) => {

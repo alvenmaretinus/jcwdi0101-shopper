@@ -1,6 +1,7 @@
 import { TableBody, TableRow, TableCell } from "@/components/ui/table";
 import TableCellOne from "./_components/table-cell-1";
-import TableCellStock from "./_components/table-cell-stock";
+import TableCellCategoryAndPrice from "./_components/table-cell-category-and-price";
+import TableCellId from "./_components/table-cell-id";
 import TableCellModifyButtons from "./_components/table-cell-modify-buttons";
 
 export default function ProductTableBody(props: any) {
@@ -10,7 +11,7 @@ export default function ProductTableBody(props: any) {
         return (
             <TableBody>
                 <TableRow>
-                    <TableCell colSpan={isSuperAdmin ? 4 : 3} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={isSuperAdmin ? 5 : 4} className="text-center text-muted-foreground py-8">
                         No products found
                     </TableCell>
                 </TableRow>
@@ -23,8 +24,8 @@ export default function ProductTableBody(props: any) {
             {products.map((product: any) => (
             <TableRow key={product.id}>
                 <TableCellOne product={product} />
-                
-                <TableCellStock product={product} />
+                <TableCellCategoryAndPrice product={product} />
+                <TableCellId product={product} />
                 {isSuperAdmin && (
                     <TableCellModifyButtons product={product} handleEdit={handleEdit} handleDelete={props.handleDelete} />
                 )}

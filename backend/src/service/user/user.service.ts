@@ -86,6 +86,14 @@ export class UserService {
       throw new NotFoundError("User not found");
     }
 
+    // Check if non-admin users can only update their own data
+    if (
+      currentUser?.role !== UserRole.SUPERADMIN &&
+      currentUser?.id !== userId
+    ) {
+      throw new UnauthorizedError("You can only update your own user data");
+    }
+
     // Check if trying to update an ADMIN user without SUPERADMIN privileges
     if (
       (users[0].role === UserRole.ADMIN ||

@@ -503,6 +503,12 @@ export class OrderService {
         }
       }
 
+      const cartItemsForDiscount = items.map((it) => ({
+        productId: it.productId,
+        quantity: it.quantity,
+        price: productMap[it.productId]?.price ?? 0,
+      }));
+
       const additionalDiscount = await PricingCalculationService.calculateTotalDiscount(
         subtotalAfterProductPromotion,
         discountIds,
@@ -510,6 +516,7 @@ export class OrderService {
         db,
         userId,
         shippingCost,
+        cartItemsForDiscount,
       );
       const totalDiscount = productPromotionDiscount + additionalDiscount;
       const grandTotal = subtotal + shippingCost - totalDiscount;

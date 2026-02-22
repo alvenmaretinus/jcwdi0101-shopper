@@ -129,7 +129,11 @@ export class VoucherService implements Service {
 
         const vouchers = Array.from(vouchersMap.values());
 
-        const unauthorizedAssignedVouchers = vouchers.filter(
+        const activeVouchers = vouchers.filter(
+            (voucher) => !voucher.isSoftDeleted && !voucher.discount.isSoftDeleted
+        );
+
+        const unauthorizedAssignedVouchers = activeVouchers.filter(
             (voucher) => voucher.userId !== null && voucher.userId !== userId
         );
 
@@ -138,13 +142,14 @@ export class VoucherService implements Service {
         }
 
         const now = new Date();
-        const applicableVouchers = vouchers.filter((voucher) => {
+        const applicableVouchers = activeVouchers.filter((voucher) => {
             const discount = voucher.discount;
             const hasStarted = !discount.startsAt || discount.startsAt <= now;
             const hasNotEnded = !discount.endsAt || discount.endsAt >= now;
             const minimumPassed = !discount.isWithMinimum || discount.minimumPrice === null || subtotal >= discount.minimumPrice;
             const available = !discount.isLimited || (discount.limit !== null && discount.useCounter < discount.limit);
-            return hasStarted && hasNotEnded && minimumPassed && available;
+            const limitedDiscountAvailable = !discount.isLimitedDiscount || (discount.discountLimitAmt !== null && discount.useCounter < discount.discountLimitAmt);
+            return hasStarted && hasNotEnded && minimumPassed && available && limitedDiscountAvailable;
         });
 
         if (applicableVouchers.length === 0) {

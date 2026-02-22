@@ -27,8 +27,8 @@ export function toDomainModel (prismaModel: ProductModel | PrismaProductWithRela
     if ('category' in prismaModel && prismaModel.category) {
         base.category = prismaModel.category;
     }
-    if ('productImages' in prismaModel && prismaModel.productImages) {
-        base.productImages = prismaModel.productImages;
+    if ('productImages' in prismaModel) {
+        base.productImages = prismaModel.productImages || [];
     }
 
     return base;

@@ -62,9 +62,15 @@ export function ProductCard({
         ? originalPrice - product.price
         : 0;
   console.log("Product:", product);
-  const primaryImage =
-    product.productImages[0]?.url ||
-    "https://placehold.co/400x400?text=No+Image";
+
+  const getImageUrl = (url?: string) => {
+    if (!url) return "https://placehold.co/400x400?text=No+Image";
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+    return `${apiBaseUrl}${url}`;
+  };
+
+  const primaryImage = getImageUrl(product.productImages[0]?.url);
 
   return (
     <div className="card-product group relative">
@@ -118,6 +124,7 @@ export function ProductCard({
             fill
             className="object-cover group-hover:scale-110 transition-transform duration-300"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+            unoptimized
           />
         </div>
       </Link>

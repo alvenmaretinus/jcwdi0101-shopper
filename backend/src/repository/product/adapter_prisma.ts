@@ -1,7 +1,7 @@
 import { ProductsRepo, PaginationParams, PaginatedResponse } from './interface';
 import { PrismaClient } from '../../../prisma/generated/client';
 import { Product, CreateProductReq, GetProductReq, ProductWhereClause, UpdateProductReq, ProductWithStock } from './entities';
-import { ProductCreateInput} from '../../../prisma/generated/models';
+import { ProductUncheckedCreateInput, ProductUncheckedUpdateInput} from '../../../prisma/generated/models';
 import { toDomainModel, toDomainModels, toDomainModelsWithStock } from './mapper';
 import { QueryMode } from '../../../prisma/generated/internal/prismaNamespaceBrowser';
 
@@ -137,15 +137,14 @@ export class PrismaRepository implements ProductsRepo {
     async createProduct(data: CreateProductReq): Promise<Product> {
         const now = new Date();
     
-        const productCreateInput: ProductCreateInput = {
-            //ID will be created automatically
+        const productCreateInput: ProductUncheckedCreateInput = {
             name: data.name,
             description: data.description,
             price: data.price,
             createAt: now,
             updatedAt: now,
             weight: data.weight,
-            category: { connect: { id: data.categoryId } }, 
+            categoryId: data.categoryId,
         };
 
         const createdProduct = await this.prisma.product.create({
@@ -159,12 +158,10 @@ export class PrismaRepository implements ProductsRepo {
     }
     
     async updateProduct(id: string, data: Partial<UpdateProductReq>): Promise<Product> {
-        const productUpdateData: Partial<ProductCreateInput> = {
+        const productUpdateData: ProductUncheckedUpdateInput = {
             ...data,
             updatedAt: new Date(),
-            category: data.categoryId? { connect:  { id: data.categoryId } } : undefined
         };
-
 
         const updatedProduct = await this.prisma.product.update({
             where: { id: id },

@@ -20,6 +20,28 @@ export class PrismaRepository implements DiscountRepo {
     }
 
     async createDiscount(data: DiscountCreateReq): Promise<DiscountResponse> {
+        // Check if a soft-deleted discount with the same name exists
+        const existingSoftDeleted = await this.prisma.discount.findFirst({
+            where: {
+                name: data.name,
+                isSoftDeleted: true,
+            },
+        });
+
+        // If soft-deleted discount exists, update and reactivate it
+        if (existingSoftDeleted) {
+            const updatedDiscount = await this.prisma.discount.update({
+                where: { id: existingSoftDeleted.id },
+                data: {
+                    ...data,
+                    type: data.type as DiscountType,
+                    isSoftDeleted: false,
+                },
+            });
+            return updatedDiscount as DiscountResponse;
+        }
+
+        // Otherwise, create a new discount
         const discountCreateData: DiscountCreateInput = {
             ...data,
             type: data.type as DiscountType,

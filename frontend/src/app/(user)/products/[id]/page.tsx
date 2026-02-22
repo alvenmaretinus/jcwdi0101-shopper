@@ -32,7 +32,16 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
     0
   ) ?? 0;
 
-  const primaryImage = product.productImages?.[0]?.url;
+  const getImageUrl = (url?: string) => {
+    if (!url) return null;
+    // If URL is already absolute (starts with http:// or https://), return as-is
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    // Otherwise, prepend API base URL for relative paths
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+    return `${apiBaseUrl}${url}`;
+  };
+
+  const primaryImage = getImageUrl(product.productImages?.[0]?.url);
 
   // Format price in IDR
   const formatPrice = (price: number) => {
@@ -70,6 +79,7 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                     fill
                     className="object-cover"
                     priority
+                    unoptimized
                   />
                 </div>
               ) : (
@@ -200,10 +210,11 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                     className="relative aspect-square rounded-lg overflow-hidden bg-card shadow-soft"
                   >
                     <Image
-                      src={image.url}
+                      src={getImageUrl(image.url)!}
                       alt={product.name}
                       fill
                       className="object-cover"
+                      unoptimized
                     />
                   </div>
                 ))}

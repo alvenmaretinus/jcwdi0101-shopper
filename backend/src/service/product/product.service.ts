@@ -5,6 +5,8 @@ import { CreateProductInput, UpdateProductInput } from '../../schema/product';
 import { Product, ProductWithStock, ProductWithDiscounts, ProductWithStockAndDiscounts } from '../../repository/product/entities';
 import { PrismaClient } from '../../../prisma/generated/client';
 import { calculateStackedDiscount } from '../../lib/discount/calculateStackedDiscount';
+import { BadRequestError } from '../../error/BadRequestError';
+import { toDomainModel } from '../../repository/product/mapper';
 
 export class ProductService implements Service {
     private productRepo: ProductsRepo;
@@ -96,7 +98,72 @@ export class ProductService implements Service {
     }
 
     async createProduct(data: CreateProductInput): Promise<Product> {
-        return this.productRepo.createProduct(data);
+        // Use transaction to validate and create product atomically
+        const result = await this.prisma.$transaction(async (tx) => {
+            // Check if product with same name already exists (case-insensitive, any status)
+            const existingProduct = await tx.product.findFirst({
+                where: {
+                    name: {
+                        equals: data.name,
+                        mode: 'insensitive'
+                    }
+                },
+                include: {
+                    category: true,
+                    productImages: true,
+                }
+            });
+
+            if (existingProduct) {
+                // If soft-deleted, restore it by updating the record
+                if (existingProduct.isSoftDeleted) {
+                    const now = new Date();
+                    const restoredProduct = await tx.product.update({
+                        where: { id: existingProduct.id },
+                        data: {
+                            name: data.name,
+                            description: data.description,
+                            price: data.price,
+                            weight: data.weight,
+                            isSoftDeleted: false,
+                            updatedAt: now,
+                            category: { connect: { id: data.categoryId } },
+                        },
+                        include: {
+                            category: true,
+                            productImages: true,
+                        },
+                    });
+                    return restoredProduct;
+                } else {
+                    // Product exists and is not soft-deleted
+                    throw new BadRequestError(`Product with name ${data.name} already exists`);
+                }
+            }
+
+            // Create new product if it doesn't exist
+            const now = new Date();
+            const createdProduct = await tx.product.create({
+                data: {
+                    name: data.name,
+                    description: data.description,
+                    price: data.price,
+                    createAt: now,
+                    updatedAt: now,
+                    weight: data.weight,
+                    category: { connect: { id: data.categoryId } },
+                },
+                include: {
+                    category: true,
+                    productImages: true,
+                },
+            });
+
+            return createdProduct;
+        });
+
+        // Convert to domain model
+        return toDomainModel(result);
     }
 
     async updateProduct(data: UpdateProductInput): Promise<Product> {
@@ -106,6 +173,69 @@ export class ProductService implements Service {
 
     async deleteProduct(id: string): Promise<void> {
         return this.productRepo.deleteProduct(id);
+    }
+
+    async addProductImages(productId: string, imagePaths: string[]): Promise<Product> {
+        // Verify product exists
+        const product = await this.prisma.product.findUnique({
+            where: { id: productId },
+        });
+
+        if (!product) {
+            throw new Error("Product not found");
+        }
+
+        // Create product image records
+        for (const url of imagePaths) {
+            await this.prisma.productImage.create({
+                data: {
+                    url,
+                    productId,
+                },
+            });
+        }
+
+        // Return updated product with images
+        return this.prisma.product.findUnique({
+            where: { id: productId },
+            include: { productImages: true },
+        }) as Promise<Product>;
+    }
+
+    async deleteProductImage(productId: string, imageId: string): Promise<Product> {
+        // Verify image exists and belongs to the product
+        const image = await this.prisma.productImage.findUnique({
+            where: { id: imageId },
+        });
+
+        if (!image) {
+            throw new Error("Image not found");
+        }
+
+        if (image.productId !== productId) {
+            throw new Error("Image does not belong to this product");
+        }
+
+        // Delete the image record
+        await this.prisma.productImage.delete({
+            where: { id: imageId },
+        });
+
+        // Delete the file from disk
+        try {
+            const path = await import("path");
+            const fs = await import("fs");
+            const filePath = path.join(process.cwd(), image.url);
+            await fs.promises.unlink(filePath).catch(() => {});
+        } catch (err) {
+            console.error("Error deleting image file:", err);
+        }
+
+        // Return updated product with remaining images
+        return this.prisma.product.findUnique({
+            where: { id: productId },
+            include: { productImages: true },
+        }) as Promise<Product>;
     }
 } 
 

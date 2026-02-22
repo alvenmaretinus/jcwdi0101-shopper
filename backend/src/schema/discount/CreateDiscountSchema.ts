@@ -11,6 +11,8 @@ export const CreateDiscountSchema = z.strictObject({
     isVoucher: z.boolean().default(false).optional(),
     isWithMinimum: z.boolean(),
     minimumPrice: z.number().int().min(0, "Minimum price must be at least 0").optional(),
+    isLimitedDiscount: z.boolean().optional().default(false),
+    discountLimitAmt: z.number().int().min(1, "Discount limit amount must be at least 1").optional(),
     isLimited: z.boolean().optional().default(false),
     limit: z.number().int().min(1, "Limit must be at least 1").optional(),
     isTiedToProduct: z.boolean(),

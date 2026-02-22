@@ -58,6 +58,7 @@ export type VoucherResponse = {
     referralRole: 'REFERRER' | 'REFEREE' | null;
     isRedeemed: boolean;
     redeemedAt: Date | null;
+    isSoftDeleted: boolean;
     createdAt: Date;
     updatedAt: Date;
     discount: {
@@ -69,11 +70,14 @@ export type VoucherResponse = {
         isVoucher: boolean;
         isWithMinimum: boolean;
         minimumPrice: number | null;
+        isLimitedDiscount: boolean;
+        discountLimitAmt: number | null;
         isLimited: boolean;
         limit: number | null;
         useCounter: number;
         startsAt: Date | null;
         endsAt: Date | null;
+        isSoftDeleted: boolean;
         createdAt: Date;
         updatedAt: Date;
     };

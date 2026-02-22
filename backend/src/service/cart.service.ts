@@ -64,7 +64,21 @@ export class CartService {
     });
 
     // Calculate total discount (discounts + vouchers)
-    const additionalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotalAfterProductPromotion, discountIds, voucherIds, prisma, userId);
+    const cartItemsForDiscount = cartWithItems.cartItems.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.product.price,
+    }));
+
+    const additionalDiscount = await PricingCalculationService.calculateTotalDiscount(
+      subtotalAfterProductPromotion,
+      discountIds,
+      voucherIds,
+      prisma,
+      userId,
+      0,
+      cartItemsForDiscount,
+    );
     const totalDiscount = productPromotionDiscount + additionalDiscount;
 
     // Shipping cost is estimated as 0 in cart (calculated during checkout)

@@ -152,7 +152,6 @@ export class OrderAdminService {
             },
           });
         }
-
       });
 
       console.info(`[OrderAdminService] Admin cancelled order ${orderId} (status was ${order.status}), stock refunded. Reason: ${reason || "No reason provided"}`);

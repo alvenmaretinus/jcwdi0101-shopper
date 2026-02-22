@@ -7,12 +7,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Loader2, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { getUsers } from '@/services/user';
 import { getStores } from '@/services/store/getStores';
 import { User } from '@/types/User';
 import { Store } from '@/types/Store';
+import { EditUserDialog } from '@/components/admin/EditUserDialog';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -24,6 +25,8 @@ export default function Users() {
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,7 +49,7 @@ export default function Users() {
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )
         );
-        setStores(storeData);
+        setStores(storeData.data);
       } catch (err) {
         console.error('Failed to fetch users:', err);
         setError('Failed to load users. Please try again.');
@@ -86,6 +89,19 @@ export default function Users() {
     return store?.name || null;
   };
 
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setEditDialogOpen(true);
+  };
+
+  const handleUserUpdated = (updatedUser: User) => {
+    if (updatedUser.role === 'ADMIN') {
+      setAdmins(admins.map(u => u.id === updatedUser.id ? updatedUser : u));
+    } else {
+      setCustomers(customers.map(u => u.id === updatedUser.id ? updatedUser : u));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -108,11 +124,8 @@ export default function Users() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Users</h1>
-          <p className="text-muted-foreground">View store admins and customers</p>
+          <p className="text-muted-foreground">Manage store admins and customers</p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          To add/remove store admins, go to <strong>Stores → [Store] → Add Admin</strong>
-        </p>
       </div>
 
       <Tabs defaultValue="admins">
@@ -141,12 +154,13 @@ export default function Users() {
                     <TableHead>Email</TableHead>
                     <TableHead>Assigned Store</TableHead>
                     <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAdmins.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                         No store admins found
                       </TableCell>
                     </TableRow>
@@ -167,6 +181,16 @@ export default function Users() {
                           </TableCell>
                           <TableCell className="text-muted-foreground">
                             {format(new Date(user.createdAt), 'MMM dd, yyyy')}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </Button>
                           </TableCell>
                         </TableRow>
                       );
@@ -198,12 +222,13 @@ export default function Users() {
                     <TableHead>Email</TableHead>
                     <TableHead>Referral Code</TableHead>
                     <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedCustomers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                         No customers found
                       </TableCell>
                     </TableRow>
@@ -218,6 +243,16 @@ export default function Users() {
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {format(new Date(user.createdAt), 'MMM dd, yyyy')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditUser(user)}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -260,6 +295,14 @@ export default function Users() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <EditUserDialog
+        user={selectedUser}
+        stores={stores}
+        isOpen={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        onSuccess={handleUserUpdated}
+      />
     </div>
   );
 }
