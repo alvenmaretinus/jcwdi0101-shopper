@@ -53,6 +53,8 @@ export class OrderService {
           isLimited: true,
           limit: true,
           useCounter: true,
+          isLimitedDiscount: true,
+          discountLimitAmt: true,
         },
       });
 

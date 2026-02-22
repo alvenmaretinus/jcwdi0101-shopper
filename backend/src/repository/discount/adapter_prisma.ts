@@ -114,8 +114,16 @@ export class PrismaRepository implements DiscountRepo {
      * - AND endsAt IS NULL OR endsAt >= activeOnDate
      */
     private formatFilter(filter: Partial<DiscountFilter>): Prisma.DiscountWhereInput {
-        const { activeOnDate, ...rest } = filter;
+        const { activeOnDate, name, ...rest } = filter;
         const formattedFilter: Prisma.DiscountWhereInput = { ...rest };
+
+        // Handle case-insensitive name search
+        if (name) {
+            formattedFilter.name = {
+                contains: name,
+                mode: 'insensitive' as Prisma.QueryMode,
+            };
+        }
 
         if (activeOnDate) {
             const andConditions: Prisma.DiscountWhereInput[] = this.buildActiveDateFilter(activeOnDate);
@@ -249,6 +257,30 @@ export class PrismaRepository implements DiscountRepo {
                         { OR: this.buildEndsAtCondition(activeOnDate) },
                     ],
                 },
+                select: {
+                    id: true,
+                    name: true,
+                    percentage: true,
+                    amount: true,
+                    type: true,
+                    isVoucher: true,
+                    isWithMinimum: true,
+                    minimumPrice: true,
+                    isLimitedDiscount: true,
+                    discountLimitAmt: true,
+                    isLimited: true,
+                    limit: true,
+                    useCounter: true,
+                    isTiedToProduct: true,
+                    productId: true,
+                    buyQuantity: true,
+                    freeQuantity: true,
+                    startsAt: true,
+                    endsAt: true,
+                    isSoftDeleted: true,
+                    createdAt: true,
+                    updatedAt: true,
+                }
             });
 
             const availablePricingDiscounts = (pricingDiscounts as DiscountResponse[]).filter((discount) =>

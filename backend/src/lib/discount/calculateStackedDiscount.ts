@@ -24,9 +24,15 @@ export interface StackedDiscountResult {
 }
 
 /**
- * Calculates stacked discounts on a price
- * Applies percentage discounts and fixed amount discounts alternately
- * to minimize the final price for the customer
+ * Calculates stacked discounts on a price.
+ *
+ * Discounts are split into three buckets:
+ *   1. Pure percentage discounts (sorted by percentage desc)
+ *   2. Fixed-amount discounts (sorted by amount desc)
+ *   3. Percentage-with-limit discounts (effective amount recalculated each iteration)
+ *
+ * Each iteration picks the single best discount across all three buckets,
+ * applies it, and repeats until no discounts remain or price reaches 0.
  */
 export function calculateStackedDiscount(
   price: number,
@@ -54,24 +60,32 @@ export function calculateStackedDiscount(
     return true;
   });
 
+  const emptyResult: StackedDiscountResult = {
+    discountedPrice: price,
+    totalDiscount: 0,
+    appliedCount: 0,
+    appliedDiscounts: [],
+    earliestEndsAt: null,
+    quantityDiscounts: quantityDiscounts.length > 0 ? quantityDiscounts : undefined,
+  };
+
   if (applicableDiscounts.length === 0) {
-    return {
-      discountedPrice: price,
-      totalDiscount: 0,
-      appliedCount: 0,
-      appliedDiscounts: [],
-      earliestEndsAt: null,
-      quantityDiscounts: quantityDiscounts.length > 0 ? quantityDiscounts : undefined,
-    };
+    return emptyResult;
   }
 
-  const percentageDiscounts = applicableDiscounts
-    .filter((discount) => discount.type === "PERCENTAGE")
+  // ── Bucket 1: Pure percentage discounts (no limit cap), sorted by pct desc ──
+  const purePercentageDiscounts = applicableDiscounts
+    .filter((d) => d.type === "PERCENTAGE" && !d.isLimitedDiscount)
     .sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
 
-  const amountDiscounts = applicableDiscounts
-    .filter((discount) => discount.type === "FIXED_AMOUNT")
+  // ── Bucket 2: Fixed-amount discounts, sorted by amount desc ──
+  const fixedAmountDiscounts = applicableDiscounts
+    .filter((d) => d.type === "FIXED_AMOUNT")
     .sort((a, b) => Number(b.amount ?? 0) - Number(a.amount ?? 0));
+
+  // ── Bucket 3: Percentage-with-limit discounts (effective amt changes each iter) ──
+  const limitedPercentageDiscounts = applicableDiscounts
+    .filter((d) => d.type === "PERCENTAGE" && d.isLimitedDiscount && d.discountLimitAmt);
 
   let totalDiscount = 0;
   let remainingPrice = price;
@@ -86,7 +100,6 @@ export function calculateStackedDiscount(
     }).format(amount);
   };
 
-  // Track applied discounts
   const trackAppliedDiscount = (
     discount: DiscountResponse,
     actualDiscount: number
@@ -106,64 +119,75 @@ export function calculateStackedDiscount(
     });
   };
 
-  // Alternate between percentage and amount discounts
-  while (
-    percentageDiscounts.length > 0 &&
-    amountDiscounts.length > 0 &&
-    remainingPrice > 0
-  ) {
-    const pctDiscount = percentageDiscounts[0];
-    const amtDiscount = amountDiscounts[0];
+  // ── Main loop: pick best discount from any bucket each iteration ──
+  while (remainingPrice > 0) {
+    // Candidate from bucket 1 – best pure percentage
+    let bestPurePctAmount = 0;
+    if (purePercentageDiscounts.length > 0) {
+      bestPurePctAmount = remainingPrice * (Number(purePercentageDiscounts[0].percentage ?? 0) / 100);
+    }
 
-    const pctAmount = remainingPrice * (Number(pctDiscount.percentage ?? 0) / 100);
-    const amtAmount = Number(amtDiscount.amount ?? 0);
+    // Candidate from bucket 2 – best fixed amount
+    let bestFixedAmount = 0;
+    if (fixedAmountDiscounts.length > 0) {
+      bestFixedAmount = Number(fixedAmountDiscounts[0].amount ?? 0);
+    }
 
-    if (pctAmount >= amtAmount) {
-      const actualDiscount = Math.min(pctAmount, remainingPrice);
+    // Candidate from bucket 3 – recalculate effective amounts, sort, pick best
+    let bestLimitedAmount = 0;
+    let bestLimitedIndex = -1;
+    if (limitedPercentageDiscounts.length > 0) {
+      // Calculate effective discount for each limited-percentage discount
+      const effectiveAmounts = limitedPercentageDiscounts.map((d) => {
+        const rawPct = remainingPrice * (Number(d.percentage ?? 0) / 100);
+        return Math.min(rawPct, d.discountLimitAmt!);
+      });
+
+      // Find the one with the highest effective amount
+      for (let i = 0; i < effectiveAmounts.length; i++) {
+        if (effectiveAmounts[i] > bestLimitedAmount) {
+          bestLimitedAmount = effectiveAmounts[i];
+          bestLimitedIndex = i;
+        }
+      }
+    }
+
+    // No more discounts to apply
+    if (bestPurePctAmount <= 0 && bestFixedAmount <= 0 && bestLimitedAmount <= 0) {
+      break;
+    }
+
+    // Pick the best across all three buckets
+    if (bestPurePctAmount >= bestFixedAmount && bestPurePctAmount >= bestLimitedAmount) {
+      // Apply pure percentage discount
+      const discount = purePercentageDiscounts.shift()!;
+      const actualDiscount = Math.min(bestPurePctAmount, remainingPrice);
       if (actualDiscount > 0) {
         totalDiscount += actualDiscount;
         remainingPrice -= actualDiscount;
         appliedCount += 1;
-        trackAppliedDiscount(pctDiscount, actualDiscount);
+        trackAppliedDiscount(discount, actualDiscount);
       }
-      percentageDiscounts.shift();
+    } else if (bestFixedAmount >= bestPurePctAmount && bestFixedAmount >= bestLimitedAmount) {
+      // Apply fixed amount discount
+      const discount = fixedAmountDiscounts.shift()!;
+      const actualDiscount = Math.min(bestFixedAmount, remainingPrice);
+      if (actualDiscount > 0) {
+        totalDiscount += actualDiscount;
+        remainingPrice -= actualDiscount;
+        appliedCount += 1;
+        trackAppliedDiscount(discount, actualDiscount);
+      }
     } else {
-      const actualDiscount = Math.min(amtAmount, remainingPrice);
+      // Apply limited percentage discount
+      const discount = limitedPercentageDiscounts.splice(bestLimitedIndex, 1)[0];
+      const actualDiscount = Math.min(bestLimitedAmount, remainingPrice);
       if (actualDiscount > 0) {
         totalDiscount += actualDiscount;
         remainingPrice -= actualDiscount;
         appliedCount += 1;
-        trackAppliedDiscount(amtDiscount, actualDiscount);
+        trackAppliedDiscount(discount, actualDiscount);
       }
-      amountDiscounts.shift();
-    }
-  }
-
-  // Apply remaining percentage discounts
-  while (percentageDiscounts.length > 0 && remainingPrice > 0) {
-    const pctDiscount = percentageDiscounts.shift();
-    if (!pctDiscount) break;
-    const pctAmount = remainingPrice * (Number(pctDiscount.percentage ?? 0) / 100);
-    const actualDiscount = Math.min(pctAmount, remainingPrice);
-    if (actualDiscount > 0) {
-      totalDiscount += actualDiscount;
-      remainingPrice -= actualDiscount;
-      appliedCount += 1;
-      trackAppliedDiscount(pctDiscount, actualDiscount);
-    }
-  }
-
-  // Apply remaining amount discounts
-  while (amountDiscounts.length > 0 && remainingPrice > 0) {
-    const amtDiscount = amountDiscounts.shift();
-    if (!amtDiscount) break;
-    const amtAmount = Number(amtDiscount.amount ?? 0);
-    const actualDiscount = Math.min(amtAmount, remainingPrice);
-    if (actualDiscount > 0) {
-      totalDiscount += actualDiscount;
-      remainingPrice -= actualDiscount;
-      appliedCount += 1;
-      trackAppliedDiscount(amtDiscount, actualDiscount);
     }
   }
 
@@ -177,14 +201,7 @@ export function calculateStackedDiscount(
   const earliestEndsAt = endDates.length > 0 ? endDates[0] : null;
 
   if (discountedPrice >= price || appliedCount === 0) {
-    return {
-      discountedPrice: price,
-      totalDiscount: 0,
-      appliedCount: 0,
-      appliedDiscounts: [],
-      earliestEndsAt: null,
-      quantityDiscounts: quantityDiscounts.length > 0 ? quantityDiscounts : undefined,
-    };
+    return emptyResult;
   }
 
   return {

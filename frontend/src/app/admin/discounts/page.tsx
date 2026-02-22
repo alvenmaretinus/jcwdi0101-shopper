@@ -13,14 +13,15 @@ import { Plus, Pencil, Trash2, Search, Percent, Tag, Gift, Loader2, Copy, Ticket
 import { format } from 'date-fns';
 import type { Discount } from '@/types/Discount';
 import type { Voucher } from '@/types/Voucher';
+import type { ProductWithDetails } from '@/services/product/getProducts';
 import { getDiscounts, createDiscount, updateDiscount, deleteDiscount, CreateDiscountInput, UpdateDiscountInput } from '@/services/discount';
 import { getVouchers, createVoucher, deleteVoucher, CreateVoucherInput } from '@/services/voucher';
-import { getProducts, GetProductsResponse, ProductWithDetails } from '@/services/product/getProducts';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Pagination } from '@/components/Pagination/Pagination';
+import ProductSelectionModal from '@/components/Dialog/ProductSelectionModal';
 
 const discountTypeIcons = {
   PERCENTAGE: Percent,
@@ -61,18 +62,11 @@ export default function Discounts() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWithMinimumChecked, setIsWithMinimumChecked] = useState<boolean>(editingDiscount?.isWithMinimum ?? false);
+  const [isLimitedDiscountChecked, setIsLimitedDiscountChecked] = useState<boolean>(editingDiscount?.isLimitedDiscount ?? false);
   
   // Product selection states
-  const [products, setProducts] = useState<ProductWithDetails[]>([]);
-  const [productSearch, setProductSearch] = useState('');
-  const [productPage, setProductPage] = useState(1);
-  const [productsPagination, setProductsPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 1,
-  });
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductWithDetails | null>(null);
   
   // Voucher states
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -115,7 +109,7 @@ export default function Discounts() {
   // Fetch discounts on mount and when filters change
   useEffect(() => {
     fetchDiscounts();
-  }, [typeFilter, discountsPage]);
+  }, [typeFilter, discountsPage, searchQuery]);
 
   // Fetch vouchers on mount and when filters change
   useEffect(() => {
@@ -131,32 +125,13 @@ export default function Discounts() {
     setVouchersPage(1);
   }, [voucherSearch, voucherTypeFilter]);
 
-  // Fetch products for product selection
-  useEffect(() => {
-    fetchProducts();
-  }, [productSearch, productPage]);
 
-  const fetchProducts = async () => {
-    setIsLoadingProducts(true);
-    try {
-      const response = await getProducts({
-        name: productSearch || undefined,
-        page: productPage,
-        limit: 10,
-      });
-      setProducts(response.data);
-      setProductsPagination(response.meta);
-    } catch (error) {
-      console.error('Failed to load products:', error);
-    } finally {
-      setIsLoadingProducts(false);
-    }
-  };
 
   const fetchDiscounts = async () => {
     setIsLoading(true);
     try {
       const response = await getDiscounts({ 
+        name: searchQuery || undefined,
         type: typeFilter !== 'all' ? typeFilter : undefined,
         page: discountsPage,
         limit: 20,
@@ -187,14 +162,8 @@ export default function Discounts() {
     }
   };
 
-  const filteredDiscounts: Discount[] = discounts.filter((discount: Discount) => {
-    const matchesSearch = 
-      discount.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (discount.percentage?.toString() || '').includes(searchQuery.toLowerCase()) ||
-      (discount.amount?.toString() || '').includes(searchQuery.toLowerCase()) ||
-      discount.type.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+
+  const filteredDiscounts: Discount[] = discounts;
 
   const filteredVouchers: Voucher[] = vouchers.filter((voucher: Voucher) => {
     const matchesSearch = 
@@ -216,15 +185,22 @@ export default function Discounts() {
   const handleEdit = (discount: Discount) => {
     setEditingDiscount(discount);
     setSelectedDiscountType(discount.type);
+    if (discount.productId) {
+      setSelectedProduct({ id: discount.productId } as ProductWithDetails);
+    } else {
+      setSelectedProduct(null);
+    }
     setIsDialogOpen(true);
   };
 
   useEffect(() => {
     setIsWithMinimumChecked(editingDiscount?.isWithMinimum ?? false);
+    setIsLimitedDiscountChecked(editingDiscount?.isLimitedDiscount ?? false);
   }, [editingDiscount]);
 
   const handleCreate = () => {
     setEditingDiscount(null);
+    setSelectedProduct(null);
     setSelectedDiscountType('PERCENTAGE');
     setIsDialogOpen(true);
   };
@@ -245,8 +221,8 @@ export default function Discounts() {
         type,
         isVoucher: false,
         isWithMinimum: formData.has('isWithMinimum'),
-        isTiedToProduct: formData.get('productId') !== 'all',
-        productId: formData.get('productId') !== 'all' ? formData.get('productId') as string : null,
+        isTiedToProduct: !!selectedProduct?.id,
+        productId: selectedProduct?.id || null,
       };
 
       // Add type-specific fields
@@ -284,6 +260,20 @@ export default function Discounts() {
         discountData.minimumPrice = minimumPrice;
       }
 
+      // Handle max discount amount (only for percentage discounts)
+      if (type === 'PERCENTAGE' && formData.has('isLimitedDiscount')) {
+        discountData.isLimitedDiscount = true;
+        const discountLimitAmt = Number(formData.get('discountLimitAmt'));
+        if (!Number.isInteger(discountLimitAmt) || discountLimitAmt < 1) {
+          toast.error('Max discount amount must be a whole number greater than 0');
+          setIsSubmitting(false);
+          return;
+        }
+        discountData.discountLimitAmt = discountLimitAmt;
+      } else {
+        discountData.isLimitedDiscount = false;
+      }
+
       if (startsAt) {
         discountData.startsAt = new Date(startsAt);
       }
@@ -301,6 +291,7 @@ export default function Discounts() {
       await fetchDiscounts();
       setIsDialogOpen(false);
       setEditingDiscount(null);
+      setSelectedProduct(null);
     } catch (error) {
       // Error toast is handled in the service
     } finally {
@@ -549,63 +540,47 @@ export default function Discounts() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="product">Apply to Product (Optional)</Label>
-                <div className="space-y-2">
-                  <Input 
-                    placeholder="Search products..."
-                    value={productSearch}
-                    onChange={(e) => {
-                      setProductSearch(e.target.value);
-                      setProductPage(1);
-                    }}
-                    className="mb-2"
-                  />
-                  <Select name="productId" defaultValue={editingDiscount?.productId || 'all'}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All products" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Products</SelectItem>
-                      {isLoadingProducts ? (
-                        <div className="p-2 text-sm text-muted-foreground">Loading...</div>
-                      ) : products.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground">No products found</div>
-                      ) : (
-                        products.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {productsPagination.totalPages > 1 && (
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Page {productsPagination.page} of {productsPagination.totalPages}</span>
-                      <div className="flex gap-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setProductPage(p => Math.max(1, p - 1))}
-                          disabled={productPage === 1}
-                        >
-                          Previous
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setProductPage(p => Math.min(productsPagination.totalPages, p + 1))}
-                          disabled={productPage === productsPagination.totalPages}
-                        >
-                          Next
-                        </Button>
-                      </div>
+              {selectedDiscountType === 'PERCENTAGE' && (
+                <>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input 
+                        type="checkbox" 
+                        id="isLimitedDiscount" 
+                        name="isLimitedDiscount" 
+                        checked={isLimitedDiscountChecked}
+                        onChange={(e) => setIsLimitedDiscountChecked(e.target.checked)}
+                        className="rounded"
+                      />
+                      <Label htmlFor="isLimitedDiscount" className="cursor-pointer">Set maximum discount amount</Label>
                     </div>
-                  )}
-                </div>
+                    <p className="text-xs text-muted-foreground">Cap the maximum discount that can be applied to an order</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="discountLimitAmt">Maximum Discount Amount (Rp)</Label>
+                    <Input 
+                      id="discountLimitAmt"
+                      name="discountLimitAmt" 
+                      type="number" 
+                      placeholder="100000" 
+                      defaultValue={editingDiscount?.discountLimitAmt}
+                      disabled={!isLimitedDiscountChecked}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-2">
+                <Label>Apply to Product (Optional)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                  onClick={() => setIsProductModalOpen(true)}
+                >
+                  {selectedProduct?.name || 'Select a product'}
+                </Button>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -681,7 +656,16 @@ export default function Discounts() {
                       <TableCell>
                         <Badge variant="secondary">{discountTypeLabels[discount.type]}</Badge>
                       </TableCell>
-                      <TableCell className="font-medium">{getDiscountValue(discount)}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="space-y-1">
+                          <div>{getDiscountValue(discount)}</div>
+                          {discount.isLimitedDiscount && discount.discountLimitAmt && (
+                            <div className="text-xs text-muted-foreground">
+                              Max: Rp {discount.discountLimitAmt.toLocaleString('id-ID')}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         {discount.minimumPrice 
                           ? `Rp ${discount.minimumPrice.toLocaleString('id-ID')}` 
@@ -915,7 +899,19 @@ export default function Discounts() {
             />
           </Card>
         </TabsContent>
-      </Tabs> 
+      </Tabs>
+
+      {/* Product Selection Modal */}
+      <ProductSelectionModal
+        open={isProductModalOpen}
+        onOpenChange={setIsProductModalOpen}
+        onSelect={(product) => {
+          setSelectedProduct(product);
+        }}
+        selectedProductId={selectedProduct?.id}
+        title="Select Product"
+        description="Search and select a product to apply the discount"
+      />
     </div>
   );
 }

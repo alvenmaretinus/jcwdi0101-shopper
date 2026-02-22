@@ -3,6 +3,7 @@ import { HttpMethod } from "@/lib/apiFetch";
 import { Discount } from "@/types/Discount";
 
 export interface GetDiscountsParams {
+  name?: string;
   type?: string;
   productId?: string;
   storeId?: string;
@@ -24,6 +25,9 @@ export interface PaginatedDiscountsResponse {
 export const getDiscounts = async (params?: GetDiscountsParams): Promise<PaginatedDiscountsResponse> => {
   const queryParams = new URLSearchParams();
   
+  if (params?.name) {
+    queryParams.append('name', params.name);
+  }
   if (params?.type && params.type !== 'all') {
     queryParams.append('type', params.type);
   }
