@@ -95,7 +95,7 @@ export class StoreService {
         if (a.isDefault === b.isDefault) return 0;
         return a.isDefault ? -1 : 1;
       });
-    } console.log(sortedStores);
+    }
     
 
     const uniqueProductIds = new Set<string>();
