@@ -1,7 +1,7 @@
 import { PrismaClient } from "../../../prisma/generated/client";
 import type { Prisma } from "../../../prisma/generated/client";
 import { toDomainModels } from "./mapper";
-import { FindStockReportsByFilterReq, StockReport } from "./entities";
+import { FindStockReportsByFilterReq, StockReport, FindSummaryStockReportReq, SummaryStockReportItem, FindDetailedStockReportReq, DetailedMovementRecord } from "./entities";
 import { StockReportRepository } from "./interface";
 
 export class PrismaRepository implements StockReportRepository {
@@ -25,6 +25,9 @@ export class PrismaRepository implements StockReportRepository {
 
   /**
    * Build store filter condition (fromStore OR toStore) with verbose structure
+   * This allows admins to see all movements that affect their store:
+   * - Movements FROM their store (outgoing stock)
+   * - Movements TO their store (incoming stock)
    */
   private buildStoreFilter(storeId: string): Prisma.ProductMovementWhereInput {
     const fromStoreCondition: Prisma.ProductMovementWhereInput = { 
@@ -131,7 +134,216 @@ export class PrismaRepository implements StockReportRepository {
 
   async findStockReportsByFilter(filter: FindStockReportsByFilterReq): Promise<{ items: StockReport[]; total: number }> {
     const { where, select } = this.buildStockReportQuery(filter);
+    
+    console.log('[Stock Report Repository] Query filter:', JSON.stringify(where, null, 2));
+    console.log('[Stock Report Repository] Date range:', this.buildDateRange(filter.createdAtYear, filter.createdAtMonth));
+    
     const [rows, count] = await this.fetchRowsAndCount(where, select, filter);
+    
+    console.log('[Stock Report Repository] Found rows:', rows.length, 'Total count:', count);
+    
     return { items: toDomainModels(rows, filter), total: count };
+  }
+
+  /**
+   * Find summary stock report: aggregated inventory data per product per month
+   * Returns: total additions, total reductions, and ending stock per product
+   */
+  async findSummaryStockReport(filter: FindSummaryStockReportReq): Promise<{ items: SummaryStockReportItem[]; total: number }> {
+    const { start, end } = this.buildDateRange(filter.createdAtYear, filter.createdAtMonth);
+    
+    // Fetch all movements for the month
+    const andConditions: Prisma.ProductMovementWhereInput[] = [
+      { createdAt: { gte: start, lt: end } },
+    ];
+
+    if (filter.storeId) {
+      andConditions.push(this.buildStoreFilter(filter.storeId));
+    }
+
+    const allMovements = await this.prisma.productMovement.findMany({
+      where: { AND: andConditions },
+      select: {
+        productId: true,
+        product: { select: { name: true } },
+        quantityChange: true,
+        movementType: true,
+        fromStoreId: true,
+        toStoreId: true,
+        endStock: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Group by product and aggregate
+    const groupedByProduct: Record<string, {
+      productName: string;
+      movements: typeof allMovements;
+    }> = {};
+
+    for (const movement of allMovements) {
+      if (!groupedByProduct[movement.productId]) {
+        groupedByProduct[movement.productId] = {
+          productName: movement.product.name,
+          movements: [],
+        };
+      }
+      groupedByProduct[movement.productId].movements.push(movement);
+    }
+
+    // Calculate summary for each product
+    const summarizedReports: SummaryStockReportItem[] = Object.entries(groupedByProduct).map(([productId, data]) => {
+      let totalAdditions = 0;
+      let totalReductions = 0;
+
+      for (const movement of data.movements) {
+        // For specific store filtering
+        if (filter.storeId) {
+          const fromMatches = movement.fromStoreId === filter.storeId;
+          const toMatches = movement.toStoreId === filter.storeId;
+
+          // Stock coming into the store (additions)
+          if (toMatches && !fromMatches) {
+            totalAdditions += Math.abs(movement.quantityChange);
+          }
+          // Stock going out of the store (reductions)
+          else if (fromMatches && !toMatches) {
+            totalReductions += Math.abs(movement.quantityChange);
+          }
+          // Internal transfer: no net change
+        } else {
+          // No store filter: count all
+          if (movement.quantityChange > 0) {
+            totalAdditions += movement.quantityChange;
+          } else {
+            totalReductions += Math.abs(movement.quantityChange);
+          }
+        }
+      }
+
+      // Get ending stock from the last movement. If none, we'll need to fetch from ProductStore
+      let endingStock = data.movements[data.movements.length - 1]?.endStock || 0;
+
+      return {
+        productId,
+        productName: data.productName,
+        totalAdditions,
+        totalReductions,
+        endingStock,
+      };
+    });
+
+    // Sort and paginate
+    const sortedReports = summarizedReports
+      .sort((a, b) => a.productName.localeCompare(b.productName))
+      .slice(filter.skip, filter.skip + filter.take);
+
+    return {
+      items: sortedReports,
+      total: summarizedReports.length,
+    };
+  }
+
+  /**
+   * Find detailed stock report: all movements for a specific product and store in a month
+   * Uses ProductStore quantity as endStock in each movement record
+   * Returns: individual movement records with quantity change and ending stock per store
+   */
+  async findDetailedStockReport(filter: FindDetailedStockReportReq): Promise<{ items: DetailedMovementRecord[]; startingStock: number; endingStock: number; total: number }> {
+    const { start, end } = this.buildDateRange(filter.createdAtYear, filter.createdAtMonth);
+
+    // StoreId is required for detailed reports (per store tracking)
+    if (!filter.storeId) {
+      return { items: [], startingStock: 0, endingStock: 0, total: 0 };
+    }
+
+    // Get the product info
+    const product = await this.prisma.product.findUnique({
+      where: { id: filter.productId },
+    });
+
+    if (!product) {
+      return { items: [], startingStock: 0, endingStock: 0, total: 0 };
+    }
+
+    // Get movements involving this store for this product in the month
+    const movements = await this.prisma.productMovement.findMany({
+      where: {
+        AND: [
+          { productId: filter.productId },
+          { createdAt: { gte: start, lt: end } },
+          {
+            OR: [
+              { fromStoreId: filter.storeId },
+              { toStoreId: filter.storeId },
+            ],
+          },
+        ],
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        movementType: true,
+        description: true,
+        quantityChange: true,
+        endStock: true,
+        fromStoreId: true,
+        fromStore: { select: { name: true } },
+        toStoreId: true,
+        toStore: { select: { name: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Get the starting stock: first movement of month, calculate backwards from endStock and quantityChange
+    let startingStock = 0;
+    if (movements.length > 0) {
+      const firstMovement = movements[0];
+      // Starting stock = first movement's endStock - quantity change (to get stock before this movement)
+      if (firstMovement.toStoreId === filter.storeId) {
+        startingStock = (firstMovement.endStock || 0) - firstMovement.quantityChange;
+      } else if (firstMovement.fromStoreId === filter.storeId) {
+        startingStock = (firstMovement.endStock || 0) + firstMovement.quantityChange;
+      }
+    } else {
+      // No movements this month, check ProductStore current quantity as reference
+      const productStore = await this.prisma.productStore.findFirst({
+        where: {
+          productId: filter.productId,
+          storeId: filter.storeId,
+        },
+        select: { quantity: true },
+      });
+      startingStock = productStore?.quantity || 0;
+    }
+
+    // Ending stock is from the last movement's endStock
+    const endingStock = movements.length > 0 ? (movements[movements.length - 1].endStock || 0) : startingStock;
+
+    // Create detailed records, adjusting quantityChange sign based on store direction
+    const detailedRecords: DetailedMovementRecord[] = movements.map(m => ({
+      id: m.id,
+      date: m.createdAt,
+      movementType: m.movementType,
+      description: m.description,
+      fromStoreName: m.fromStore?.name || null,
+      toStoreName: m.toStore?.name || null,
+      quantityChange: m.toStoreId === filter.storeId ? m.quantityChange : -m.quantityChange,
+      endStock: m.endStock,
+    }));
+
+    // Apply pagination to the detailed records after calculation
+    const total = detailedRecords.length;
+    const paginatedRecords = detailedRecords.slice(
+      filter.skip,
+      filter.skip + filter.take
+    );
+
+    return {
+      items: paginatedRecords,
+      startingStock,
+      endingStock,
+      total,
+    };
   }
 }

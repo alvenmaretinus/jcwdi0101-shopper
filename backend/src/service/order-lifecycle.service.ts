@@ -176,6 +176,7 @@ export class OrderLifecycleService {
                 quantityChange: -it.quantity,
                 movementType: "SOLD",
                 productId: it.productId,
+                description: process.env.PRODUCT_MOVEMENT_SOLD_MESSAGE || "Product sold through order",
               },
             });
           }

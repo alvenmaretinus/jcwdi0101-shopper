@@ -66,6 +66,13 @@ router.patch("/:id",  isAuth, isAdmin, async (req, res) => {
     return res.status(404).json({ error: "Product store not found" });
   }
   
+  // Check if attempting reallocation - only SUPERADMIN allowed
+  if (inputData.fromStoreId || inputData.toStoreId || inputData.transferQuantity) {
+    if (user.role !== UserRole.SUPERADMIN) {
+      throw new UnauthorizedError("Only super admins can reallocate stock between stores");
+    }
+  }
+  
   // If user is not SUPERADMIN, check if their storeId matches the productStore's storeId
   if (user.role !== UserRole.SUPERADMIN) {
     if (!user.storeId || user.storeId !== productStore.storeId) {

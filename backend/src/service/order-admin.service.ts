@@ -59,6 +59,7 @@ export class OrderAdminService {
               productId: item.productId,
               quantityChange: item.quantity,
               movementType: MovementType.CANCELED,
+              description: process.env.PRODUCT_MOVEMENT_CANCELED_MESSAGE || "Order cancelled, stock refunded",
               createdAt: new Date(),
             },
           });

@@ -5,10 +5,12 @@ import { DiscountResponse } from "../repository/discount/entity";
 export class PricingCalculationService {
   /**
    * Calculate total discount from discount IDs and voucher IDs
-   * @param subtotal The base price before any discounts
+   * @param subtotal The base price before any discounts (can be ignored if cartItems provided)
    * @param discountIds Array of discount IDs to apply
    * @param voucherIds Array of voucher IDs to apply (applied after discounts)
    * @param db PrismaClient instance
+   * @param userId User ID for voucher validation
+   * @param cartItems Optional cart items for product-specific discount calculation
    * @returns Total discount amount
    */
   static async calculateTotalDiscount(
@@ -17,12 +19,13 @@ export class PricingCalculationService {
     voucherIds: string[] | undefined,
     db: PrismaClient,
     userId?: string,
+    cartItems?: Array<{ productId: string; quantity: number; price: number }>,
   ): Promise<number> {
     let totalDiscount = 0;
 
-    // Calculate discount using percentage and amount discounts (applied before vouchers)
+    // Calculate discount using percentage, amount, and quantity discounts (applied before vouchers)
     if (discountIds && discountIds.length > 0) {
-      const discountAmount = await this.calculateDiscounts(subtotal, discountIds, db);
+      const discountAmount = await this.calculateDiscounts(subtotal, discountIds, db, cartItems);
       totalDiscount += discountAmount;
     }
 
@@ -42,13 +45,15 @@ export class PricingCalculationService {
    * @param subtotal The base price before discounts
    * @param discountIds Array of discount IDs to apply
    * @param db PrismaClient instance
-   * @returns Total discount amount from percentage and fixed amount discounts
+   * @param cartItems Optional cart items for product-specific and quantity discount calculation
+   * @returns Total discount amount from percentage, fixed amount, and quantity discounts
    * @note Uses optimal selection: compares best percentage vs best amount discount iteratively
    */
   private static async calculateDiscounts(
     subtotal: number,
     discountIds: string[],
-    db: PrismaClient
+    db: PrismaClient,
+    cartItems?: Array<{ productId: string; quantity: number; price: number }>,
   ): Promise<number> {
     const discountRepo = new DiscountRepository(db);
 
@@ -57,61 +62,156 @@ export class PricingCalculationService {
       discountIds.map(id => discountRepo.getDiscountById(id))
     );
 
-    // Filter valid discounts: non-null, not vouchers, and currently active
+    // Filter valid discounts: non-null, not vouchers, not soft-deleted, and currently active
     const now = new Date();
     const discounts = allDiscounts
-      .filter((d): d is DiscountResponse => d !== null && !d.isVoucher)
+      .filter((d): d is DiscountResponse => d !== null && !d.isVoucher && !d.isSoftDeleted)
       .filter(d => {
         const hasStarted = !d.startsAt || d.startsAt <= now;
         const hasNotEnded = !d.endsAt || d.endsAt >= now;
+        const minimumMet = !d.isWithMinimum || (d.minimumPrice !== null && subtotal >= d.minimumPrice);
         const available = !d.isLimited || (d.limit !== null && d.useCounter < d.limit);
-        return hasStarted && hasNotEnded && available;
+        const limitedDiscountAvailable = !d.isLimitedDiscount || (d.discountLimitAmt !== null && d.useCounter < d.discountLimitAmt);
+        return hasStarted && hasNotEnded && minimumMet && available && limitedDiscountAvailable;
       });
 
-    // Separate into percentage and fixed amount discounts, sorted by best value
-    const percentageDiscounts = discounts
-      .filter(d => d.type === 'PERCENTAGE')
+    // Separate discounts by type
+    const globalPercentageDiscounts = discounts
+      .filter(d => d.type === 'PERCENTAGE' && !d.isTiedToProduct)
       .sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
 
-    const amountDiscounts = discounts
-      .filter(d => d.type === 'FIXED_AMOUNT')
+    const globalAmountDiscounts = discounts
+      .filter(d => d.type === 'FIXED_AMOUNT' && !d.isTiedToProduct)
       .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
 
+    const productSpecificDiscounts = discounts.filter(d => d.isTiedToProduct && d.productId);
+    const quantityDiscounts = discounts.filter(d => d.type === 'QUANTITY' && d.buyQuantity && d.freeQuantity && d.productId);
+
     let totalDiscount = 0;
-    let remainingPrice = subtotal;
 
-    // While both arrays are not empty, compare and choose the best discount
-    while (percentageDiscounts.length > 0 && amountDiscounts.length > 0) {
-      const pctDiscount = percentageDiscounts[0];
-      const amtDiscount = amountDiscounts[0];
+    // Step 1: Apply product-specific discounts (percentage/amount) to individual items
+    if (cartItems && cartItems.length > 0 && productSpecificDiscounts.length > 0) {
+      const productDiscountMap = new Map<string, DiscountResponse[]>();
+      for (const discount of productSpecificDiscounts) {
+        if (discount.productId) {
+          if (!productDiscountMap.has(discount.productId)) {
+            productDiscountMap.set(discount.productId, []);
+          }
+          productDiscountMap.get(discount.productId)!.push(discount);
+        }
+      }
 
-      // Calculate the amount for the best percentage discount
+      for (const item of cartItems) {
+        const itemDiscounts = productDiscountMap.get(item.productId) || [];
+        if (itemDiscounts.length === 0) continue;
+
+        const itemTotal = item.price * item.quantity;
+        const itemPctDiscounts = itemDiscounts
+          .filter(d => d.type === 'PERCENTAGE')
+          .sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
+        const itemAmtDiscounts = itemDiscounts
+          .filter(d => d.type === 'FIXED_AMOUNT')
+          .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
+
+        let itemDiscountAmount = 0;
+        let remainingItemPrice = itemTotal;
+
+        // Apply discounts alternately (same logic as global)
+        while (itemPctDiscounts.length > 0 && itemAmtDiscounts.length > 0 && remainingItemPrice > 0) {
+          const pctDiscount = itemPctDiscounts[0];
+          const amtDiscount = itemAmtDiscounts[0];
+
+          const pctAmount = remainingItemPrice * (Number(pctDiscount.percentage ?? 0) / 100);
+          const amtAmount = amtDiscount.amount ?? 0;
+
+          if (pctAmount >= amtAmount) {
+            const actualDiscount = Math.min(pctAmount, remainingItemPrice);
+            if (actualDiscount > 0) {
+              itemDiscountAmount += actualDiscount;
+              remainingItemPrice -= actualDiscount;
+            }
+            itemPctDiscounts.shift();
+          } else {
+            const actualDiscount = Math.min(amtAmount, remainingItemPrice);
+            if (actualDiscount > 0) {
+              itemDiscountAmount += actualDiscount;
+              remainingItemPrice -= actualDiscount;
+            }
+            itemAmtDiscounts.shift();
+          }
+        }
+
+        // Apply remaining percentage discounts
+        while (itemPctDiscounts.length > 0 && remainingItemPrice > 0) {
+          const pctDiscount = itemPctDiscounts.shift()!;
+          const pctAmount = remainingItemPrice * (Number(pctDiscount.percentage ?? 0) / 100);
+          const actualDiscount = Math.min(pctAmount, remainingItemPrice);
+          if (actualDiscount > 0) {
+            itemDiscountAmount += actualDiscount;
+            remainingItemPrice -= actualDiscount;
+          }
+        }
+
+        // Apply remaining amount discounts
+        while (itemAmtDiscounts.length > 0 && remainingItemPrice > 0) {
+          const amtDiscount = itemAmtDiscounts.shift()!;
+          const amtAmount = amtDiscount.amount ?? 0;
+          const actualDiscount = Math.min(amtAmount, remainingItemPrice);
+          if (actualDiscount > 0) {
+            itemDiscountAmount += actualDiscount;
+            remainingItemPrice -= actualDiscount;
+          }
+        }
+
+        totalDiscount += itemDiscountAmount;
+      }
+    }
+
+    // Step 2: Handle QUANTITY discounts (buy X get Y free) - these reduce effective price
+    if (cartItems && cartItems.length > 0 && quantityDiscounts.length > 0) {
+      for (const discount of quantityDiscounts) {
+        const item = cartItems.find(ci => ci.productId === discount.productId);
+        if (!item || !discount.buyQuantity || !discount.freeQuantity) continue;
+
+        const setsEligible = Math.floor(item.quantity / discount.buyQuantity);
+        const freeItems = setsEligible * discount.freeQuantity;
+        const quantityDiscountAmount = freeItems * item.price;
+        totalDiscount += quantityDiscountAmount;
+      }
+    }
+
+    // Step 3: Apply global discounts to the remaining subtotal
+    let remainingPrice = subtotal - totalDiscount;
+    if (remainingPrice <= 0) return totalDiscount;
+
+    // Alternate between global percentage and amount discounts
+    while (globalPercentageDiscounts.length > 0 && globalAmountDiscounts.length > 0 && remainingPrice > 0) {
+      const pctDiscount = globalPercentageDiscounts[0];
+      const amtDiscount = globalAmountDiscounts[0];
+
       const pctAmount = remainingPrice * (Number(pctDiscount.percentage ?? 0) / 100);
       const amtAmount = amtDiscount.amount ?? 0;
 
-      // Choose the best one
       if (pctAmount >= amtAmount) {
         const actualDiscount = Math.min(pctAmount, remainingPrice);
         if (actualDiscount > 0) {
           totalDiscount += actualDiscount;
           remainingPrice -= actualDiscount;
         }
-        percentageDiscounts.shift();
+        globalPercentageDiscounts.shift();
       } else {
         const actualDiscount = Math.min(amtAmount, remainingPrice);
         if (actualDiscount > 0) {
           totalDiscount += actualDiscount;
           remainingPrice -= actualDiscount;
         }
-        amountDiscounts.shift();
+        globalAmountDiscounts.shift();
       }
-
-      if (remainingPrice <= 0) break;
     }
 
-    // Process remaining percentage discounts
-    while (percentageDiscounts.length > 0 && remainingPrice > 0) {
-      const pctDiscount = percentageDiscounts.shift()!;
+    // Process remaining global percentage discounts
+    while (globalPercentageDiscounts.length > 0 && remainingPrice > 0) {
+      const pctDiscount = globalPercentageDiscounts.shift()!;
       const pctAmount = remainingPrice * (Number(pctDiscount.percentage ?? 0) / 100);
       const actualDiscount = Math.min(pctAmount, remainingPrice);
       if (actualDiscount > 0) {
@@ -120,9 +220,9 @@ export class PricingCalculationService {
       }
     }
 
-    // Process remaining amount discounts
-    while (amountDiscounts.length > 0 && remainingPrice > 0) {
-      const amtDiscount = amountDiscounts.shift()!;
+    // Process remaining global amount discounts
+    while (globalAmountDiscounts.length > 0 && remainingPrice > 0) {
+      const amtDiscount = globalAmountDiscounts.shift()!;
       const amtAmount = amtDiscount.amount ?? 0;
       const actualDiscount = Math.min(amtAmount, remainingPrice);
       if (actualDiscount > 0) {

@@ -8,7 +8,7 @@ export default function ProductTableHeader(props: any) {
                 <TableHead>Product</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Price</TableHead>
-                <TableHead>Total Stock</TableHead>
+                <TableHead>ID</TableHead>
                 {props.isSuperAdmin && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>

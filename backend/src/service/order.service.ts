@@ -299,7 +299,21 @@ export class OrderService {
         }
       }
 
-      const totalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotal, discountIds, voucherIds, db, userId);
+      // Prepare cart items with price for discount calculation
+      const cartItemsForDiscount = items.map(it => ({
+        productId: it.productId,
+        quantity: it.quantity,
+        price: productMap[it.productId]?.price ?? 0,
+      }));
+
+      const totalDiscount = await PricingCalculationService.calculateTotalDiscount(
+        subtotal, 
+        discountIds, 
+        voucherIds, 
+        db, 
+        userId,
+        cartItemsForDiscount
+      );
       const grandTotal = subtotal + shippingCost - totalDiscount;
 
       const paymentDueHours = Number.isFinite(Number(process.env.PAYMENT_DUE_HOURS)) ? Number(process.env.PAYMENT_DUE_HOURS) : 1;

@@ -8,6 +8,7 @@ export type CreateProductMovementReq = {
     productId: string; //All product-related data should be fetched using relations
     fromStoreId?: string | null;
     toStoreId?: string | null;
+    endStock?: number; // Calculated field
 }
 
 export type GetProductMovementReq = {
@@ -31,4 +32,5 @@ export type ProductMovement = {
     fromStoreId: string | null;
     toStoreId: string | null;
     productId: string;
+    endStock: number | null;
 }

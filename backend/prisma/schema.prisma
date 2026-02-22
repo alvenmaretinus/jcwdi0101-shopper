@@ -217,6 +217,7 @@ model ProductMovement {
   id             String  @id @default(uuid())
   orderId        String?
   quantityChange Int
+  endStock       Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -265,7 +266,7 @@ model CartItem {
 
 model Product {
   id          String  @id @default(uuid())
-  name        String
+  name        String @unique
   description String?
   price       Int
   isSoftDeleted Boolean @default(false)
@@ -361,6 +362,9 @@ model Discount {
 
   isWithMinimum Boolean @default(false)
   minimumPrice Int?
+
+  isLimitedDiscount Boolean @default(false)
+  discountLimitAmt  Int?
 
   //This field is for future use when business wants to limit the number of uses for a discount
   isLimited   Boolean @default(false)

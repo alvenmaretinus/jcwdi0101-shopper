@@ -4,12 +4,11 @@ import { fromNodeHeaders } from "better-auth/node";
 
 export const uploadsAuthMiddleware: express.RequestHandler = async (req, res, next) => {
   try {
-    // Allow authentication via x-api-key header for programmatic access
-    const apiKey = req.header("x-api-key");
-    const kommerceApiKey = process.env.KOMERCE_API_KEY;
-    if (apiKey && kommerceApiKey && apiKey === kommerceApiKey) {
+    // Allow public access to product images
+    if (req.path.includes("/product-images/")) {
       return next();
     }
+
 
     // Allow authenticated users via session cookie
     const session = await auth.api.getSession({

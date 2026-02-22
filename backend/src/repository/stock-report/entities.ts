@@ -8,6 +8,22 @@ export type FindStockReportsByFilterReq = {
     take: number;
 }
 
+export type FindSummaryStockReportReq = {
+    storeId?: string;
+    createdAtMonth: number;
+    createdAtYear: number;
+    skip: number;
+    take: number;
+}
+
+export type FindDetailedStockReportReq = {
+    productId: string;
+    storeId?: string;
+    createdAtMonth: number;
+    createdAtYear: number;
+    skip: number;
+    take: number;
+}
 
 export type StockReport = {
     id: string;
@@ -29,4 +45,29 @@ export type StockReport = {
     toStore: {
         name: string;
     } | null;
+}
+
+/**
+ * Summary report item: aggregated inventory data per product per month
+ */
+export type SummaryStockReportItem = {
+    productId: string;
+    productName: string;
+    totalAdditions: number;
+    totalReductions: number;
+    endingStock: number;
+}
+
+/**
+ * Detailed report item: individual movement record
+ */
+export type DetailedMovementRecord = {
+    id: string;
+    date: Date;
+    movementType: MovementType;
+    description: string | null;
+    fromStoreName: string | null;
+    toStoreName: string | null;
+    quantityChange: number;
+    endStock: number | null;
 }

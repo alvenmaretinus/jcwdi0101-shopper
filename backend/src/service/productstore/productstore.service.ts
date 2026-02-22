@@ -8,6 +8,7 @@ import { GetProductStoresByFilterInput, UpdateProductStoreInput } from "../../sc
 import { ProductStore } from "../../repository/productstore/entities";
 import { Prisma, PrismaClient } from "../../../prisma/generated/client";
 import { NotFoundError } from "../../error/NotFoundError";
+import { PRODUCT_MOVEMENT_DEFAULTS } from "../../lib/config/productMovementDefaults";
 
 export class ProductStoreService implements Service {
     private productStoreRepo: ProductStoreRepo;
@@ -30,10 +31,10 @@ export class ProductStoreService implements Service {
             
             const movementData: CreateProductMovementReq = {
                 quantityChange: data.quantity,
-                movementType: MovementType.ADJUSTMENT,
+                movementType: data.movementType ? data.movementType as MovementType : PRODUCT_MOVEMENT_DEFAULTS.CREATE.movementType,
                 productId: data.productId,
                 orderId: null,
-                description: "Initial stock added on product store creation",
+                description: data.movementMessage || PRODUCT_MOVEMENT_DEFAULTS.CREATE.message,
                 fromStoreId: null,
                 toStoreId: data.storeId,
             }
@@ -50,7 +51,7 @@ export class ProductStoreService implements Service {
     }
 
     async updateProductStore(data: UpdateProductStoreInput): Promise<ProductStore> {
-        const {id, fromStoreId, toStoreId, transferQuantity, ...rest} = data;
+        const {id, fromStoreId, toStoreId, transferQuantity, movementMessage, movementType, ...rest} = data;
         
         return await this.prisma.$transaction(async (tx) => {
             
@@ -106,13 +107,23 @@ export class ProductStoreService implements Service {
                     tx
                 );
 
-                // Create product movement record for reallocation
+                // Fetch store names for the movement description
+                const fromStore = await tx.store.findUnique({
+                    where: { id: fromStoreId },
+                    select: { name: true },
+                });
+                const toStore = await tx.store.findUnique({
+                    where: { id: toStoreId },
+                    select: { name: true },
+                });
+
+                // Create product movement record for reallocation with store names
                 const movementData: CreateProductMovementReq = {
                     quantityChange: transferQuantity,
-                    movementType: MovementType.REALLOCATED,
+                    movementType: movementType ? movementType as MovementType : PRODUCT_MOVEMENT_DEFAULTS.REALLOCATE.movementType,
                     productId: currentProductStore.productId,
                     orderId: null,
-                    description: `Stock reallocated from store ${fromStoreId} to store ${toStoreId}`,
+                    description: movementMessage || `Stock reallocated from store ${fromStore?.name} (${fromStoreId}) to store ${toStore?.name} (${toStoreId})`,
                     fromStoreId: fromStoreId,
                     toStoreId: toStoreId,
                 };
@@ -140,10 +151,10 @@ export class ProductStoreService implements Service {
 
             const movementData: CreateProductMovementReq = {
                 quantityChange: deltaQuantity,
-                movementType: MovementType.ADJUSTMENT,
+                movementType: movementType ? movementType as MovementType : PRODUCT_MOVEMENT_DEFAULTS.UPDATE.movementType,
                 productId: ret.productId,
                 orderId: null,
-                description: "Stock adjustment recorded on product store update",
+                description: movementMessage || PRODUCT_MOVEMENT_DEFAULTS.UPDATE.message,
                 fromStoreId: deltaQuantity < 0 ? ret.storeId : null,
                 toStoreId: deltaQuantity > 0 ? ret.storeId : null,
             };
@@ -162,10 +173,10 @@ export class ProductStoreService implements Service {
 
             const movementData: CreateProductMovementReq = {
                 quantityChange: -ret.quantity,
-                movementType: MovementType.ADJUSTMENT,
+                movementType: PRODUCT_MOVEMENT_DEFAULTS.DELETE.movementType,
                 productId: ret.productId,
                 orderId: null,
-                description: "Stock removed on product store deletion",
+                description: PRODUCT_MOVEMENT_DEFAULTS.DELETE.message,
                 fromStoreId: ret.storeId,
                 toStoreId: null,
             }

@@ -47,6 +47,13 @@ export class CartService {
       return sum + (item.product.price * item.quantity);
     }, 0);
 
+    // Prepare cart items with price for discount calculation
+    const cartItemsForDiscount = cartWithItems.cartItems.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.product.price,
+    }));
+
     // Calculate total discount (discounts + vouchers)
     const totalDiscount = await PricingCalculationService.calculateTotalDiscount(
       subtotal,
@@ -54,6 +61,7 @@ export class CartService {
       voucherIds,
       prisma,
       userId,
+      cartItemsForDiscount,
     );
 
     // Shipping cost is estimated as 0 in cart (calculated during checkout)
