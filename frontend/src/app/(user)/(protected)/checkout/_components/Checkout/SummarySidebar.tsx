@@ -5,8 +5,9 @@ import { OrderSummary, OrderItem } from "./OrderSummary";
 interface Props {
   items: OrderItem[];
   subtotal: number;
-  discount: number;
-  discountNote?: string;
+  productDiscount: number;
+  globalDiscount: number;
+  voucherDiscount: number;
   shippingCost: number;
   shippingOriginalCost?: number;
   shippingDiscount?: number;
@@ -18,8 +19,9 @@ interface Props {
 export const SummarySidebar = ({
   items,
   subtotal,
-  discount,
-  discountNote,
+  productDiscount,
+  globalDiscount,
+  voucherDiscount,
   shippingCost,
   shippingOriginalCost,
   shippingDiscount,
@@ -32,8 +34,9 @@ export const SummarySidebar = ({
     <OrderSummary
       items={items}
       subtotal={subtotal}
-      discount={discount}
-      discountNote={discountNote}
+      productDiscount={productDiscount}
+      globalDiscount={globalDiscount}
+      voucherDiscount={voucherDiscount}
       shippingCost={shippingCost}
       shippingOriginalCost={shippingOriginalCost}
       shippingDiscount={shippingDiscount}

@@ -30,6 +30,8 @@ export default function CheckoutShell() {
     loading: isCartLoading,
     subtotal,
     serverPricingDiscount,
+    serverProductPromotionDiscount,
+    serverGlobalDiscount,
     refetch: refetchCart,
   } = useCart();
 
@@ -158,20 +160,20 @@ export default function CheckoutShell() {
   };
 
   const baseSubtotal = subtotal || 0;
-  const productDiscount = serverPricingDiscount || 0;
-  const cartSubtotal = Math.max(0, baseSubtotal - productDiscount);
-  const discount = voucherProductDiscount;
+  const productDiscount = serverProductPromotionDiscount || 0;
+  const globalDiscount =
+    serverGlobalDiscount ||
+    Math.max(0, (serverPricingDiscount || 0) - productDiscount);
+  const nonVoucherDiscount = Math.max(0, productDiscount + globalDiscount);
+  const cartSubtotal = Math.max(0, baseSubtotal - nonVoucherDiscount);
+  const voucherDiscount = voucherProductDiscount;
   const shippingCost = selectedShippingCost;
   const appliedShippingDiscount = Math.max(
     0,
     Math.min(voucherShippingDiscount, shippingCost)
   );
   const finalShippingCost = Math.max(0, shippingCost - appliedShippingDiscount);
-  const discountNote =
-    discount > 0 && productDiscount > 0
-      ? "Subtotal already includes product promo/BOGO"
-      : undefined;
-  const total = Math.max(0, cartSubtotal - discount + finalShippingCost);
+  const total = Math.max(0, cartSubtotal - voucherDiscount + finalShippingCost);
 
   const readVoucherResult = useCallback((resp: unknown): CalculateVoucherResponse => {
     const isApiWrapper = (
@@ -293,14 +295,22 @@ export default function CheckoutShell() {
     };
   }, [appliedVouchers, cartSubtotal, readVoucherResult, selectedShippingCost]);
 
-  const orderItems = (cartItems || []).map((it) => ({
-    id: String(it.id),
-    name: it.name || "",
-    price: it.price || 0,
-    quantity: it.quantity || 0,
-    bogoFreeQuantity: it.bogoFreeQuantity || 0,
-    image: it.image || "/placeholder.png",
-  }));
+  const orderItems = (cartItems || []).map((it) => {
+    const originalUnitPrice = it.price || 0;
+    const discountedUnitPrice = it.discountedPrice ?? originalUnitPrice;
+    const hasProductDiscount =
+      discountedUnitPrice >= 0 && discountedUnitPrice < originalUnitPrice;
+
+    return {
+      id: String(it.id),
+      name: it.name || "",
+      price: hasProductDiscount ? discountedUnitPrice : originalUnitPrice,
+      originalPrice: hasProductDiscount ? originalUnitPrice : undefined,
+      quantity: it.quantity || 0,
+      bogoFreeQuantity: it.bogoFreeQuantity || 0,
+      image: it.image || "/placeholder.png",
+    };
+  });
 
   return (
     <div className="bg-muted/30 min-h-screen">
@@ -342,9 +352,10 @@ export default function CheckoutShell() {
           <div>
             <SummarySidebar
               items={orderItems}
-              subtotal={cartSubtotal}
-              discount={discount}
-              discountNote={discountNote}
+              subtotal={baseSubtotal}
+              productDiscount={productDiscount}
+              globalDiscount={globalDiscount}
+              voucherDiscount={voucherDiscount}
               shippingCost={finalShippingCost}
               shippingOriginalCost={shippingCost}
               shippingDiscount={appliedShippingDiscount}

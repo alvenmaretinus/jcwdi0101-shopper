@@ -20,6 +20,9 @@ const emitCartUpdated = () => {
 export function useCart({ autoFetch = true }: UseCartOptions = {}) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [serverPricingDiscount, setServerPricingDiscount] = useState(0);
+  const [serverProductPromotionDiscount, setServerProductPromotionDiscount] =
+    useState(0);
+  const [serverGlobalDiscount, setServerGlobalDiscount] = useState(0);
   const [loading, setLoading] = useState(autoFetch);
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
@@ -30,6 +33,8 @@ export function useCart({ autoFetch = true }: UseCartOptions = {}) {
       if (!isLoggedIn) {
         setCartItems([]);
         setServerPricingDiscount(0);
+        setServerProductPromotionDiscount(0);
+        setServerGlobalDiscount(0);
         setLoading(false);
         return;
       }
@@ -46,40 +51,86 @@ export function useCart({ autoFetch = true }: UseCartOptions = {}) {
         let items: CartItem[] = [];
         if (Array.isArray(data)) {
           items = data as CartItem[];
+          setServerPricingDiscount(0);
+          setServerProductPromotionDiscount(0);
+          setServerGlobalDiscount(0);
         } else if (
           data &&
           Array.isArray((data as { cartItems?: unknown }).cartItems)
         ) {
           const typedData = data as {
             cartItems: RawBackendCartItem[];
-            pricing?: { totalDiscount?: number };
+            pricing?: {
+              totalDiscount?: number;
+              productPromotionDiscount?: number;
+              globalDiscount?: number;
+            };
           };
           const raw = typedData.cartItems;
           // Normalize backend fields: productId -> id, stockQuantity -> stock
-          items = raw.map((it) => ({
-            id: it.productId ?? it.id ?? 0,
-            productId: it.productId ?? it.id,
-            name: it.name ?? "",
-            price:
-              typeof it.price === "number" ? it.price : Number(it.price) || 0,
-            image: it.image,
-            quantity:
-              typeof it.quantity === "number"
-                ? it.quantity
-                : Number(it.quantity) || 0,
-            unit: it.unit,
-            stock:
-              typeof it.stockQuantity === "number"
-                ? it.stockQuantity
-                : Number(it.stockQuantity) || 0,
-            bogoFreeQuantity: it.bogoFreeQuantity ?? 0,
-            outOfStock: it.outOfStock ?? false,
-          }));
+          items = raw.map((it) => {
+            const originalPriceRaw =
+              typeof it.originalPrice === "number"
+                ? it.originalPrice
+                : it.originalPrice !== undefined
+                  ? Number(it.originalPrice)
+                  : undefined;
+            const discountedPriceRaw =
+              typeof it.discountedPrice === "number"
+                ? it.discountedPrice
+                : it.discountedPrice !== undefined
+                  ? Number(it.discountedPrice)
+                  : undefined;
 
-          setServerPricingDiscount(typedData.pricing?.totalDiscount ?? 0);
+            return {
+              id: it.productId ?? it.id ?? 0,
+              productId: it.productId ?? it.id,
+              name: it.name ?? "",
+              price:
+                typeof it.price === "number" ? it.price : Number(it.price) || 0,
+              originalPrice:
+                originalPriceRaw !== undefined &&
+                Number.isFinite(originalPriceRaw)
+                  ? originalPriceRaw
+                  : undefined,
+              discountedPrice:
+                discountedPriceRaw !== undefined &&
+                Number.isFinite(discountedPriceRaw)
+                  ? discountedPriceRaw
+                  : undefined,
+              productPromotionDiscount:
+                typeof it.productPromotionDiscount === "number"
+                  ? it.productPromotionDiscount
+                  : Number(it.productPromotionDiscount) || 0,
+              image: it.image,
+              quantity:
+                typeof it.quantity === "number"
+                  ? it.quantity
+                  : Number(it.quantity) || 0,
+              unit: it.unit,
+              stock:
+                typeof it.stockQuantity === "number"
+                  ? it.stockQuantity
+                  : Number(it.stockQuantity) || 0,
+              bogoFreeQuantity: it.bogoFreeQuantity ?? 0,
+              outOfStock: it.outOfStock ?? false,
+            };
+          });
+
+          const totalDiscount = typedData.pricing?.totalDiscount ?? 0;
+          const productPromotionDiscount =
+            typedData.pricing?.productPromotionDiscount ?? 0;
+          const globalDiscount =
+            typedData.pricing?.globalDiscount ??
+            Math.max(0, totalDiscount - productPromotionDiscount);
+          setServerPricingDiscount(totalDiscount);
+          setServerProductPromotionDiscount(productPromotionDiscount);
+          setServerGlobalDiscount(globalDiscount);
         } else {
           items = [];
           setServerPricingDiscount(0);
+          setServerProductPromotionDiscount(0);
+          setServerGlobalDiscount(0);
         }
         console.log("[useCart] Setting cart items:", items);
         setCartItems(items);
@@ -88,6 +139,8 @@ export function useCart({ autoFetch = true }: UseCartOptions = {}) {
         // on error, clear cart and show toast
         setCartItems([]);
         setServerPricingDiscount(0);
+        setServerProductPromotionDiscount(0);
+        setServerGlobalDiscount(0);
         toast.error("Failed to load cart");
       } finally {
         setLoading(false);
@@ -259,6 +312,8 @@ export function useCart({ autoFetch = true }: UseCartOptions = {}) {
     applyPromo,
     subtotal,
     serverPricingDiscount,
+    serverProductPromotionDiscount,
+    serverGlobalDiscount,
     deliveryFee,
     refetch: fetchCart,
     formatPrice,

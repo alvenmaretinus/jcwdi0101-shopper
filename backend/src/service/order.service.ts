@@ -509,15 +509,36 @@ export class OrderService {
         price: productMap[it.productId]?.price ?? 0,
       }));
 
+      const autoGlobalDiscountIds =
+        await PricingCalculationService.getAutoAppliedGlobalDiscountIds(
+          subtotalAfterProductPromotion,
+          db,
+        );
+      const combinedDiscountIds = Array.from(
+        new Set([...(discountIds ?? []), ...autoGlobalDiscountIds]),
+      );
+
       const additionalDiscount = await PricingCalculationService.calculateTotalDiscount(
         subtotalAfterProductPromotion,
-        discountIds,
+        combinedDiscountIds.length > 0 ? combinedDiscountIds : undefined,
         normalizedVoucherIdentifiers,
         db,
         userId,
         shippingCost,
         cartItemsForDiscount,
       );
+      const globalDiscount =
+        autoGlobalDiscountIds.length > 0
+          ? await PricingCalculationService.calculateTotalDiscount(
+              subtotalAfterProductPromotion,
+              autoGlobalDiscountIds,
+              undefined,
+              db,
+              userId,
+              shippingCost,
+              cartItemsForDiscount,
+            )
+          : 0;
       const totalDiscount = productPromotionDiscount + additionalDiscount;
       const grandTotal = subtotal + shippingCost - totalDiscount;
 
@@ -540,6 +561,9 @@ export class OrderService {
       const discountNames: string[] = [];
       if (productPromotionDiscount > 0) {
         discountNames.push(`PRODUCT_PROMO_DISCOUNT:${productPromotionDiscount}`);
+      }
+      if (globalDiscount > 0) {
+        discountNames.push(`GLOBAL_DISCOUNT:${globalDiscount}`);
       }
       if (voucherProductDiscount > 0) {
         discountNames.push(`VOUCHER_PRODUCT_DISCOUNT:${voucherProductDiscount}`);
