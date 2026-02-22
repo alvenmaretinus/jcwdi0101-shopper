@@ -41,7 +41,7 @@ export function EditUserDialog({
     email: user?.email || '',
     role: user?.role || 'USER',
     image: user?.image || '',
-    storeId: user?.storeId || '',
+    storeId: user?.storeId || 'none',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +58,8 @@ export function EditUserDialog({
       if (formData.email !== user.email) updateData.email = formData.email;
       if (formData.role !== user.role) updateData.role = formData.role;
       if (formData.image !== user.image) updateData.image = formData.image;
-      if (formData.storeId !== user.storeId) updateData.storeId = formData.storeId;
+      const storeIdValue = formData.storeId === 'none' ? null : formData.storeId;
+      if (storeIdValue !== user.storeId) updateData.storeId = storeIdValue;
 
       if (Object.keys(updateData).length === 0) {
         onClose();
@@ -133,7 +134,7 @@ export function EditUserDialog({
                 <SelectValue placeholder="Select a store" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {stores.map((store) => (
                   <SelectItem key={store.id} value={store.id}>
                     {store.name}

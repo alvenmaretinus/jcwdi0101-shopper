@@ -13,6 +13,7 @@ import { z } from "zod";
  * - AND endsAt is NULL OR endsAt >= activeOnDate
  */
 export const GetDiscountsByFilterSchema = z.strictObject({
+    name: z.string().min(1).optional(),
     percentage: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid decimal format").transform(val => parseFloat(val)).pipe(z.number().min(0).max(100)).optional(),
     amount: z.coerce.number().int().min(0).optional(),
     type: z.enum(['PERCENTAGE', 'FIXED_AMOUNT', 'QUANTITY']).optional(),

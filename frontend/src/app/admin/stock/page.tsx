@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { authClient } from '@/lib/authClient';
@@ -18,7 +17,8 @@ import { getDetailedStockReport, DetailedMovementRecord } from '@/services/stock
 import { Pagination } from '@/components/Pagination/Pagination';
 import { apiFetch, HttpMethod } from '@/lib/apiFetch';
 import { Product } from '@/types/Product';
-import { Search } from 'lucide-react';
+import ProductSelectionModal from '@/components/Dialog/ProductSelectionModal';
+import type { ProductWithDetails } from '@/services/product/getProducts';
 
 export default function StockReports() {
   const { data, isPending } = authClient.useSession();
@@ -28,7 +28,6 @@ export default function StockReports() {
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
   const [stores, setStores] = useState<any[]>([]);
   const [storesPage, setStoresPage] = useState(1);
-  const [productsPage, setProductsPage] = useState(1);
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [selectedStoreName, setSelectedStoreName] = useState<string>('');
   const ITEMS_PER_PAGE = 10;
@@ -54,7 +53,6 @@ export default function StockReports() {
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<string>('');
   const [selectedProductName, setSelectedProductName] = useState<string>('');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [productSearchQuery, setProductSearchQuery] = useState('');
   const [detailedReports, setDetailedReports] = useState<DetailedMovementRecord[]>([]);
   const [detailedStartingStock, setDetailedStartingStock] = useState<number>(0);
   const [detailedEndingStock, setDetailedEndingStock] = useState<number>(0);
@@ -200,18 +198,15 @@ export default function StockReports() {
   const getTotalPages = (storesList: any[]) => Math.ceil(storesList.length / ITEMS_PER_PAGE);
   const paginatedStores = getPaginatedStores(stores, storesPage);
 
-  const filteredProducts = stockRecords.filter(product =>
-    product.name.toLowerCase().includes(productSearchQuery.toLowerCase())
-  );
-  const paginatedProducts = getPaginatedStores(filteredProducts, productsPage);
-
-  const handleProductSelect = (product: Product) => {
-    setSelectedProductForDetail(product.id);
-    setSelectedProductName(product.name);
-    setDetailedCurrentPage(1);
-    setIsProductModalOpen(false);
-    setProductSearchQuery('');
-    setProductsPage(1);
+  const handleProductSelect = (product: ProductWithDetails | null) => {
+    if (product) {
+      setSelectedProductForDetail(product.id);
+      setSelectedProductName(product.name);
+      setDetailedCurrentPage(1);
+    } else {
+      setSelectedProductForDetail('');
+      setSelectedProductName('');
+    }
   };
 
   const handleStoreSelect = (storeId: string, storeName: string) => {
@@ -224,10 +219,6 @@ export default function StockReports() {
   useEffect(() => {
     setStoresPage(1);
   }, [stores]);
-
-  useEffect(() => {
-    setProductsPage(1);
-  }, [stockRecords, productSearchQuery]);
 
   // For detailed tab, set store automatically for non-superadmins
   useEffect(() => {
@@ -393,7 +384,6 @@ export default function StockReports() {
                     onClick={() => setIsProductModalOpen(true)}
                     disabled={!selectedStoreId || (isSuperAdmin && selectedStoreId === 'all')}
                   >
-                    <Search className="h-4 w-4 mr-2" />
                     {selectedProductName || 'Select a product'}
                   </Button>
                 </div>
@@ -498,84 +488,14 @@ export default function StockReports() {
       </Tabs>
 
       {/* Product Selection Modal */}
-      <Dialog open={isProductModalOpen} onOpenChange={setIsProductModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>Select Product</DialogTitle>
-            <DialogDescription>
-              Search and select a product to view its detailed inventory history
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search products..."
-                value={productSearchQuery}
-                onChange={(e) => setProductSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            <div className="border rounded-lg overflow-hidden">
-              <div className="max-h-[400px] overflow-y-auto">
-                {filteredProducts.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No products found
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {paginatedProducts.map((product) => (
-                      <button
-                        key={product.id}
-                        onClick={() => handleProductSelect(product)}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center justify-between group"
-                      >
-                        <span className="font-medium">{product.name}</span>
-                        {selectedProductForDetail === product.id && (
-                          <Badge variant="default" className="ml-2">Selected</Badge>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {getTotalPages(filteredProducts) > 1 && (
-                <div className="border-t bg-gray-50 px-4 py-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-600">
-                      Page {productsPage} of {getTotalPages(filteredProducts)}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setProductsPage(p => Math.max(1, p - 1))}
-                        disabled={productsPage === 1}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setProductsPage(p => Math.min(getTotalPages(filteredProducts), p + 1))}
-                        disabled={productsPage === getTotalPages(filteredProducts)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ProductSelectionModal
+        open={isProductModalOpen}
+        onOpenChange={setIsProductModalOpen}
+        onSelect={handleProductSelect}
+        selectedProductId={selectedProductForDetail}
+        title="Select Product"
+        description="Search and select a product to view its detailed inventory history"
+      />
 
       {/* Store Selection Modal */}
       <Dialog open={isStoreModalOpen} onOpenChange={setIsStoreModalOpen}>

@@ -88,7 +88,7 @@ export default function ProductForm(props: {
 
     const newFiles: File[] = [];
     const maxFiles = 5;
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 1 * 1024 * 1024; // 1MB
 
     // Check total files (existing + to be uploaded + new selected files)
     const totalFiles = existingImages.length + selectedFiles.length + files.length;
@@ -104,7 +104,7 @@ export default function ProductForm(props: {
         continue;
       }
       if (file.size > maxSize) {
-        alert(`File ${file.name} is too large (max 5MB)`);
+        alert(`File ${file.name} is too large (max 1MB)`);
         continue;
       }
       newFiles.push(file);

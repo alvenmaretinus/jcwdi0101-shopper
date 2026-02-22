@@ -11,6 +11,8 @@ export interface UpdateDiscountInput {
   type?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
   isWithMinimum?: boolean;
   minimumPrice?: number;
+  isLimitedDiscount?: boolean;
+  discountLimitAmt?: number;
   isTiedToProduct?: boolean;
   productId?: string;
   buyQuantity?: number;

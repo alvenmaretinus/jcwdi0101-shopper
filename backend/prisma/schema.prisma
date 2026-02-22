@@ -364,6 +364,7 @@ model Discount {
   isWithMinimum Boolean @default(false)
   minimumPrice Int?
 
+  // Max Discount Amount is used when the discount is percentage-based and the business wants to cap the maximum discount amount that can be applied to an order.
   isLimitedDiscount Boolean @default(false)
   discountLimitAmt  Int?
 

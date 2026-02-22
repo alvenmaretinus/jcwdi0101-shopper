@@ -88,6 +88,9 @@ export function buildPromoCards(vouchers: Voucher[]): PromoCard[] {
       if (discount.type === "PERCENTAGE" && discount.percentage) {
         discountDisplay = `${discount.percentage}%`;
         description = `Get ${discount.percentage}% off`;
+        if (discount.isWithMinimum) {
+          description += ` (min. ${formatRupiah(discount.minimumPrice || 0)})`;
+        }
       } else if (
         discount.type === "QUANTITY" &&
         discount.buyQuantity &&
@@ -95,6 +98,9 @@ export function buildPromoCards(vouchers: Voucher[]): PromoCard[] {
       ) {
         discountDisplay = `B${discount.buyQuantity}G${discount.freeQuantity}`;
         description = `Buy ${discount.buyQuantity}, get ${discount.freeQuantity} free`;
+        if (discount.isWithMinimum) {
+          description += ` (min. ${formatRupiah(discount.minimumPrice || 0)})`;
+        }
       } else if (discount.type === "FIXED_AMOUNT") {
         const amount = discount.amount ?? 0;
         discountDisplay = amount === 0 ? "FREE" : formatRupiah(amount);

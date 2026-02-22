@@ -67,6 +67,30 @@ export class PricingCalculationService {
         OR: [{ startsAt: null }, { startsAt: { lte: now } }],
         AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
       },
+      select: {
+        id: true,
+        name: true,
+        percentage: true,
+        amount: true,
+        type: true,
+        isVoucher: true,
+        isWithMinimum: true,
+        minimumPrice: true,
+        isLimitedDiscount: true,
+        discountLimitAmt: true,
+        isLimited: true,
+        limit: true,
+        useCounter: true,
+        isTiedToProduct: true,
+        productId: true,
+        buyQuantity: true,
+        freeQuantity: true,
+        startsAt: true,
+        endsAt: true,
+        isSoftDeleted: true,
+        createdAt: true,
+        updatedAt: true,
+      }
     })) as DiscountResponse[];
 
     const discountsByProduct = new Map<string, DiscountResponse[]>();
@@ -260,21 +284,77 @@ export class PricingCalculationService {
         const hasNotEnded = !d.endsAt || d.endsAt >= now;
         const minimumMet = !d.isWithMinimum || (d.minimumPrice !== null && subtotal >= d.minimumPrice);
         const available = !d.isLimited || (d.limit !== null && d.useCounter < d.limit);
-        const limitedDiscountAvailable = !d.isLimitedDiscount || (d.discountLimitAmt !== null && d.useCounter < d.discountLimitAmt);
-        return hasStarted && hasNotEnded && minimumMet && available && limitedDiscountAvailable;
+        return hasStarted && hasNotEnded && minimumMet && available;
       });
 
     // Separate discounts by type
-    const globalPercentageDiscounts = discounts
-      .filter((d) => d.type === "PERCENTAGE" && !d.isTiedToProduct)
-      .sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
-
-    const globalAmountDiscounts = discounts
-      .filter((d) => d.type === "FIXED_AMOUNT" && !d.isTiedToProduct)
-      .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
-
     const productSpecificDiscounts = discounts.filter(d => d.isTiedToProduct && d.productId);
     const quantityDiscounts = discounts.filter(d => d.type === 'QUANTITY' && d.buyQuantity && d.freeQuantity && d.productId);
+
+    // Helper: apply 3-array algorithm to a set of discounts against a remaining price
+    const applyThreeBucketAlgorithm = (
+      applicableDiscounts: DiscountResponse[],
+      startingPrice: number,
+    ): number => {
+      // Bucket 1: Pure percentage (no limit)
+      const purePctDiscounts = applicableDiscounts
+        .filter(d => d.type === 'PERCENTAGE' && !d.isLimitedDiscount)
+        .sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
+
+      // Bucket 2: Fixed amount
+      const fixedAmtDiscounts = applicableDiscounts
+        .filter(d => d.type === 'FIXED_AMOUNT')
+        .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
+
+      // Bucket 3: Percentage with limit (effective amount recalculated each iteration)
+      const limitedPctDiscounts = applicableDiscounts
+        .filter(d => d.type === 'PERCENTAGE' && d.isLimitedDiscount && d.discountLimitAmt);
+
+      let discountTotal = 0;
+      let remaining = startingPrice;
+
+      while (remaining > 0) {
+        let bestPurePctAmt = 0;
+        if (purePctDiscounts.length > 0) {
+          bestPurePctAmt = remaining * (Number(purePctDiscounts[0].percentage ?? 0) / 100);
+        }
+
+        let bestFixedAmt = 0;
+        if (fixedAmtDiscounts.length > 0) {
+          bestFixedAmt = Number(fixedAmtDiscounts[0].amount ?? 0);
+        }
+
+        let bestLimitedAmt = 0;
+        let bestLimitedIdx = -1;
+        for (let i = 0; i < limitedPctDiscounts.length; i++) {
+          const d = limitedPctDiscounts[i];
+          const rawPct = remaining * (Number(d.percentage ?? 0) / 100);
+          const effective = Math.min(rawPct, d.discountLimitAmt!);
+          if (effective > bestLimitedAmt) {
+            bestLimitedAmt = effective;
+            bestLimitedIdx = i;
+          }
+        }
+
+        if (bestPurePctAmt <= 0 && bestFixedAmt <= 0 && bestLimitedAmt <= 0) break;
+
+        if (bestPurePctAmt >= bestFixedAmt && bestPurePctAmt >= bestLimitedAmt) {
+          const actual = Math.min(bestPurePctAmt, remaining);
+          if (actual > 0) { discountTotal += actual; remaining -= actual; }
+          purePctDiscounts.shift();
+        } else if (bestFixedAmt >= bestPurePctAmt && bestFixedAmt >= bestLimitedAmt) {
+          const actual = Math.min(bestFixedAmt, remaining);
+          if (actual > 0) { discountTotal += actual; remaining -= actual; }
+          fixedAmtDiscounts.shift();
+        } else {
+          const actual = Math.min(bestLimitedAmt, remaining);
+          if (actual > 0) { discountTotal += actual; remaining -= actual; }
+          limitedPctDiscounts.splice(bestLimitedIdx, 1);
+        }
+      }
+
+      return discountTotal;
+    };
 
     let totalDiscount = 0;
 
@@ -295,64 +375,8 @@ export class PricingCalculationService {
         if (itemDiscounts.length === 0) continue;
 
         const itemTotal = item.price * item.quantity;
-        const itemPctDiscounts = itemDiscounts
-          .filter(d => d.type === 'PERCENTAGE')
-          .sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
-        const itemAmtDiscounts = itemDiscounts
-          .filter(d => d.type === 'FIXED_AMOUNT')
-          .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
-
-        let itemDiscountAmount = 0;
-        let remainingItemPrice = itemTotal;
-
-        // Apply discounts alternately (same logic as global)
-        while (itemPctDiscounts.length > 0 && itemAmtDiscounts.length > 0 && remainingItemPrice > 0) {
-          const pctDiscount = itemPctDiscounts[0];
-          const amtDiscount = itemAmtDiscounts[0];
-
-          const pctAmount = remainingItemPrice * (Number(pctDiscount.percentage ?? 0) / 100);
-          const amtAmount = amtDiscount.amount ?? 0;
-
-          if (pctAmount >= amtAmount) {
-            const actualDiscount = Math.min(pctAmount, remainingItemPrice);
-            if (actualDiscount > 0) {
-              itemDiscountAmount += actualDiscount;
-              remainingItemPrice -= actualDiscount;
-            }
-            itemPctDiscounts.shift();
-          } else {
-            const actualDiscount = Math.min(amtAmount, remainingItemPrice);
-            if (actualDiscount > 0) {
-              itemDiscountAmount += actualDiscount;
-              remainingItemPrice -= actualDiscount;
-            }
-            itemAmtDiscounts.shift();
-          }
-        }
-
-        // Apply remaining percentage discounts
-        while (itemPctDiscounts.length > 0 && remainingItemPrice > 0) {
-          const pctDiscount = itemPctDiscounts.shift()!;
-          const pctAmount = remainingItemPrice * (Number(pctDiscount.percentage ?? 0) / 100);
-          const actualDiscount = Math.min(pctAmount, remainingItemPrice);
-          if (actualDiscount > 0) {
-            itemDiscountAmount += actualDiscount;
-            remainingItemPrice -= actualDiscount;
-          }
-        }
-
-        // Apply remaining amount discounts
-        while (itemAmtDiscounts.length > 0 && remainingItemPrice > 0) {
-          const amtDiscount = itemAmtDiscounts.shift()!;
-          const amtAmount = amtDiscount.amount ?? 0;
-          const actualDiscount = Math.min(amtAmount, remainingItemPrice);
-          if (actualDiscount > 0) {
-            itemDiscountAmount += actualDiscount;
-            remainingItemPrice -= actualDiscount;
-          }
-        }
-
-        totalDiscount += itemDiscountAmount;
+        const priceItemDiscounts = itemDiscounts.filter(d => d.type === 'PERCENTAGE' || d.type === 'FIXED_AMOUNT');
+        totalDiscount += applyThreeBucketAlgorithm(priceItemDiscounts, itemTotal);
       }
     }
 
@@ -369,56 +393,12 @@ export class PricingCalculationService {
       }
     }
 
-    // Step 3: Apply global discounts to the remaining subtotal
+    // Step 3: Apply global discounts to the remaining subtotal using 3-array algorithm
     let remainingPrice = subtotal - totalDiscount;
     if (remainingPrice <= 0) return totalDiscount;
 
-    // Alternate between global percentage and amount discounts
-    while (globalPercentageDiscounts.length > 0 && globalAmountDiscounts.length > 0 && remainingPrice > 0) {
-      const pctDiscount = globalPercentageDiscounts[0];
-      const amtDiscount = globalAmountDiscounts[0];
-
-      const pctAmount = remainingPrice * (Number(pctDiscount.percentage ?? 0) / 100);
-      const amtAmount = amtDiscount.amount ?? 0;
-
-      if (pctAmount >= amtAmount) {
-        const actualDiscount = Math.min(pctAmount, remainingPrice);
-        if (actualDiscount > 0) {
-          totalDiscount += actualDiscount;
-          remainingPrice -= actualDiscount;
-        }
-        globalPercentageDiscounts.shift();
-      } else {
-        const actualDiscount = Math.min(amtAmount, remainingPrice);
-        if (actualDiscount > 0) {
-          totalDiscount += actualDiscount;
-          remainingPrice -= actualDiscount;
-        }
-        globalAmountDiscounts.shift();
-      }
-    }
-
-    // Process remaining global percentage discounts
-    while (globalPercentageDiscounts.length > 0 && remainingPrice > 0) {
-      const pctDiscount = globalPercentageDiscounts.shift()!;
-      const pctAmount = remainingPrice * (Number(pctDiscount.percentage ?? 0) / 100);
-      const actualDiscount = Math.min(pctAmount, remainingPrice);
-      if (actualDiscount > 0) {
-        totalDiscount += actualDiscount;
-        remainingPrice -= actualDiscount;
-      }
-    }
-
-    // Process remaining global amount discounts
-    while (globalAmountDiscounts.length > 0 && remainingPrice > 0) {
-      const amtDiscount = globalAmountDiscounts.shift()!;
-      const amtAmount = amtDiscount.amount ?? 0;
-      const actualDiscount = Math.min(amtAmount, remainingPrice);
-      if (actualDiscount > 0) {
-        totalDiscount += actualDiscount;
-        remainingPrice -= actualDiscount;
-      }
-    }
+    const globalDiscounts = discounts.filter(d => !d.isTiedToProduct && (d.type === 'PERCENTAGE' || d.type === 'FIXED_AMOUNT'));
+    totalDiscount += applyThreeBucketAlgorithm(globalDiscounts, remainingPrice);
 
     return totalDiscount;
   }

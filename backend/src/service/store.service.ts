@@ -137,6 +137,30 @@ export class StoreService {
         OR: [{ startsAt: null }, { startsAt: { lte: now } }],
         AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
       },
+      select: {
+        id: true,
+        name: true,
+        percentage: true,
+        amount: true,
+        type: true,
+        isVoucher: true,
+        isWithMinimum: true,
+        minimumPrice: true,
+        isLimitedDiscount: true,
+        discountLimitAmt: true,
+        isLimited: true,
+        limit: true,
+        useCounter: true,
+        isTiedToProduct: true,
+        productId: true,
+        buyQuantity: true,
+        freeQuantity: true,
+        startsAt: true,
+        endsAt: true,
+        isSoftDeleted: true,
+        createdAt: true,
+        updatedAt: true,
+      }
     });
 
     const discountsByProduct = new Map<string, typeof discounts>();
