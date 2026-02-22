@@ -11,13 +11,14 @@ const Cart = () => {
     loading,
     updateQuantity,
     removeItem,
+    serverPricingDiscount,
 
     subtotal,
     formatPrice,
   } = useCart();
 
-  const discount = 0;
-  const total = subtotal - discount;
+  const discount = Math.max(0, serverPricingDiscount || 0);
+  const total = Math.max(0, subtotal - discount);
 
   if (loading) {
     return (
