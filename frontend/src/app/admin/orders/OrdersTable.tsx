@@ -27,6 +27,7 @@ const statusColors: Record<string, string> = {
   PROCESSING: "bg-blue-100 text-blue-800",
   SHIPPED: "bg-purple-100 text-purple-800",
   DELIVERED: "bg-green-100 text-green-800",
+  COMPLETED: "bg-emerald-100 text-emerald-800",
   CANCELLED: "bg-gray-100 text-gray-800",
 };
 

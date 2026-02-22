@@ -10,6 +10,8 @@ interface OrderStatusBadgeProps {
 export const OrderStatusBadge = ({ status }: OrderStatusBadgeProps) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
+      case "completed":
+        return <CheckCircle className="h-5 w-5 text-emerald-600" />;
       case "delivered":
         return <CheckCircle className="h-5 w-5 text-primary" />;
       case "shipping":
@@ -27,6 +29,8 @@ export const OrderStatusBadge = ({ status }: OrderStatusBadgeProps) => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "completed":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
       case "delivered":
         return "bg-primary/10 text-primary border-primary/20";
       case "shipping":

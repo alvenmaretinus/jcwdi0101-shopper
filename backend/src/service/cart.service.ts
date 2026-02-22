@@ -41,20 +41,31 @@ export class CartService {
     if (!cartWithItems) {
       return { cartId: null, cartItems: [], pricing: { subtotal: 0, totalDiscount: 0, shippingCost: 0, grandTotal: 0 } };
     }
-    
+
     // Calculate subtotal
     const subtotal = cartWithItems.cartItems.reduce((sum, item) => {
-      return sum + (item.product.price * item.quantity);
+      return sum + item.product.price * item.quantity;
     }, 0);
 
-    // Calculate total discount (discounts + vouchers)
-    const totalDiscount = await PricingCalculationService.calculateTotalDiscount(
-      subtotal,
-      discountIds,
-      voucherIds,
+    const productPromotionBreakdown = await PricingCalculationService.calculateProductPromotionBreakdown(
+      cartWithItems.cartItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.product.price,
+      })),
       prisma,
-      userId,
     );
+    const productPromotionDiscount = productPromotionBreakdown.totalDiscount;
+    const subtotalAfterProductPromotion = Math.max(0, subtotal - productPromotionDiscount);
+
+    const bogoFreeQuantityByProductId = new Map<string, number>();
+    productPromotionBreakdown.lines.forEach((line) => {
+      bogoFreeQuantityByProductId.set(line.productId, line.bogoFreeQuantity);
+    });
+
+    // Calculate total discount (discounts + vouchers)
+    const additionalDiscount = await PricingCalculationService.calculateTotalDiscount(subtotalAfterProductPromotion, discountIds, voucherIds, prisma, userId);
+    const totalDiscount = productPromotionDiscount + additionalDiscount;
 
     // Shipping cost is estimated as 0 in cart (calculated during checkout)
     const shippingCost = 0;
@@ -89,6 +100,7 @@ export class CartService {
           productTotal,
           outOfStock: stockQty <= 0,
           canAddToCart: stockQty > 0,
+          bogoFreeQuantity: bogoFreeQuantityByProductId.get(item.productId) ?? 0,
         };
       }),
     );

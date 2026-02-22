@@ -11,5 +11,10 @@ export interface Service {
     getVouchersByIds(ids: string[]): Promise<VoucherResponse[]>;
     getVouchersByCodes(codes: string[]): Promise<VoucherResponse[]>;
     deleteVoucher(id: string): Promise<void>;
-    calculateVoucherDiscount(voucherCodes: string[], subtotal: number, userId?: string): Promise<number>;
+    calculateVoucherDiscount(
+        voucherCodes: string[],
+        subtotal: number,
+        userId?: string,
+        shippingCost?: number,
+    ): Promise<number>;
 }

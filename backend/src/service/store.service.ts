@@ -96,6 +96,7 @@ export class StoreService {
         return a.isDefault ? -1 : 1;
       });
     }
+    
 
     const uniqueProductIds = new Set<string>();
     const productMap = new Map<string, StoreProduct>();
