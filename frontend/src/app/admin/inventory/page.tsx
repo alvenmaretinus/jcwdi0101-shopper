@@ -296,8 +296,7 @@ export default function Inventory() {
         alert('Stock reallocated successfully');
       } else {
         // Handle regular stock adjustment
-        const quantityChange = editQuantity - originalQuantity;
-        const body: any = { "quantityChange": quantityChange, "movementType": editMovementType };
+        const body: any = { "quantity": editQuantity, "movementType": editMovementType };
         if (editMovementMessage.trim() !== '') {
           body.movementMessage = editMovementMessage.trim();
         }
