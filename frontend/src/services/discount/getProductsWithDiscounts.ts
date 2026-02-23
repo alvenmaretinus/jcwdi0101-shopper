@@ -1,7 +1,7 @@
 import { apiFetch, HttpMethod } from "@/lib/apiFetch";
 import { Discount } from "@/types/Discount";
 
-export interface GetDiscountsParams {
+export interface GetProductsWithDiscountsParams {
   type?: string;
   productId?: string;
   storeId?: string;
@@ -69,7 +69,7 @@ export interface PaginatedProductsWithDiscountsResponse {
   };
 }
 
-export const getProductsWithDiscounts = async (params?: GetDiscountsParams): Promise<PaginatedProductsWithDiscountsResponse> => {
+export const getProductsWithDiscounts = async (params?: GetProductsWithDiscountsParams): Promise<PaginatedProductsWithDiscountsResponse> => {
   const queryParams = new URLSearchParams();
   
   if (params?.type && params.type !== 'all') {

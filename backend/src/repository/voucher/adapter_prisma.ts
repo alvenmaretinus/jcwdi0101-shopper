@@ -32,6 +32,8 @@ export class PrismaVoucherRepository implements VoucherRepo {
           isLimited: data.isLimited,
           limit: data.limit,
           isTiedToProduct: false,
+          buyQuantity: data.buyQuantity,
+          freeQuantity: data.freeQuantity,
           startsAt: data.startsAt,
           endsAt: data.endsAt,
         },
@@ -76,6 +78,8 @@ export class PrismaVoucherRepository implements VoucherRepo {
       if (data.minimumPrice !== undefined) discountUpdateData.minimumPrice = data.minimumPrice;
       if (data.isLimited !== undefined) discountUpdateData.isLimited = data.isLimited;
       if (data.limit !== undefined) discountUpdateData.limit = data.limit;
+      if (data.buyQuantity !== undefined) discountUpdateData.buyQuantity = data.buyQuantity;
+      if (data.freeQuantity !== undefined) discountUpdateData.freeQuantity = data.freeQuantity;
       if (data.startsAt !== undefined) discountUpdateData.startsAt = data.startsAt;
       if (data.endsAt !== undefined) discountUpdateData.endsAt = data.endsAt;
 
@@ -264,9 +268,9 @@ export class PrismaVoucherRepository implements VoucherRepo {
   async getVoucherByCode(code: string): Promise<VoucherResponse | null> {
     const voucher = await this.prisma.voucher.findFirst({
       where: {
-        code,
+        code: { equals: code, mode: "insensitive" },
         isSoftDeleted: false,
-        isRedeemed: false,
+        OR: [{ isRedeemed: false }, { voucherType: { not: "REFERRAL" } }],
         discount: {
           isSoftDeleted: false,
         },
@@ -285,7 +289,7 @@ export class PrismaVoucherRepository implements VoucherRepo {
       where: {
         id: { in: ids },
         isSoftDeleted: false,
-        isRedeemed: false,
+        OR: [{ isRedeemed: false }, { voucherType: { not: "REFERRAL" } }],
         discount: {
           isSoftDeleted: false,
         },
@@ -310,7 +314,7 @@ export class PrismaVoucherRepository implements VoucherRepo {
           code: { equals: code, mode: "insensitive" },
         })),
         isSoftDeleted: false,
-        isRedeemed: false,
+        AND: [{ OR: [{ isRedeemed: false }, { voucherType: { not: "REFERRAL" } }] }],
         discount: {
           isSoftDeleted: false,
         },

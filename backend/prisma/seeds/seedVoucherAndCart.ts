@@ -29,7 +29,14 @@ async function seedVoucherAndCart() {
   // Ensure Voucher row exists referencing the discount
   let voucher = await prisma.voucher.findFirst({ where: { discountId: discount.id } });
   if (!voucher) {
-    voucher = await prisma.voucher.create({ data: { id: crypto.randomUUID(), discountId: discount.id, voucherType: VoucherType.TRANSACTIONAL } });
+    voucher = await prisma.voucher.create({
+      data: {
+        id: crypto.randomUUID(),
+        code: `DEV20K-${discount.id.slice(0, 8).toUpperCase()}`,
+        discountId: discount.id,
+        voucherType: VoucherType.TRANSACTIONAL,
+      },
+    });
     console.log("Created voucher:", voucher.id);
   } else {
     console.log("Voucher already exists:", voucher.id);

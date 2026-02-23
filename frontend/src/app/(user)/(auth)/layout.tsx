@@ -1,13 +1,21 @@
 "use client";
 
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { apiFetch } from "@/lib/apiFetch";
+import { apiFetch, HttpMethod } from "@/lib/apiFetch";
 import { authClient } from "@/lib/authClient";
 import { User } from "@/types/User";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, Suspense, useEffect, useState } from "react";
 
 export default function AuthLayoutPage({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <AuthLayoutContent>{children}</AuthLayoutContent>
+    </Suspense>
+  );
+}
+
+function AuthLayoutContent({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const search = useSearchParams();
@@ -26,7 +34,7 @@ export default function AuthLayoutPage({ children }: { children: ReactNode }) {
 
         const userId = data.user.id;
         const user = await apiFetch<User>(`/user/${userId}`, {
-          method: "GET",
+          method: HttpMethod.GET,
         });
 
         const isAdmin = user.role === "ADMIN" || user.role === "SUPERADMIN";
@@ -46,5 +54,5 @@ export default function AuthLayoutPage({ children }: { children: ReactNode }) {
 
   if (loading) return <LoadingScreen />;
 
-  return <>{children};</>;
+  return <>{children}</>;
 }

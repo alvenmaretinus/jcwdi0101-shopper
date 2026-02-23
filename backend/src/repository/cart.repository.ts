@@ -29,7 +29,13 @@ export class CartRepository {
       where: { userId },
       include: {
         cartItems: {
-          include: { product: true },
+          include: {
+            product: {
+              include: {
+                productImages: true,
+              },
+            },
+          },
         },
       },
     });

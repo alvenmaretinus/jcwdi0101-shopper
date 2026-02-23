@@ -4,12 +4,21 @@ export interface CalculateVoucherRequest {
   voucherCodes: string[];
   subtotal: number;
   shippingCost?: number;
+  cartItems?: Array<{
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
 }
 
 export interface CalculateVoucherResponse {
   shippingCost?: number;
   productDiscount?: number;
   shippingDiscount?: number;
+  quantityBonuses?: Array<{
+    productId: string;
+    freeQuantity: number;
+  }>;
   totalDiscount: number;
   subtotal: number;
   finalAmount: number;

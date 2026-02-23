@@ -42,7 +42,9 @@ export interface RawBackendCartItem {
   productId?: number | string;
   name?: string;
   price?: number | string;
-  image?: string;
+  image?: string | null;
+  imageUrl?: string | null;
+  imageUrls?: string[];
   quantity?: number | string;
   unit?: string;
   stockQuantity?: number | string;

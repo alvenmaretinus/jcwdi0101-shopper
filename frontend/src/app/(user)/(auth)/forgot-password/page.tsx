@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -10,6 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function RequestPasswordForm() {
+  return (
+    <Suspense fallback={<div className="w-full mx-auto my-20 max-w-md">Loading...</div>}>
+      <RequestPasswordContent />
+    </Suspense>
+  );
+}
+
+function RequestPasswordContent() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);

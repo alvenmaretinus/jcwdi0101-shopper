@@ -7,6 +7,7 @@ import { GetShippingCostInput } from "../schema/shipping-cost/GetShippingCostSch
 import type { PrismaClient, Prisma, Store } from "../../prisma/generated/client";
 import { PricingCalculationService } from "./pricing-calculation.service";
 import { StoreOrderCapacityService } from "./store-order-capacity.service";
+import type { VoucherResponse } from "../repository/voucher/entity";
 
 type StoreWithDistance = {
   store: Store;
@@ -23,6 +24,18 @@ type ActivePendingOrderSnapshot = {
   userAddressId: string;
   voucherCodes: string[];
   orderItems: CheckoutItem[];
+};
+
+type VoucherReservationCandidate = {
+  id: string;
+  code: string;
+  userId: string | null;
+  voucherType: "REFERRAL" | "TRANSACTIONAL" | "FREEDELIVERY";
+  discount: {
+    isLimited: boolean;
+    limit: number | null;
+    useCounter: number;
+  };
 };
 
 export class OrderService {
@@ -268,31 +281,6 @@ export class OrderService {
       },
     });
 
-    const requestedVoucherKeys = new Set(voucherIdentifiers.map((value) => value.toLowerCase()));
-    if (requestedVoucherKeys.size > 0) {
-      const conflictingOrder = activePendingOrders.find((order) =>
-        order.voucherCodes.some((voucherCode) => requestedVoucherKeys.has(voucherCode.trim().toLowerCase())),
-      );
-
-      if (conflictingOrder) {
-        const conflictSnapshot: ActivePendingOrderSnapshot = {
-          id: conflictingOrder.id,
-          userAddressId: conflictingOrder.userAddressId,
-          voucherCodes: conflictingOrder.voucherCodes,
-          orderItems: conflictingOrder.orderItems.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-          })),
-        };
-
-        if (this.isSameCheckoutFingerprint(conflictSnapshot, addressId, cartItems, voucherIdentifiers)) {
-          return conflictingOrder;
-        }
-
-        throw new BadRequestError("Voucher already used in another active order. Please complete or cancel the previous order first.");
-      }
-    }
-
     const duplicateOrder = activePendingOrders.find((order) => {
       const snapshot: ActivePendingOrderSnapshot = {
         id: order.id,
@@ -308,6 +296,83 @@ export class OrderService {
     });
 
     return duplicateOrder ?? null;
+  }
+
+  private static serializeVoucherQuantityBonuses(
+    quantityBonuses: Array<{ productId: string; freeQuantity: number }>,
+  ): string | null {
+    if (!quantityBonuses || quantityBonuses.length === 0) {
+      return null;
+    }
+
+    const pairs = quantityBonuses
+      .map((line) => ({
+        productId: String(line.productId ?? "").trim(),
+        freeQuantity: Math.max(0, Number(line.freeQuantity) || 0),
+      }))
+      .filter((line) => line.productId.length > 0 && line.freeQuantity > 0)
+      .map((line) => `${line.productId}:${line.freeQuantity}`);
+
+    if (pairs.length === 0) {
+      return null;
+    }
+
+    return `VOUCHER_QTY_BONUSES:${pairs.join("|")}`;
+  }
+
+  private static async enforceVoucherReservationConstraints(
+    db: PrismaClient,
+    vouchers: VoucherReservationCandidate[],
+  ): Promise<void> {
+    if (!vouchers || vouchers.length === 0) {
+      return;
+    }
+
+    const activePendingOrders = await db.order.findMany({
+      where: {
+        status: {
+          in: ["PAYMENT_PENDING", "PAYMENT_WAITING_CONFIRMATION"],
+        },
+      },
+      select: {
+        id: true,
+        voucherCodes: true,
+      },
+    });
+
+    for (const voucher of vouchers) {
+      const voucherKeys = new Set([
+        voucher.id.trim().toLowerCase(),
+        voucher.code.trim().toLowerCase(),
+      ]);
+
+      const activeUsageCount = activePendingOrders.reduce((count, order) => {
+        const isUsed = order.voucherCodes.some((voucherCode) =>
+          voucherKeys.has(voucherCode.trim().toLowerCase()),
+        );
+        return count + (isUsed ? 1 : 0);
+      }, 0);
+
+      const oneTimeVoucher =
+        voucher.userId !== null ||
+        voucher.voucherType === "REFERRAL" ||
+        (voucher.discount.isLimited && voucher.discount.limit === 1);
+
+      if (oneTimeVoucher && activeUsageCount > 0) {
+        throw new BadRequestError(
+          `Voucher is currently used in another active order: ${voucher.code}`,
+        );
+      }
+
+      if (voucher.discount.isLimited && voucher.discount.limit !== null) {
+        const projectedUsage = voucher.discount.useCounter + activeUsageCount;
+        if (projectedUsage >= voucher.discount.limit) {
+          throw new BadRequestError(
+            `Voucher quota reached. Please remove voucher: ${voucher.code}`,
+          );
+        }
+      }
+    }
   }
 
   /**
@@ -546,6 +611,10 @@ export class OrderService {
 
       let voucherProductDiscount = 0;
       let voucherShippingDiscount = 0;
+      let voucherQuantityBonuses: Array<{
+        productId: string;
+        freeQuantity: number;
+      }> = [];
       if (normalizedVoucherIdentifiers.length > 0) {
         const { VoucherService } = await import("./voucher/voucher.service");
         const { PrismaVoucherRepository } = await import("../repository/voucher/adapter_prisma");
@@ -555,10 +624,56 @@ export class OrderService {
           subtotalAfterProductPromotion,
           userId,
           shippingCost,
+          cartItemsForDiscount.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice: item.price,
+          })),
         );
         voucherProductDiscount = breakdown.productDiscount;
         voucherShippingDiscount = breakdown.shippingDiscount;
+        voucherQuantityBonuses = breakdown.quantityBonuses;
+
+        const [vouchersByIds, vouchersByCodes] = await Promise.all([
+          voucherService.getVouchersByIds(normalizedVoucherIdentifiers),
+          voucherService.getVouchersByCodes(normalizedVoucherIdentifiers),
+        ]);
+        const voucherMap = new Map<string, VoucherResponse>();
+        [...vouchersByIds, ...vouchersByCodes].forEach((voucher) => {
+          voucherMap.set(voucher.id, voucher);
+        });
+
+        await this.enforceVoucherReservationConstraints(
+          db,
+          Array.from(voucherMap.values()).map((voucher) => ({
+            id: voucher.id,
+            code: voucher.code,
+            userId: voucher.userId,
+            voucherType: voucher.voucherType,
+            discount: {
+              isLimited: voucher.discount.isLimited,
+              limit: voucher.discount.limit,
+              useCounter: voucher.discount.useCounter,
+            },
+          })),
+        );
       }
+
+      const limitedNonVoucherDiscountIds =
+        combinedDiscountIds.length > 0
+          ? (
+              await db.discount.findMany({
+                where: {
+                  id: { in: combinedDiscountIds },
+                  isSoftDeleted: false,
+                  isVoucher: false,
+                  isLimited: true,
+                  limit: { not: null },
+                },
+                select: { id: true },
+              })
+            ).map((discount) => discount.id)
+          : [];
 
       const discountNames: string[] = [];
       if (productPromotionDiscount > 0) {
@@ -572,6 +687,16 @@ export class OrderService {
       }
       if (voucherShippingDiscount > 0) {
         discountNames.push(`SHIPPING_DISCOUNT:${voucherShippingDiscount}`);
+      }
+      const voucherQuantityBonusesToken =
+        this.serializeVoucherQuantityBonuses(voucherQuantityBonuses);
+      if (voucherQuantityBonusesToken) {
+        discountNames.push(voucherQuantityBonusesToken);
+      }
+      if (limitedNonVoucherDiscountIds.length > 0) {
+        discountNames.push(
+          `NON_VOUCHER_LIMITED_IDS:${limitedNonVoucherDiscountIds.join(",")}`,
+        );
       }
 
       const paymentDueHours = Number.isFinite(Number(process.env.PAYMENT_DUE_HOURS)) ? Number(process.env.PAYMENT_DUE_HOURS) : 1;

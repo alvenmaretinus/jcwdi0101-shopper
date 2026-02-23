@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2, ArrowRight, ShoppingBag } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import Image from "next/image";
 
 const Cart = () => {
   const {
@@ -69,8 +70,14 @@ const Cart = () => {
                 className="bg-card rounded-2xl p-4 md:p-6 shadow-soft flex gap-4"
               >
                 {/* Image */}
-                <div className="w-24 h-24 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
-                  <span className="text-5xl">{item.image}</span>
+                <div className="w-24 h-24 rounded-xl bg-muted/50 flex items-center justify-center shrink-0 overflow-hidden relative">
+                  <Image
+                    src={item.image || "https://placehold.co/120x120?text=No+Image"}
+                    alt={item.name || "Product image"}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
                 </div>
 
                 {/* Details */}
