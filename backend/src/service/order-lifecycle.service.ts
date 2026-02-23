@@ -29,18 +29,22 @@ export class OrderLifecycleService {
     const voucherIdentifiers = params.voucherIdentifiers
       .map((identifier) => identifier.trim())
       .filter((identifier) => identifier.length > 0);
+    const normalizedVoucherIdentifiers = Array.from(
+      new Set(voucherIdentifiers.map((identifier) => identifier.toLowerCase())),
+    );
 
-    if (voucherIdentifiers.length === 0) {
+    if (normalizedVoucherIdentifiers.length === 0) {
       return;
     }
 
     const vouchers = await tx.voucher.findMany({
       where: {
         isSoftDeleted: false,
-        isRedeemed: false,
         OR: [
           { id: { in: voucherIdentifiers } },
-          { code: { in: voucherIdentifiers } },
+          ...voucherIdentifiers.map((identifier) => ({
+            code: { equals: identifier, mode: "insensitive" as const },
+          })),
         ],
         discount: {
           isSoftDeleted: false,
@@ -58,7 +62,24 @@ export class OrderLifecycleService {
     });
 
     if (vouchers.length === 0) {
-      return;
+      throw new BadRequestError(
+        "Applied voucher is invalid or unavailable during payment confirmation.",
+      );
+    }
+
+    const matchedVoucherKeys = new Set<string>();
+    vouchers.forEach((voucher) => {
+      matchedVoucherKeys.add(voucher.id.toLowerCase());
+      matchedVoucherKeys.add(voucher.code.toLowerCase());
+    });
+
+    const unresolvedIdentifiers = normalizedVoucherIdentifiers.filter(
+      (identifier) => !matchedVoucherKeys.has(identifier),
+    );
+    if (unresolvedIdentifiers.length > 0) {
+      throw new BadRequestError(
+        `Applied voucher could not be resolved: ${unresolvedIdentifiers.join(", ")}`,
+      );
     }
 
     const unauthorizedVoucher = vouchers.find(
@@ -68,17 +89,37 @@ export class OrderLifecycleService {
       throw new BadRequestError("Assigned voucher does not belong to this user");
     }
 
-    const now = new Date();
-    await tx.voucher.updateMany({
-      where: {
-        id: { in: vouchers.map((voucher) => voucher.id) },
-        isRedeemed: false,
-      },
-      data: {
-        isRedeemed: true,
-        redeemedAt: now,
-      },
-    });
+    const oneTimeVouchers = vouchers.filter(
+      (voucher) => voucher.userId !== null || voucher.voucherType === "REFERRAL",
+    );
+    const alreadyRedeemedOneTimeVoucher = oneTimeVouchers.find(
+      (voucher) => voucher.isRedeemed,
+    );
+    if (alreadyRedeemedOneTimeVoucher) {
+      throw new BadRequestError(
+        `Voucher already redeemed: ${alreadyRedeemedOneTimeVoucher.code}`,
+      );
+    }
+
+    if (oneTimeVouchers.length > 0) {
+      const now = new Date();
+      const redeemResult = await tx.voucher.updateMany({
+        where: {
+          id: { in: oneTimeVouchers.map((voucher) => voucher.id) },
+          isRedeemed: false,
+        },
+        data: {
+          isRedeemed: true,
+          redeemedAt: now,
+        },
+      });
+
+      if (redeemResult.count !== oneTimeVouchers.length) {
+        throw new BadRequestError(
+          "Voucher status changed during payment confirmation. Please retry checkout.",
+        );
+      }
+    }
 
     const limitedDiscountIds = Array.from(
       new Set(
@@ -88,23 +129,119 @@ export class OrderLifecycleService {
       ),
     );
 
-    await Promise.all(
-      limitedDiscountIds.map((discountId) =>
-        tx.discount.updateMany({
-          where: {
-            id: discountId,
-            isLimited: true,
-            limit: { not: null },
-            useCounter: {
-              lt: tx.discount.fields.limit,
-            },
+    for (const discountId of limitedDiscountIds) {
+      const updateResult = await tx.discount.updateMany({
+        where: {
+          id: discountId,
+          isLimited: true,
+          limit: { not: null },
+          useCounter: {
+            lt: tx.discount.fields.limit,
           },
-          data: {
-            useCounter: { increment: 1 },
-          },
-        }),
-      ),
+        },
+        data: {
+          useCounter: { increment: 1 },
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new BadRequestError(
+          "Voucher quota reached during payment confirmation. Please checkout again.",
+        );
+      }
+    }
+  }
+
+  private static extractLimitedNonVoucherDiscountIds(
+    discountNames: string[] | null | undefined,
+  ): string[] {
+    if (!discountNames || discountNames.length === 0) {
+      return [];
+    }
+
+    const entry = discountNames.find((name) =>
+      name.startsWith("NON_VOUCHER_LIMITED_IDS:"),
     );
+    if (!entry) {
+      return [];
+    }
+
+    const rawValue = entry.slice("NON_VOUCHER_LIMITED_IDS:".length);
+    if (!rawValue) {
+      return [];
+    }
+
+    const ids = rawValue
+      .split(",")
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+
+    return Array.from(new Set(ids));
+  }
+
+  private static async incrementAppliedNonVoucherDiscountCounters(
+    tx: Prisma.TransactionClient,
+    discountNames: string[] | null | undefined,
+  ) {
+    const discountIds = this.extractLimitedNonVoucherDiscountIds(discountNames);
+    for (const discountId of discountIds) {
+      const updateResult = await tx.discount.updateMany({
+        where: {
+          id: discountId,
+          isSoftDeleted: false,
+          isVoucher: false,
+          isLimited: true,
+          limit: { not: null },
+          useCounter: {
+            lt: tx.discount.fields.limit,
+          },
+        },
+        data: {
+          useCounter: { increment: 1 },
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new BadRequestError(
+          "Discount quota reached during payment confirmation. Please checkout again.",
+        );
+      }
+    }
+  }
+
+  private static extractVoucherQuantityBonusByProductId(
+    discountNames: string[] | null | undefined,
+  ): Record<string, number> {
+    const result: Record<string, number> = {};
+    if (!discountNames || discountNames.length === 0) {
+      return result;
+    }
+
+    const token = discountNames.find((name) =>
+      name.startsWith("VOUCHER_QTY_BONUSES:"),
+    );
+    if (!token) {
+      return result;
+    }
+
+    const rawValue = token.slice("VOUCHER_QTY_BONUSES:".length);
+    if (!rawValue) {
+      return result;
+    }
+
+    rawValue.split("|").forEach((entry) => {
+      const [productIdRaw, freeQtyRaw] = entry.split(":");
+      const productId = (productIdRaw ?? "").trim();
+      const freeQty = Math.max(0, Number(freeQtyRaw) || 0);
+
+      if (!productId || freeQty <= 0) {
+        return;
+      }
+
+      result[productId] = (result[productId] ?? 0) + freeQty;
+    });
+
+    return result;
   }
 
   /**
@@ -193,6 +330,9 @@ export class OrderLifecycleService {
     for (const line of promotionBreakdown.lines) {
       bogoFreeQuantityMap[line.productId] = line.bogoFreeQuantity;
     }
+    const voucherQuantityBonusMap = this.extractVoucherQuantityBonusByProductId(
+      order.discountNames,
+    );
 
     // Try candidate stores (nearest first)
     for (const candidate of storesWithDistance) {
@@ -219,12 +359,14 @@ export class OrderLifecycleService {
       const psMap: Record<string, any> = {};
       for (const ps of storeProducts) psMap[ps.productId] = ps;
 
-      // Check if all items can be fulfilled (including BOGO bonus items)
+      // Check if all items can be fulfilled (including promo and voucher bonus items)
       let canFulfill = true;
       for (const it of items) {
         const ps = psMap[it.productId];
         const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
-        const totalQuantityNeeded = it.quantity + bogoFreeQuantity;
+        const voucherBonusQuantity = voucherQuantityBonusMap[it.productId] ?? 0;
+        const totalQuantityNeeded =
+          it.quantity + bogoFreeQuantity + voucherBonusQuantity;
 
         if (!ps || ps.quantity < totalQuantityNeeded) {
           canFulfill = false;
@@ -252,10 +394,12 @@ export class OrderLifecycleService {
 
           const endingStockByProductId = new Map<string, number>();
 
-          // Atomically decrement stock (including BOGO bonus items)
+          // Atomically decrement stock (including promo and voucher bonus items)
           for (const it of items) {
             const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
-            const totalQuantityToDeduct = it.quantity + bogoFreeQuantity;
+            const voucherBonusQuantity = voucherQuantityBonusMap[it.productId] ?? 0;
+            const totalQuantityToDeduct =
+              it.quantity + bogoFreeQuantity + voucherBonusQuantity;
 
             const upd = await tx.productStore.updateMany({
               where: {
@@ -317,10 +461,12 @@ export class OrderLifecycleService {
             data: updateData,
           });
 
-          // Record product movement for audit trail (including BOGO bonus items)
+          // Record product movement for audit trail (including promo and voucher bonus items)
           for (const it of items) {
             const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
-            const totalQuantityToDeduct = it.quantity + bogoFreeQuantity;
+            const voucherBonusQuantity = voucherQuantityBonusMap[it.productId] ?? 0;
+            const totalQuantityToDeduct =
+              it.quantity + bogoFreeQuantity + voucherBonusQuantity;
 
             await tx.productMovement.create({
               data: {
@@ -354,13 +500,25 @@ export class OrderLifecycleService {
             userId: order.userId,
             voucherIdentifiers: order.voucherCodes,
           });
+          await this.incrementAppliedNonVoucherDiscountCounters(
+            tx,
+            order.discountNames,
+          );
 
           return updated;
         });
 
         return result;
       } catch (err) {
-        if (err instanceof BadRequestError) continue;
+        if (err instanceof BadRequestError) {
+          const retryableErrors = new Set([
+            "STORE_CAPACITY_FULL",
+            "Stock changed during confirmation",
+          ]);
+          if (retryableErrors.has(err.message)) {
+            continue;
+          }
+        }
         throw err;
       }
     }

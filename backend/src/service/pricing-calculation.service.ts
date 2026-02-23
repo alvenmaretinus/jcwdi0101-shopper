@@ -210,12 +210,10 @@ export class PricingCalculationService {
         const available =
           !discount.isLimited ||
           (discount.limit !== null && discount.useCounter < discount.limit);
-        const limitedDiscountAvailable =
-          !discount.isLimitedDiscount ||
-          (discount.discountLimitAmt !== null &&
-            discount.useCounter < discount.discountLimitAmt);
+        const secondaryCapAvailable =
+          !discount.isLimitedDiscount || discount.discountLimitAmt !== null;
 
-        return minimumPassed && available && limitedDiscountAvailable;
+        return minimumPassed && available && secondaryCapAvailable;
       })
       .map((discount) => discount.id);
   }
@@ -258,6 +256,7 @@ export class PricingCalculationService {
         db,
         userId,
         shippingCost,
+        cartItems,
       );
       totalDiscount += voucherAmount;
     }
@@ -427,6 +426,7 @@ export class PricingCalculationService {
     db: PrismaClient,
     userId?: string,
     shippingCost: number = 0,
+    cartItems?: Array<{ productId: string; quantity: number; price: number }>,
   ): Promise<number> {
     const { VoucherService } = await import("./voucher/voucher.service");
     const { PrismaVoucherRepository } = await import("../repository/voucher/adapter_prisma");
@@ -437,6 +437,11 @@ export class PricingCalculationService {
       priceAfterDiscounts,
       userId,
       shippingCost,
+      cartItems?.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.price,
+      })),
     );
   }
 }

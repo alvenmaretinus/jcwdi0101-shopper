@@ -7,12 +7,14 @@ export type VoucherCreateReq = {
     name: string;
     percentage?: Decimal;
     amount?: number;
-    type: 'PERCENTAGE' | 'FIXED_AMOUNT';
+    type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
     voucherType: 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY';
     isWithMinimum: boolean;
     minimumPrice?: number;
     isLimited?: boolean;
     limit?: number;
+    buyQuantity?: number;
+    freeQuantity?: number;
     startsAt?: Date;
     endsAt?: Date;
 }
@@ -24,12 +26,14 @@ export type VoucherUpdateReq = {
     name?: string;
     percentage?: Decimal;
     amount?: number;
-    type?: 'PERCENTAGE' | 'FIXED_AMOUNT';
+    type?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
     voucherType?: 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY';
     isWithMinimum?: boolean;
     minimumPrice?: number;
     isLimited?: boolean;
     limit?: number;
+    buyQuantity?: number;
+    freeQuantity?: number;
     startsAt?: Date;
     endsAt?: Date;
 }
@@ -41,11 +45,13 @@ export type VoucherFilter = {
     name?: string;
     percentage?: Decimal;
     amount?: number;
-    type?: 'PERCENTAGE' | 'FIXED_AMOUNT';
+    type?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
     voucherType?: 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY';
     isRedeemed?: boolean;
     isWithMinimum?: boolean;
     minimumPrice?: number;
+    buyQuantity?: number;
+    freeQuantity?: number;
     activeOnDate?: Date;
 }
 
@@ -75,6 +81,10 @@ export type VoucherResponse = {
         isLimited: boolean;
         limit: number | null;
         useCounter: number;
+        isTiedToProduct: boolean;
+        productId: string | null;
+        buyQuantity: number | null;
+        freeQuantity: number | null;
         startsAt: Date | null;
         endsAt: Date | null;
         isSoftDeleted: boolean;

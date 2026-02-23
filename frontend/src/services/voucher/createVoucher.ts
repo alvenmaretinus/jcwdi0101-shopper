@@ -7,7 +7,9 @@ export interface CreateVoucherInput {
   name: string;
   percentage?: number;
   amount?: number;
-  type: 'PERCENTAGE' | 'FIXED_AMOUNT';
+  buyQuantity?: number;
+  freeQuantity?: number;
+  type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
   voucherType: 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY';
   isWithMinimum: boolean;
   minimumPrice?: number;

@@ -50,6 +50,7 @@ router.post("/vouchers/calculate-discount", isAuth, async (req, res) => {
         inputData.subtotal,
         userId,
         inputData.shippingCost ?? 0,
+        inputData.cartItems,
     );
     return res.json({
         subtotal: inputData.subtotal,
@@ -57,6 +58,7 @@ router.post("/vouchers/calculate-discount", isAuth, async (req, res) => {
         productDiscount: breakdown.productDiscount,
         shippingDiscount: breakdown.shippingDiscount,
         totalDiscount: breakdown.totalDiscount,
+        quantityBonuses: breakdown.quantityBonuses,
         finalAmount: inputData.subtotal + (inputData.shippingCost ?? 0) - breakdown.totalDiscount,
     });
 });

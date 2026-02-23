@@ -6,7 +6,7 @@ interface QuantityDiscount {
   name: string;
   buyQuantity: number;
   freeQuantity: number;
-  endsAt?: Date | null;
+  endsAt?: string | Date | null;
 }
 
 interface QuantityDiscountsSectionProps {

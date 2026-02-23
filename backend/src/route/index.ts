@@ -15,7 +15,6 @@ import productCategoryRouter from "./product-category.route";
 import salesReportRouter from "./sales-report.route";
 import stockReportRouter from "./stock-report.route";
 import referralRouter from "../controller/referral.controller";
-import docsRouter from "./docs.route";
 
 export const appRouter = Router();
 
@@ -34,4 +33,3 @@ appRouter.use(productCategoryRouter);
 appRouter.use(salesReportRouter);
 appRouter.use(stockReportRouter);
 appRouter.use(referralRouter);
-appRouter.use("/docs", docsRouter);

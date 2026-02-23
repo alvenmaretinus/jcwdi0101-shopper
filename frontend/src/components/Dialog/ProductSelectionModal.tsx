@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 import { getProducts } from '@/services/product/getProducts';
-import type { ProductWithDetails } from '@/types/Product';
+import type { ProductWithDetails } from '@/services/product/getProducts';
 
 interface ProductSelectionModalProps {
   open: boolean;

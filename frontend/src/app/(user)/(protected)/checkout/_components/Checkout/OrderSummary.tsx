@@ -70,6 +70,7 @@ export const OrderSummary = ({
                 alt={item.name}
                 fill
                 className="object-cover"
+                unoptimized
               />
             </div>
             <div className="flex-1 min-w-0">
@@ -79,7 +80,7 @@ export const OrderSummary = ({
               </p>
               {(item.bogoFreeQuantity ?? 0) > 0 && (
                 <p className="text-xs text-primary">
-                  +{item.bogoFreeQuantity} item bonus (BOGO)
+                  +{item.bogoFreeQuantity} item bonus (promo/voucher)
                 </p>
               )}
               {typeof item.originalPrice === "number" &&

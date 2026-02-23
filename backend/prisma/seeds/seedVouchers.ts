@@ -12,7 +12,7 @@ export async function seedVouchers() {
   });
   
   const dairyDiscount = await prisma.discount.findFirst({
-    where: { name: "Dairy Delights Buy 2 Get 1" },
+    where: { name: "Buy 2 Get 1 Any Product" },
   });
   
   const freeDeliveryDiscount = await prisma.discount.findFirst({
@@ -32,7 +32,7 @@ export async function seedVouchers() {
   });
 
   const snacksDiscount = await prisma.discount.findFirst({
-    where: { name: "Buy 3 Get 1 Snacks" },
+    where: { name: "Buy 3 Get 1 Any Product" },
   });
 
   const midWeekDiscount = await prisma.discount.findFirst({

@@ -24,7 +24,7 @@ export async function seedDiscounts() {
     },
   });
 
-  const discounts = [
+  const discounts: any[] = [
     // Voucher-based discounts
     {
       name: "Weekend Fresh Produce",
@@ -37,7 +37,7 @@ export async function seedDiscounts() {
       endsAt: twoDaysLater,
     },
     {
-      name: "Dairy Delights Buy 2 Get 1",
+      name: "Buy 2 Get 1 Any Product",
       type: "QUANTITY",
       isVoucher: true,
       isWithMinimum: false,
@@ -59,7 +59,7 @@ export async function seedDiscounts() {
       endsAt: thirtyDaysLater,
     },
     {
-      name: "Mega Sale 25% Off",
+      name: "Mega Weekend Sale",
       percentage: 25,
       type: "PERCENTAGE",
       isVoucher: true,
@@ -69,7 +69,7 @@ export async function seedDiscounts() {
       endsAt: twoDaysLater,
     },
     {
-      name: "Special 15% Off All Items",
+      name: "Fruit Basket Special",
       percentage: 15,
       type: "PERCENTAGE",
       isVoucher: true,
@@ -90,7 +90,7 @@ export async function seedDiscounts() {
       endsAt: thirtyDaysLater,
     },
     {
-      name: "Buy 3 Get 1 Snacks",
+      name: "Buy 3 Get 1 Any Product",
       type: "QUANTITY",
       isVoucher: true,
       isWithMinimum: false,

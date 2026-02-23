@@ -74,6 +74,7 @@ export default function Discounts() {
   const [voucherTypeFilter, setVoucherTypeFilter] = useState<string>('all');
   const [isVoucherDialogOpen, setIsVoucherDialogOpen] = useState(false);
   const [isVouchersLoading, setIsVouchersLoading] = useState(false);
+  const [selectedVoucherDiscountType, setSelectedVoucherDiscountType] = useState<'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY'>('PERCENTAGE');
   
   // Pagination states
   const [discountsPage, setDiscountsPage] = useState(1);
@@ -331,7 +332,7 @@ export default function Discounts() {
 
     try {
       const formData = new FormData(e.currentTarget);
-      const type = formData.get('voucherDiscountType') as 'PERCENTAGE' | 'FIXED_AMOUNT';
+      const type = formData.get('voucherDiscountType') as 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
       const endsAt = formData.get('voucherEndsAt') as string;
       const startsAt = formData.get('voucherStartsAt') as string;
       
@@ -348,6 +349,9 @@ export default function Discounts() {
         voucherData.percentage = Number(formData.get('voucherValue'));
       } else if (type === 'FIXED_AMOUNT') {
         voucherData.amount = Number(formData.get('voucherValue'));
+      } else if (type === 'QUANTITY') {
+        voucherData.buyQuantity = Number(formData.get('voucherBuyQuantity'));
+        voucherData.freeQuantity = Number(formData.get('voucherFreeQuantity'));
       }
 
       if (formData.get('voucherMinimumPrice')) {
@@ -365,6 +369,7 @@ export default function Discounts() {
       await createVoucher(voucherData);
       await fetchVouchers();
       setIsVoucherDialogOpen(false);
+      setSelectedVoucherDiscountType('PERCENTAGE');
     } catch (error) {
       // Error toast is handled in the service
     } finally {
@@ -740,7 +745,15 @@ export default function Discounts() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Dialog open={isVoucherDialogOpen} onOpenChange={setIsVoucherDialogOpen}>
+                <Dialog
+                  open={isVoucherDialogOpen}
+                  onOpenChange={(open) => {
+                    setIsVoucherDialogOpen(open);
+                    if (!open) {
+                      setSelectedVoucherDiscountType('PERCENTAGE');
+                    }
+                  }}
+                >
                   <DialogTrigger asChild>
                     <Button onClick={() => setIsVoucherDialogOpen(true)}>
                       <Plus className="h-4 w-4 mr-2" />
@@ -776,20 +789,64 @@ export default function Discounts() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="voucherDiscountType">Discount Type</Label>
-                        <Select name="voucherDiscountType" required>
+                        <Select
+                          name="voucherDiscountType"
+                          value={selectedVoucherDiscountType}
+                          onValueChange={(value) =>
+                            setSelectedVoucherDiscountType(
+                              value as 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY',
+                            )
+                          }
+                          required
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select discount type" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="PERCENTAGE">Percentage</SelectItem>
                             <SelectItem value="FIXED_AMOUNT">Fixed Amount</SelectItem>
+                            <SelectItem value="QUANTITY">Buy X Get Y</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="voucherValue">Discount Value</Label>
-                        <Input id="voucherValue" name="voucherValue" type="number" step="0.01" placeholder="e.g. 10" required />
-                      </div>
+                      {selectedVoucherDiscountType === 'QUANTITY' ? (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label htmlFor="voucherBuyQuantity">Buy Quantity</Label>
+                            <Input
+                              id="voucherBuyQuantity"
+                              name="voucherBuyQuantity"
+                              type="number"
+                              min={1}
+                              placeholder="e.g. 3"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="voucherFreeQuantity">Free Quantity</Label>
+                            <Input
+                              id="voucherFreeQuantity"
+                              name="voucherFreeQuantity"
+                              type="number"
+                              min={1}
+                              placeholder="e.g. 1"
+                              required
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label htmlFor="voucherValue">Discount Value</Label>
+                          <Input
+                            id="voucherValue"
+                            name="voucherValue"
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g. 10"
+                            required
+                          />
+                        </div>
+                      )}
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <input type="checkbox" id="voucherIsWithMinimum" name="voucherIsWithMinimum" value="true" className="rounded" />

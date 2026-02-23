@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { formatPrice } from "@/lib/formatPrice";
 import { CartItem, CartResponse, RawBackendCartItem } from "@/types/cart";
 import { authClient } from "@/lib/authClient";
+import { resolveProductImageUrl } from "@/lib/resolveProductImageUrl";
 
 type UseCartOptions = {
   autoFetch?: boolean;
@@ -50,7 +51,10 @@ export function useCart({ autoFetch = true }: UseCartOptions = {}) {
         const data = response?.data;
         let items: CartItem[] = [];
         if (Array.isArray(data)) {
-          items = data as CartItem[];
+          items = (data as CartItem[]).map((item) => ({
+            ...item,
+            image: resolveProductImageUrl(item.image),
+          }));
           setServerPricingDiscount(0);
           setServerProductPromotionDiscount(0);
           setServerGlobalDiscount(0);
@@ -82,6 +86,11 @@ export function useCart({ autoFetch = true }: UseCartOptions = {}) {
                   ? Number(it.discountedPrice)
                   : undefined;
 
+            const rawImage =
+              it.image ??
+              it.imageUrl ??
+              (Array.isArray(it.imageUrls) ? it.imageUrls[0] : undefined);
+
             return {
               id: it.productId ?? it.id ?? 0,
               productId: it.productId ?? it.id,
@@ -102,7 +111,7 @@ export function useCart({ autoFetch = true }: UseCartOptions = {}) {
                 typeof it.productPromotionDiscount === "number"
                   ? it.productPromotionDiscount
                   : Number(it.productPromotionDiscount) || 0,
-              image: it.image,
+              image: resolveProductImageUrl(rawImage),
               quantity:
                 typeof it.quantity === "number"
                   ? it.quantity

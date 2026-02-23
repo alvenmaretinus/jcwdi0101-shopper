@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/hooks/useCart";
 import { getUserAddresses } from "@/services/user-address/getUserAddresses";
@@ -22,6 +22,7 @@ import VoucherInput from "./VoucherInput";
 import PaymentMethod from "./PaymentMethod";
 import ShippingInfo from "./ShippingInfo";
 import { ShippingMethodSelection } from "./ShippingMethodSelection";
+import { resolveProductImageUrl } from "@/lib/resolveProductImageUrl";
 
 export default function CheckoutShell() {
   const router = useRouter();
@@ -49,6 +50,8 @@ export default function CheckoutShell() {
   const [appliedVouchers, setAppliedVouchers] = useState<string[]>([]);
   const [voucherProductDiscount, setVoucherProductDiscount] = useState(0);
   const [voucherShippingDiscount, setVoucherShippingDiscount] = useState(0);
+  const [voucherQuantityBonusByProductId, setVoucherQuantityBonusByProductId] =
+    useState<Record<string, number>>({});
 
   // Early Store Selection state
   const [shippingData, setShippingData] = useState<ShippingCost | null>(null);
@@ -59,6 +62,20 @@ export default function CheckoutShell() {
   const [selectedShippingCost, setSelectedShippingCost] = useState(0);
   const [isLoadingShipping, setIsLoadingShipping] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
+
+  const resetVoucherState = useCallback(() => {
+    setAppliedVouchers([]);
+    setVoucherProductDiscount(0);
+    setVoucherShippingDiscount(0);
+    setVoucherQuantityBonusByProductId({});
+    setVoucherInput("");
+  }, []);
+
+  const refreshCheckoutForVoucherFailure = useCallback(async () => {
+    resetVoucherState();
+    await refetchCart(true);
+    router.refresh();
+  }, [refetchCart, resetVoucherState, router]);
 
   // Fetch shipping info when address changes (Early Store Selection)
   const fetchShippingInfo = useCallback(async (addressId: string) => {
@@ -152,6 +169,11 @@ export default function CheckoutShell() {
       await refetchCart(true);
       router.replace(`/order/${order.id}/payment`);
     } catch (err) {
+      const message =
+        err instanceof Error ? err.message.toLowerCase() : "";
+      if (message.includes("voucher")) {
+        await refreshCheckoutForVoucherFailure();
+      }
       setIsNavigatingToPayment(false);
       console.error("[CheckoutShell] Error creating order:", err);
     } finally {
@@ -186,6 +208,35 @@ export default function CheckoutShell() {
       : (resp as CalculateVoucherResponse);
   }, []);
 
+  const mapVoucherQuantityBonuses = useCallback(
+    (result: CalculateVoucherResponse): Record<string, number> => {
+      const map: Record<string, number> = {};
+      const lines = Array.isArray(result.quantityBonuses)
+        ? result.quantityBonuses
+        : [];
+
+      for (const line of lines) {
+        if (!line?.productId || !line?.freeQuantity) continue;
+        const productId = String(line.productId);
+        const freeQty = Math.max(0, Number(line.freeQuantity) || 0);
+        map[productId] = (map[productId] || 0) + freeQty;
+      }
+
+      return map;
+    },
+    []
+  );
+
+  const voucherCartItems = useMemo(
+    () =>
+      (cartItems || []).map((item) => ({
+        productId: String(item.productId ?? item.id),
+        quantity: Number(item.quantity) || 0,
+        unitPrice: Number(item.price) || 0,
+      })).filter((item) => item.productId && item.quantity > 0),
+    [cartItems]
+  );
+
   const applyVoucher = async (): Promise<void> => {
     const normalizedCode = voucherInput.trim().toUpperCase();
     if (!normalizedCode) return;
@@ -200,6 +251,7 @@ export default function CheckoutShell() {
         voucherCodes: ids,
         subtotal: cartSubtotal,
         shippingCost: selectedShippingCost,
+        cartItems: voucherCartItems,
       });
       const result = readVoucherResult(resp);
       const rawTotalDiscount = result.totalDiscount ?? 0;
@@ -215,9 +267,11 @@ export default function CheckoutShell() {
       setAppliedVouchers(ids);
       setVoucherProductDiscount(productDiscountValue);
       setVoucherShippingDiscount(shippingDiscount);
+      setVoucherQuantityBonusByProductId(mapVoucherQuantityBonuses(result));
       setVoucherInput("");
     } catch (err) {
       console.error("[CheckoutShell] Apply voucher failed:", err);
+      await refreshCheckoutForVoucherFailure();
     }
   };
 
@@ -227,11 +281,13 @@ export default function CheckoutShell() {
     if (ids.length === 0) {
       setVoucherProductDiscount(0);
       setVoucherShippingDiscount(0);
+      setVoucherQuantityBonusByProductId({});
     } else {
       calculateVoucher({
         voucherCodes: ids,
         subtotal: cartSubtotal,
         shippingCost: selectedShippingCost,
+        cartItems: voucherCartItems,
       })
         .then((resp) => {
           const result = readVoucherResult(resp);
@@ -247,10 +303,10 @@ export default function CheckoutShell() {
           );
           setVoucherProductDiscount(productDiscountValue);
           setVoucherShippingDiscount(shippingDiscount);
+          setVoucherQuantityBonusByProductId(mapVoucherQuantityBonuses(result));
         })
         .catch(() => {
-          setVoucherProductDiscount(0);
-          setVoucherShippingDiscount(0);
+          void refreshCheckoutForVoucherFailure();
         });
     }
   };
@@ -259,6 +315,7 @@ export default function CheckoutShell() {
     if (appliedVouchers.length === 0) {
       setVoucherProductDiscount(0);
       setVoucherShippingDiscount(0);
+      setVoucherQuantityBonusByProductId({});
       return;
     }
 
@@ -267,6 +324,7 @@ export default function CheckoutShell() {
       voucherCodes: appliedVouchers,
       subtotal: cartSubtotal,
       shippingCost: selectedShippingCost,
+      cartItems: voucherCartItems,
     })
       .then((resp) => {
         if (cancelled) return;
@@ -283,17 +341,25 @@ export default function CheckoutShell() {
         );
         setVoucherProductDiscount(productDiscountValue);
         setVoucherShippingDiscount(shippingDiscount);
+        setVoucherQuantityBonusByProductId(mapVoucherQuantityBonuses(result));
       })
       .catch(() => {
         if (cancelled) return;
-        setVoucherProductDiscount(0);
-        setVoucherShippingDiscount(0);
+        void refreshCheckoutForVoucherFailure();
       });
 
     return () => {
       cancelled = true;
     };
-  }, [appliedVouchers, cartSubtotal, readVoucherResult, selectedShippingCost]);
+  }, [
+    appliedVouchers,
+    cartSubtotal,
+    mapVoucherQuantityBonuses,
+    readVoucherResult,
+    selectedShippingCost,
+    voucherCartItems,
+    refreshCheckoutForVoucherFailure,
+  ]);
 
   const orderItems = (cartItems || []).map((it) => {
     const originalUnitPrice = it.price || 0;
@@ -307,8 +373,10 @@ export default function CheckoutShell() {
       price: hasProductDiscount ? discountedUnitPrice : originalUnitPrice,
       originalPrice: hasProductDiscount ? originalUnitPrice : undefined,
       quantity: it.quantity || 0,
-      bogoFreeQuantity: it.bogoFreeQuantity || 0,
-      image: it.image || "/placeholder.png",
+      bogoFreeQuantity:
+        (it.bogoFreeQuantity || 0) +
+        (voucherQuantityBonusByProductId[String(it.productId ?? it.id)] || 0),
+      image: resolveProductImageUrl(it.image),
     };
   });
 
