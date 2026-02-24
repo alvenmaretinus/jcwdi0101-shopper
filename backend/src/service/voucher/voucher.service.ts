@@ -254,7 +254,7 @@ export class VoucherService implements Service {
     }
 
     const now = new Date();
-    const notApplicableVoucherCodes: string[] = [];
+    const notApplicable: Array<{ code: string; reason: string }> = [];
     const applicableVouchers = activeVouchers.filter((voucher) => {
       const discount = voucher.discount;
       const hasStarted = !discount.startsAt || discount.startsAt <= now;
@@ -264,14 +264,20 @@ export class VoucherService implements Service {
       const limitedDiscountAvailable = !discount.hasDiscountAmountCap || discount.maxDiscountAmount !== null;
       const isApplicable = hasStarted && hasNotEnded && minimumPassed && available && limitedDiscountAvailable;
       if (!isApplicable) {
-        notApplicableVoucherCodes.push(voucher.code);
+        let reason = "not applicable";
+        if (!hasStarted) reason = "not started yet";
+        else if (!hasNotEnded) reason = "expired";
+        else if (!minimumPassed) reason = `minimum not met (required: ${discount.minimumPrice ?? "-"})`;
+        else if (!available) reason = "no remaining uses";
+        else if (!limitedDiscountAvailable) reason = "invalid discount cap configuration";
+        notApplicable.push({ code: voucher.code, reason });
       }
       return isApplicable;
     });
 
-    if (notApplicableVoucherCodes.length > 0) {
-      const uniqueNotApplicableVoucherCodes = Array.from(new Set(notApplicableVoucherCodes));
-      throw new BadRequestError(`Voucher is not applicable: ${uniqueNotApplicableVoucherCodes.join(", ")}`);
+    if (notApplicable.length > 0) {
+      const unique = Array.from(new Map(notApplicable.map((x) => [x.code, x])).values()).map((x) => `${x.code}: ${x.reason}`);
+      throw new BadRequestError(`Voucher is not applicable: ${unique.join(", ")}`);
     }
 
     const productVouchers = applicableVouchers.filter((voucher) => voucher.voucherType !== "FREEDELIVERY");
