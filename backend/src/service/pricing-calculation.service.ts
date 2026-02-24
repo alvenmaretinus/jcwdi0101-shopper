@@ -21,7 +21,7 @@ export type ProductPromotionLineBreakdown = {
   productId: string;
   totalDiscount: number;
   bogoFreeQuantity: number;
-  itemDiscounts: CalculatedDiscount[];  // Item-specific discounts applied to this line
+  itemDiscounts: CalculatedDiscount[]; // Item-specific discounts applied to this line
 };
 
 export type ProductPromotionBreakdown = {
@@ -59,38 +59,32 @@ export class PricingCalculationService {
   /**
    * Calculate item-level promotions with optional global discounts.
    * This is the consolidated function for all discount calculations during checkout and order creation.
-   * 
+   *
    * @param items Array of cart items with product ID, quantity, and unit price
    * @param db PrismaClient instance
    * @param globalDiscountIds Optional array of global discount IDs to apply
    * @returns Detailed breakdown: per-item discounts, global discounts, and applied discount details
-   * 
+   *
    * Usage:
    *  - Checkout: Call with globalDiscountIds to get per-item discount breakdown for display
    *  - Order creation: Call with globalDiscountIds to calculate final prices
    *  - Product page: Call without globalDiscountIds to show item-only savings
    */
-  static async calculateProductPromotionBreakdown(
-    items: ProductLineItem[],
-    db: PrismaClient,
-    globalDiscounts?: DiscountResponse[],
-  ): Promise<ProductPromotionBreakdown> {
+  static async calculateProductPromotionBreakdown(items: ProductLineItem[], db: PrismaClient, globalDiscounts?: DiscountResponse[]): Promise<ProductPromotionBreakdown> {
     if (!items || items.length === 0) {
-      return { 
-        totalDiscount: 0, 
+      return {
+        totalDiscount: 0,
 
-
-        lines: [] 
+        lines: [],
       };
     }
 
     const productIds = Array.from(new Set(items.map((item) => item.productId)));
     if (productIds.length === 0) {
-      return { 
-        totalDiscount: 0, 
+      return {
+        totalDiscount: 0,
 
-
-        lines: [] 
+        lines: [],
       };
     }
 
@@ -127,7 +121,7 @@ export class PricingCalculationService {
         isSoftDeleted: true,
         createdAt: true,
         updatedAt: true,
-      }
+      },
     })) as DiscountResponse[];
 
     discounts.push(...(globalDiscounts ?? []));
@@ -205,8 +199,6 @@ export class PricingCalculationService {
       });
     }
 
-
-
     return {
       totalDiscount: Math.round(itemLevelDiscount),
       lines,
@@ -217,10 +209,7 @@ export class PricingCalculationService {
    * Resolve active non-voucher global discounts that should be auto-applied
    * during cart/checkout pricing.
    */
-  static async getAutoAppliedGlobalDiscountIds(
-    subtotal: number,
-    db: PrismaClient,
-  ): Promise<string[]> {
+  static async getAutoAppliedGlobalDiscountIds(subtotal: number, db: PrismaClient): Promise<string[]> {
     const now = new Date();
     const discounts = await db.discount.findMany({
       where: {
@@ -244,16 +233,9 @@ export class PricingCalculationService {
 
     return discounts
       .filter((discount) => {
-        const minimumPassed =
-          !discount.isWithMinimum ||
-          discount.minimumPrice === null ||
-          subtotal >= discount.minimumPrice;
-        const available =
-          !discount.isQuantityLimited ||
-          (discount.maxUses !== null && discount.useCounter < discount.maxUses);
-        const limitedDiscountAvailable =
-          !discount.hasDiscountAmountCap ||
-          discount.maxDiscountAmount !== null;
+        const minimumPassed = !discount.isWithMinimum || discount.minimumPrice === null || subtotal >= discount.minimumPrice;
+        const available = !discount.isQuantityLimited || (discount.maxUses !== null && discount.useCounter < discount.maxUses);
+        const limitedDiscountAvailable = !discount.hasDiscountAmountCap || discount.maxDiscountAmount !== null;
 
         return minimumPassed && available && limitedDiscountAvailable;
       })
@@ -266,9 +248,9 @@ export class PricingCalculationService {
    * @param discountIds Array of discount IDs to apply
    * @param voucherIds Array of voucher IDs to apply (applied after discounts)
    * @param db PrismaClient instance
-    * @param userId User ID for voucher validation
-    * @param shippingCost Shipping cost used for FREEDELIVERY voucher calculation
-    * @param cartItems Optional cart items for product-specific discount calculation
+   * @param userId User ID for voucher validation
+   * @param shippingCost Shipping cost used for FREEDELIVERY voucher calculation
+   * @param cartItems Optional cart items for product-specific discount calculation
    * @returns Total discount amount
    */
   static async calculateTotalDiscount(
@@ -292,14 +274,7 @@ export class PricingCalculationService {
     // Vouchers are applied after discounts
     if (voucherIds && voucherIds.length > 0) {
       const priceAfterDiscounts = subtotal - totalDiscount;
-      const voucherAmount = await this.calculateVouchers(
-        priceAfterDiscounts,
-        voucherIds,
-        db,
-        userId,
-        shippingCost,
-        cartItems,
-      );
+      const voucherAmount = await this.calculateVouchers(priceAfterDiscounts, voucherIds, db, userId, shippingCost, cartItems);
       totalDiscount += voucherAmount;
     }
 
@@ -315,12 +290,7 @@ export class PricingCalculationService {
    * @returns Total discount amount from percentage, fixed amount, and quantity discounts
    * @note Uses optimal selection: compares best percentage vs best amount discount iteratively
    */
-  private static async calculateDiscounts(
-    subtotal: number,
-    discountIds: string[],
-    db: PrismaClient,
-    cartItems?: Array<{ productId: string; quantity: number; price: number }>,
-  ): Promise<number> {
+  private static async calculateDiscounts(subtotal: number, discountIds: string[], db: PrismaClient, cartItems?: Array<{ productId: string; quantity: number; price: number }>): Promise<number> {
     const discountRepo = new DiscountRepository(db);
 
     // Fetch all discounts by IDs and filter for active ones
@@ -339,27 +309,19 @@ export class PricingCalculationService {
       });
 
     // Separate discounts by type
-    const productSpecificDiscounts = discounts.filter(d => d.isTiedToProduct && d.productId);
-    const quantityDiscounts = discounts.filter(d => d.type === 'QUANTITY' && d.buyQuantity && d.freeQuantity && d.productId);
+    const productSpecificDiscounts = discounts.filter((d) => d.isTiedToProduct && d.productId);
+    const quantityDiscounts = discounts.filter((d) => d.type === "QUANTITY" && d.buyQuantity && d.freeQuantity && d.productId);
 
     // Helper: apply 3-array algorithm to a set of discounts against a remaining price
-    const applyThreeBucketAlgorithm = (
-      applicableDiscounts: DiscountResponse[],
-      startingPrice: number,
-    ): number => {
+    const applyThreeBucketAlgorithm = (applicableDiscounts: DiscountResponse[], startingPrice: number): number => {
       // Bucket 1: Pure percentage (no limit)
-      const purePctDiscounts = applicableDiscounts
-        .filter(d => d.type === 'PERCENTAGE' && !d.hasDiscountAmountCap)
-        .sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
+      const purePctDiscounts = applicableDiscounts.filter((d) => d.type === "PERCENTAGE" && !d.hasDiscountAmountCap).sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
 
       // Bucket 2: Fixed amount
-      const fixedAmtDiscounts = applicableDiscounts
-        .filter(d => d.type === 'FIXED_AMOUNT')
-        .sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
+      const fixedAmtDiscounts = applicableDiscounts.filter((d) => d.type === "FIXED_AMOUNT").sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
 
       // Bucket 3: Percentage with limit (effective amount recalculated each iteration)
-      const limitedPctDiscounts = applicableDiscounts
-        .filter(d => d.type === 'PERCENTAGE' && d.hasDiscountAmountCap && d.maxDiscountAmount);
+      const limitedPctDiscounts = applicableDiscounts.filter((d) => d.type === "PERCENTAGE" && d.hasDiscountAmountCap && d.maxDiscountAmount);
 
       let discountTotal = 0;
       let remaining = startingPrice;
@@ -391,15 +353,24 @@ export class PricingCalculationService {
 
         if (bestPurePctAmt >= bestFixedAmt && bestPurePctAmt >= bestLimitedAmt) {
           const actual = Math.min(bestPurePctAmt, remaining);
-          if (actual > 0) { discountTotal += actual; remaining -= actual; }
+          if (actual > 0) {
+            discountTotal += actual;
+            remaining -= actual;
+          }
           purePctDiscounts.shift();
         } else if (bestFixedAmt >= bestPurePctAmt && bestFixedAmt >= bestLimitedAmt) {
           const actual = Math.min(bestFixedAmt, remaining);
-          if (actual > 0) { discountTotal += actual; remaining -= actual; }
+          if (actual > 0) {
+            discountTotal += actual;
+            remaining -= actual;
+          }
           fixedAmtDiscounts.shift();
         } else {
           const actual = Math.min(bestLimitedAmt, remaining);
-          if (actual > 0) { discountTotal += actual; remaining -= actual; }
+          if (actual > 0) {
+            discountTotal += actual;
+            remaining -= actual;
+          }
           limitedPctDiscounts.splice(bestLimitedIdx, 1);
         }
       }
@@ -426,7 +397,7 @@ export class PricingCalculationService {
         if (itemDiscounts.length === 0) continue;
 
         const itemTotal = item.price * item.quantity;
-        const priceItemDiscounts = itemDiscounts.filter(d => d.type === 'PERCENTAGE' || d.type === 'FIXED_AMOUNT');
+        const priceItemDiscounts = itemDiscounts.filter((d) => d.type === "PERCENTAGE" || d.type === "FIXED_AMOUNT");
         totalDiscount += applyThreeBucketAlgorithm(priceItemDiscounts, itemTotal);
       }
     }
@@ -434,7 +405,7 @@ export class PricingCalculationService {
     // Step 2: Handle QUANTITY discounts (buy X get Y free) - these reduce effective price
     if (cartItems && cartItems.length > 0 && quantityDiscounts.length > 0) {
       for (const discount of quantityDiscounts) {
-        const item = cartItems.find(ci => ci.productId === discount.productId);
+        const item = cartItems.find((ci) => ci.productId === discount.productId);
         if (!item || !discount.buyQuantity || !discount.freeQuantity) continue;
 
         const setsEligible = Math.floor(item.quantity / discount.buyQuantity);
@@ -448,7 +419,7 @@ export class PricingCalculationService {
     let remainingPrice = subtotal - totalDiscount;
     if (remainingPrice <= 0) return totalDiscount;
 
-    const globalDiscounts = discounts.filter(d => !d.isTiedToProduct && (d.type === 'PERCENTAGE' || d.type === 'FIXED_AMOUNT'));
+    const globalDiscounts = discounts.filter((d) => !d.isTiedToProduct && (d.type === "PERCENTAGE" || d.type === "FIXED_AMOUNT"));
     totalDiscount += applyThreeBucketAlgorithm(globalDiscounts, remainingPrice);
 
     return totalDiscount;

@@ -13,11 +13,14 @@ const Cart = () => {
     updateQuantity,
     removeItem,
     serverPricingDiscount,
-
+    serverProductPromotionDiscount,
+    serverGlobalDiscount,
     subtotal,
     formatPrice,
   } = useCart();
 
+  const productPromoDiscount = Math.max(0, serverProductPromotionDiscount || 0);
+  const globalDiscount = Math.max(0, serverGlobalDiscount || 0);
   const discount = Math.max(0, serverPricingDiscount || 0);
   const total = Math.max(0, subtotal - discount);
 
@@ -72,7 +75,9 @@ const Cart = () => {
                 {/* Image */}
                 <div className="w-24 h-24 rounded-xl bg-muted/50 flex items-center justify-center shrink-0 overflow-hidden relative">
                   <Image
-                    src={item.image || "https://placehold.co/120x120?text=No+Image"}
+                    src={
+                      item.image || "https://placehold.co/120x120?text=No+Image"
+                    }
                     alt={item.name || "Product image"}
                     fill
                     className="object-cover"
@@ -90,12 +95,28 @@ const Cart = () => {
                       >
                         {item.name}
                       </Link>
-                      <p className="text-sm text-muted-foreground">
-                        {formatPrice(item.price)} / {item.unit || "item"}
-                      </p>
-                      {item.isBuyOneGetOne && (
+                      {/* Unit price — show discounted price when a product promotion applies */}
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">
+                          {formatPrice(
+                            item.discountedPrice !== undefined &&
+                              item.discountedPrice < item.price
+                              ? item.discountedPrice
+                              : item.price
+                          )}{" "}
+                          / {item.unit || "item"}
+                        </span>
+                        {item.discountedPrice !== undefined &&
+                          item.discountedPrice < item.price && (
+                            <span className="text-xs text-muted-foreground line-through">
+                              {formatPrice(item.price)}
+                            </span>
+                          )}
+                      </div>
+                      {(item.bogoFreeQuantity ?? 0) > 0 && (
                         <span className="inline-block mt-1 text-xs font-medium bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">
-                          Buy 1 Get 1 Free
+                          +{item.bogoFreeQuantity} free item
+                          {(item.bogoFreeQuantity ?? 0) > 1 ? "s" : ""}
                         </span>
                       )}
                     </div>
@@ -134,15 +155,22 @@ const Cart = () => {
                       </Button>
                     </div>
 
-                    {/* Line total */}
+                    {/* Line total — show discounted total when applicable */}
                     <div className="text-right">
-                      <span className="font-bold text-foreground">
-                        {formatPrice(item.price * item.quantity)}
-                      </span>
-                      {item.originalPrice && (
-                        <p className="text-xs text-muted-foreground line-through">
-                          {formatPrice(item.originalPrice * item.quantity)}
-                        </p>
+                      {item.discountedPrice !== undefined &&
+                      item.discountedPrice < item.price ? (
+                        <>
+                          <span className="font-bold text-foreground">
+                            {formatPrice(item.discountedPrice * item.quantity)}
+                          </span>
+                          <p className="text-xs text-muted-foreground line-through">
+                            {formatPrice(item.price * item.quantity)}
+                          </p>
+                        </>
+                      ) : (
+                        <span className="font-bold text-foreground">
+                          {formatPrice(item.price * item.quantity)}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -164,14 +192,32 @@ const Cart = () => {
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-medium">{formatPrice(subtotal)}</span>
                 </div>
-                {discount > 0 && (
+                {productPromoDiscount > 0 && (
                   <div className="flex justify-between text-primary">
-                    <span>Discount</span>
+                    <span>Product Discounts</span>
                     <span className="font-medium">
-                      -{formatPrice(discount)}
+                      -{formatPrice(productPromoDiscount)}
                     </span>
                   </div>
                 )}
+                {globalDiscount > 0 && (
+                  <div className="flex justify-between text-primary">
+                    <span>Auto Discounts</span>
+                    <span className="font-medium">
+                      -{formatPrice(globalDiscount)}
+                    </span>
+                  </div>
+                )}
+                {discount > 0 &&
+                  productPromoDiscount === 0 &&
+                  globalDiscount === 0 && (
+                    <div className="flex justify-between text-primary">
+                      <span>Discount</span>
+                      <span className="font-medium">
+                        -{formatPrice(discount)}
+                      </span>
+                    </div>
+                  )}
                 <hr className="border-border" />
                 <div className="flex justify-between text-lg">
                   <span className="font-semibold">Total</span>

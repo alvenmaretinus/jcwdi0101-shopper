@@ -32,6 +32,7 @@ export const GetDiscountsByFilterSchema = z.strictObject({
     /** Filter discounts that are active/valid on this specific date */
     activeOnDate: z.coerce.date().optional(),
     page: z.coerce.number().int().min(1).optional().default(1),
+    limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 });
 
 export type GetDiscountsByFilterInput = z.infer<typeof GetDiscountsByFilterSchema>;

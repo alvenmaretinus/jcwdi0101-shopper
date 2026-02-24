@@ -1,13 +1,14 @@
-import { Discount } from './Discount';
+import { Discount } from "./Discount";
 
-export type VoucherType = 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY';
+export type VoucherType = "REFERRAL" | "TRANSACTIONAL" | "FREEDELIVERY";
 
 export interface Voucher {
   id: string;
   code: string;
   discountId: string;
   voucherType: VoucherType;
-  referralRole?: 'REFERRER' | 'REFEREE' | null;
+  isRedeemed?: boolean;
+  referralRole?: "REFERRER" | "REFEREE" | null;
   isSoftDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;

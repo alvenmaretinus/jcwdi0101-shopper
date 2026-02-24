@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback} from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/hooks/useCart";
 import { getUserAddresses } from "@/services/user-address/getUserAddresses";
@@ -26,11 +26,7 @@ import { resolveProductImageUrl } from "@/lib/resolveProductImageUrl";
 
 export default function CheckoutShell() {
   const router = useRouter();
-  const {
-    cartItems,
-    loading: isCartLoading,
-    refetch: refetchCart,
-  } = useCart();
+  const { cartItems, loading: isCartLoading, refetch: refetchCart } = useCart();
 
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(
@@ -120,11 +116,12 @@ export default function CheckoutShell() {
         );
         setPricingBreakdown(breakdown);
       } catch (err) {
-        console.error("[CheckoutShell] Failed to fetch pricing breakdown:", err);
+        console.error(
+          "[CheckoutShell] Failed to fetch pricing breakdown:",
+          err
+        );
         const msg =
-          err instanceof Error
-            ? err.message
-            : "Gagal memuat rincian harga";
+          err instanceof Error ? err.message : "Gagal memuat rincian harga";
         setPricingError(msg);
       } finally {
         setIsLoadingPricing(false);
@@ -159,15 +156,33 @@ export default function CheckoutShell() {
   useEffect(() => {
     if (selectedAddress?.id) {
       fetchShippingInfo(selectedAddress.id);
-      fetchPricingBreakdown(selectedAddress.id, appliedVouchers.length > 0 ? appliedVouchers : undefined);
+      fetchPricingBreakdown(
+        selectedAddress.id,
+        appliedVouchers.length > 0 ? appliedVouchers : undefined
+      );
     }
-  }, [selectedAddress?.id, appliedVouchers, fetchShippingInfo, fetchPricingBreakdown]);
+  }, [
+    selectedAddress?.id,
+    appliedVouchers,
+    fetchShippingInfo,
+    fetchPricingBreakdown,
+  ]);
 
   useEffect(() => {
     if (isNavigatingToPayment) return;
-    if (!isCartLoading && !isCreatingOrder && (!cartItems || cartItems.length === 0))
+    if (
+      !isCartLoading &&
+      !isCreatingOrder &&
+      (!cartItems || cartItems.length === 0)
+    )
       router.push("/cart");
-  }, [cartItems, isCartLoading, isCreatingOrder, isNavigatingToPayment, router]);
+  }, [
+    cartItems,
+    isCartLoading,
+    isCreatingOrder,
+    isNavigatingToPayment,
+    router,
+  ]);
 
   // Handle shipping method selection — extract cost from selected method
   const handleShippingMethodSelect = (methodKey: string, cost: number) => {
@@ -193,8 +208,7 @@ export default function CheckoutShell() {
       await refetchCart(true);
       router.replace(`/order/${order.id}/payment`);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message.toLowerCase() : "";
+      const message = err instanceof Error ? err.message.toLowerCase() : "";
       if (message.includes("voucher")) {
         await refreshCheckoutForVoucherFailure();
       }
