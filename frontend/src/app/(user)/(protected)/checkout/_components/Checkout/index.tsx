@@ -4,15 +4,15 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/hooks/useCart";
 import { getUserAddresses } from "@/services/user-address/getUserAddresses";
-import {
-  calculateVoucher,
-  CalculateVoucherResponse,
-} from "@/services/voucher/calculateVoucher";
 import { createOrder } from "@/services/order/createOrder";
 import {
   getCheckoutShippingInfo,
   CheckoutShippingInfo,
 } from "@/services/order/getCheckoutShippingInfo";
+import {
+  getCheckoutPricingBreakdown,
+  CheckoutPricingResponse,
+} from "@/services/order/getCheckoutPricingBreakdown";
 import { UserAddress } from "@/types/UserAddress";
 import { ShippingCost } from "@/types/ShippingCost";
 import CheckoutHeader from "./CheckoutHeader";
@@ -29,10 +29,6 @@ export default function CheckoutShell() {
   const {
     cartItems,
     loading: isCartLoading,
-    subtotal,
-    serverPricingDiscount,
-    serverProductPromotionDiscount,
-    serverGlobalDiscount,
     refetch: refetchCart,
   } = useCart();
 
@@ -48,10 +44,6 @@ export default function CheckoutShell() {
 
   const [voucherInput, setVoucherInput] = useState("");
   const [appliedVouchers, setAppliedVouchers] = useState<string[]>([]);
-  const [voucherProductDiscount, setVoucherProductDiscount] = useState(0);
-  const [voucherShippingDiscount, setVoucherShippingDiscount] = useState(0);
-  const [voucherQuantityBonusByProductId, setVoucherQuantityBonusByProductId] =
-    useState<Record<string, number>>({});
 
   // Early Store Selection state
   const [shippingData, setShippingData] = useState<ShippingCost | null>(null);
@@ -65,10 +57,8 @@ export default function CheckoutShell() {
 
   const resetVoucherState = useCallback(() => {
     setAppliedVouchers([]);
-    setVoucherProductDiscount(0);
-    setVoucherShippingDiscount(0);
-    setVoucherQuantityBonusByProductId({});
     setVoucherInput("");
+    setPricingBreakdown(null);
   }, []);
 
   const refreshCheckoutForVoucherFailure = useCallback(async () => {
@@ -76,6 +66,12 @@ export default function CheckoutShell() {
     await refetchCart(true);
     router.refresh();
   }, [refetchCart, resetVoucherState, router]);
+
+  // Pricing breakdown state
+  const [pricingBreakdown, setPricingBreakdown] =
+    useState<CheckoutPricingResponse | null>(null);
+  const [isLoadingPricing, setIsLoadingPricing] = useState(false);
+  const [pricingError, setPricingError] = useState<string | null>(null);
 
   // Fetch shipping info when address changes (Early Store Selection)
   const fetchShippingInfo = useCallback(async (addressId: string) => {
@@ -110,6 +106,33 @@ export default function CheckoutShell() {
     }
   }, []);
 
+  // Fetch pricing breakdown when dependencies change
+  const fetchPricingBreakdown = useCallback(
+    async (addressId: string, voucherIds?: string[]) => {
+      setIsLoadingPricing(true);
+      setPricingError(null);
+      setPricingBreakdown(null);
+
+      try {
+        const breakdown = await getCheckoutPricingBreakdown(
+          addressId,
+          voucherIds
+        );
+        setPricingBreakdown(breakdown);
+      } catch (err) {
+        console.error("[CheckoutShell] Failed to fetch pricing breakdown:", err);
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Gagal memuat rincian harga";
+        setPricingError(msg);
+      } finally {
+        setIsLoadingPricing(false);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     const fetchAddresses = async () => {
       try {
@@ -132,12 +155,13 @@ export default function CheckoutShell() {
     fetchAddresses();
   }, []);
 
-  // Trigger shipping fetch when address changes
+  // Trigger shipping and pricing fetch when address or vouchers change
   useEffect(() => {
     if (selectedAddress?.id) {
       fetchShippingInfo(selectedAddress.id);
+      fetchPricingBreakdown(selectedAddress.id, appliedVouchers.length > 0 ? appliedVouchers : undefined);
     }
-  }, [selectedAddress?.id, fetchShippingInfo]);
+  }, [selectedAddress?.id, appliedVouchers, fetchShippingInfo, fetchPricingBreakdown]);
 
   useEffect(() => {
     if (isNavigatingToPayment) return;
@@ -181,61 +205,13 @@ export default function CheckoutShell() {
     }
   };
 
-  const baseSubtotal = subtotal || 0;
-  const productDiscount = serverProductPromotionDiscount || 0;
-  const globalDiscount =
-    serverGlobalDiscount ||
-    Math.max(0, (serverPricingDiscount || 0) - productDiscount);
-  const nonVoucherDiscount = Math.max(0, productDiscount + globalDiscount);
-  const cartSubtotal = Math.max(0, baseSubtotal - nonVoucherDiscount);
-  const voucherDiscount = voucherProductDiscount;
+  // Calculate pricing from backend breakdown
+  const baseSubtotal = pricingBreakdown?.subtotal ?? 0;
+  const totalDiscount = pricingBreakdown?.totalDiscount ?? 0;
   const shippingCost = selectedShippingCost;
-  const appliedShippingDiscount = Math.max(
-    0,
-    Math.min(voucherShippingDiscount, shippingCost)
-  );
-  const finalShippingCost = Math.max(0, shippingCost - appliedShippingDiscount);
-  const total = Math.max(0, cartSubtotal - voucherDiscount + finalShippingCost);
-
-  const readVoucherResult = useCallback((resp: unknown): CalculateVoucherResponse => {
-    const isApiWrapper = (
-      value: unknown
-    ): value is { data: CalculateVoucherResponse } =>
-      typeof value === "object" && value !== null && "data" in value;
-
-    return isApiWrapper(resp)
-      ? resp.data
-      : (resp as CalculateVoucherResponse);
-  }, []);
-
-  const mapVoucherQuantityBonuses = useCallback(
-    (result: CalculateVoucherResponse): Record<string, number> => {
-      const map: Record<string, number> = {};
-      const lines = Array.isArray(result.quantityBonuses)
-        ? result.quantityBonuses
-        : [];
-
-      for (const line of lines) {
-        if (!line?.productId || !line?.freeQuantity) continue;
-        const productId = String(line.productId);
-        const freeQty = Math.max(0, Number(line.freeQuantity) || 0);
-        map[productId] = (map[productId] || 0) + freeQty;
-      }
-
-      return map;
-    },
-    []
-  );
-
-  const voucherCartItems = useMemo(
-    () =>
-      (cartItems || []).map((item) => ({
-        productId: String(item.productId ?? item.id),
-        quantity: Number(item.quantity) || 0,
-        unitPrice: Number(item.price) || 0,
-      })).filter((item) => item.productId && item.quantity > 0),
-    [cartItems]
-  );
+  const appliedShippingDiscount = 0; // Shipping vouchers handled separately if needed
+  const finalShippingCost = shippingCost;
+  const total = pricingBreakdown?.grandTotal ?? 0;
 
   const applyVoucher = async (): Promise<void> => {
     const normalizedCode = voucherInput.trim().toUpperCase();
@@ -245,30 +221,12 @@ export default function CheckoutShell() {
       return;
     }
 
+    // Add voucher and refetch pricing breakdown
     try {
       const ids = [...appliedVouchers, normalizedCode];
-      const resp = await calculateVoucher({
-        voucherCodes: ids,
-        subtotal: cartSubtotal,
-        shippingCost: selectedShippingCost,
-        cartItems: voucherCartItems,
-      });
-      const result = readVoucherResult(resp);
-      const rawTotalDiscount = result.totalDiscount ?? 0;
-      const rawShippingDiscount = result.shippingDiscount ?? 0;
-      const shippingDiscount = Math.max(
-        0,
-        Math.min(rawShippingDiscount, selectedShippingCost)
-      );
-      const productDiscountValue = Math.max(
-        0,
-        (result.productDiscount ?? rawTotalDiscount - shippingDiscount) || 0
-      );
       setAppliedVouchers(ids);
-      setVoucherProductDiscount(productDiscountValue);
-      setVoucherShippingDiscount(shippingDiscount);
-      setVoucherQuantityBonusByProductId(mapVoucherQuantityBonuses(result));
       setVoucherInput("");
+      // Pricing breakdown will be refetched by the useEffect watching appliedVouchers
     } catch (err) {
       console.error("[CheckoutShell] Apply voucher failed:", err);
       await refreshCheckoutForVoucherFailure();
@@ -278,89 +236,8 @@ export default function CheckoutShell() {
   const removeVoucher = (id: string) => {
     const ids = appliedVouchers.filter((v) => v !== id);
     setAppliedVouchers(ids);
-    if (ids.length === 0) {
-      setVoucherProductDiscount(0);
-      setVoucherShippingDiscount(0);
-      setVoucherQuantityBonusByProductId({});
-    } else {
-      calculateVoucher({
-        voucherCodes: ids,
-        subtotal: cartSubtotal,
-        shippingCost: selectedShippingCost,
-        cartItems: voucherCartItems,
-      })
-        .then((resp) => {
-          const result = readVoucherResult(resp);
-          const rawTotalDiscount = result.totalDiscount ?? 0;
-          const rawShippingDiscount = result.shippingDiscount ?? 0;
-          const shippingDiscount = Math.max(
-            0,
-            Math.min(rawShippingDiscount, selectedShippingCost)
-          );
-          const productDiscountValue = Math.max(
-            0,
-            (result.productDiscount ?? rawTotalDiscount - shippingDiscount) || 0
-          );
-          setVoucherProductDiscount(productDiscountValue);
-          setVoucherShippingDiscount(shippingDiscount);
-          setVoucherQuantityBonusByProductId(mapVoucherQuantityBonuses(result));
-        })
-        .catch(() => {
-          void refreshCheckoutForVoucherFailure();
-        });
-    }
+    // Pricing breakdown will be refetched by the useEffect watching appliedVouchers
   };
-
-  useEffect(() => {
-    if (appliedVouchers.length === 0) {
-      setVoucherProductDiscount(0);
-      setVoucherShippingDiscount(0);
-      setVoucherQuantityBonusByProductId({});
-      return;
-    }
-
-    let cancelled = false;
-    calculateVoucher({
-      voucherCodes: appliedVouchers,
-      subtotal: cartSubtotal,
-      shippingCost: selectedShippingCost,
-      cartItems: voucherCartItems,
-    })
-      .then((resp) => {
-        if (cancelled) return;
-        const result = readVoucherResult(resp);
-        const rawTotalDiscount = result.totalDiscount ?? 0;
-        const rawShippingDiscount = result.shippingDiscount ?? 0;
-        const shippingDiscount = Math.max(
-          0,
-          Math.min(rawShippingDiscount, selectedShippingCost)
-        );
-        const productDiscountValue = Math.max(
-          0,
-          (result.productDiscount ?? rawTotalDiscount - shippingDiscount) || 0
-        );
-        setVoucherProductDiscount(productDiscountValue);
-        setVoucherShippingDiscount(shippingDiscount);
-        setVoucherQuantityBonusByProductId(mapVoucherQuantityBonuses(result));
-      })
-      .catch(() => {
-        if (cancelled) return;
-        void refreshCheckoutForVoucherFailure();
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    appliedVouchers,
-    cartSubtotal,
-    mapVoucherQuantityBonuses,
-    readVoucherResult,
-    selectedShippingCost,
-    voucherCartItems,
-    refreshCheckoutForVoucherFailure,
-  ]);
-
   const orderItems = (cartItems || []).map((it) => {
     const originalUnitPrice = it.price || 0;
     const discountedUnitPrice = it.discountedPrice ?? originalUnitPrice;
@@ -373,9 +250,7 @@ export default function CheckoutShell() {
       price: hasProductDiscount ? discountedUnitPrice : originalUnitPrice,
       originalPrice: hasProductDiscount ? originalUnitPrice : undefined,
       quantity: it.quantity || 0,
-      bogoFreeQuantity:
-        (it.bogoFreeQuantity || 0) +
-        (voucherQuantityBonusByProductId[String(it.productId ?? it.id)] || 0),
+      bogoFreeQuantity: it.bogoFreeQuantity || 0,
       image: resolveProductImageUrl(it.image),
     };
   });
@@ -421,15 +296,15 @@ export default function CheckoutShell() {
             <SummarySidebar
               items={orderItems}
               subtotal={baseSubtotal}
-              productDiscount={productDiscount}
-              globalDiscount={globalDiscount}
-              voucherDiscount={voucherDiscount}
+              totalDiscount={totalDiscount}
               shippingCost={finalShippingCost}
               shippingOriginalCost={shippingCost}
               shippingDiscount={appliedShippingDiscount}
               total={total}
               onPlaceOrder={handlePlaceOrder}
               isCreatingOrder={isCreatingOrder}
+              pricingBreakdown={pricingBreakdown}
+              isLoadingPricing={isLoadingPricing}
             />
           </div>
         </div>

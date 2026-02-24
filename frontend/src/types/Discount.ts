@@ -6,10 +6,10 @@ export interface Discount {
   type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
   isWithMinimum: boolean;
   minimumPrice?: number;
-  isLimitedDiscount: boolean;
-  discountLimitAmt?: number;
-  isLimited: boolean;
-  limit?: number;
+  hasDiscountAmountCap: boolean;
+  maxDiscountAmount?: number;
+  isQuantityLimited: boolean;
+  maxUses?: number;
   useCounter?: number;
   isVoucher?: boolean;
   isTiedToProduct: boolean;

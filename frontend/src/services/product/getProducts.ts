@@ -51,6 +51,12 @@ export interface ProductWithDetails {
       savedAmount: number;
       endsAt?: string | Date | null;
     }>;
+    unmetMinimumDiscounts?: Array<{
+      id: string;
+      name: string;
+      label: string;
+      minimumPrice: number;
+    }>;
     earliestEndsAt?: string | Date | null;
     quantityDiscounts?: Array<{
       id: string;

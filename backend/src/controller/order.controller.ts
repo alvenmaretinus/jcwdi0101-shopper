@@ -72,6 +72,27 @@ router.post("/checkout/shipping-info", isAuth, async (req: Request, res: Respons
 });
 
 /**
+ * @route POST /checkout/pricing-breakdown
+ * @desc Get per-item discount breakdown for checkout display
+ * @access Private (User)
+ */
+router.post("/checkout/pricing-breakdown", isAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.id as string;
+    const { addressId, voucherIds, discountIds } = req.body;
+
+    if (!userId || !addressId) {
+      return res.status(400).json({ success: false, message: "SHIPPING_ADDRESS_REQUIRED" });
+    }
+
+    const result = await OrderService.getCheckoutPricingBreakdown(userId, addressId, voucherIds, discountIds);
+    return res.status(200).json({ success: true, data: result });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+/**
  * @route POST /checkout
  * @desc Create a pending order
  * @access Private (User)

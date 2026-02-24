@@ -10,8 +10,8 @@ export interface CreateDiscountInput {
   type: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
   isWithMinimum: boolean;
   minimumPrice?: number;
-  isLimitedDiscount?: boolean;
-  discountLimitAmt?: number;
+  hasDiscountAmountCap?: boolean;
+  maxDiscountAmount?: number;
   isTiedToProduct: boolean;
   productId?: string;
   buyQuantity?: number;

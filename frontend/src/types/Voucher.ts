@@ -8,8 +8,7 @@ export interface Voucher {
   discountId: string;
   voucherType: VoucherType;
   referralRole?: 'REFERRER' | 'REFEREE' | null;
-  isRedeemed: boolean;
-  redeemedAt: Date | null;
+  isSoftDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
   discount: Discount;

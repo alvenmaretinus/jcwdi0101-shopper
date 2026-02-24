@@ -62,7 +62,7 @@ export default function Discounts() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWithMinimumChecked, setIsWithMinimumChecked] = useState<boolean>(editingDiscount?.isWithMinimum ?? false);
-  const [isLimitedDiscountChecked, setIsLimitedDiscountChecked] = useState<boolean>(editingDiscount?.isLimitedDiscount ?? false);
+  const [hasDiscountAmountCapChecked, setHasDiscountAmountCapChecked] = useState<boolean>(editingDiscount?.hasDiscountAmountCap ?? false);
   
   // Product selection states
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -196,7 +196,7 @@ export default function Discounts() {
 
   useEffect(() => {
     setIsWithMinimumChecked(editingDiscount?.isWithMinimum ?? false);
-    setIsLimitedDiscountChecked(editingDiscount?.isLimitedDiscount ?? false);
+    setHasDiscountAmountCapChecked(editingDiscount?.hasDiscountAmountCap ?? false);
   }, [editingDiscount]);
 
   const handleCreate = () => {
@@ -262,17 +262,17 @@ export default function Discounts() {
       }
 
       // Handle max discount amount (only for percentage discounts)
-      if (type === 'PERCENTAGE' && formData.has('isLimitedDiscount')) {
-        discountData.isLimitedDiscount = true;
-        const discountLimitAmt = Number(formData.get('discountLimitAmt'));
-        if (!Number.isInteger(discountLimitAmt) || discountLimitAmt < 1) {
+      if (type === 'PERCENTAGE' && formData.has('hasDiscountAmountCap')) {
+        discountData.hasDiscountAmountCap = true;
+        const maxDiscountAmount = Number(formData.get('maxDiscountAmount'));
+        if (!Number.isInteger(maxDiscountAmount) || maxDiscountAmount < 1) {
           toast.error('Max discount amount must be a whole number greater than 0');
           setIsSubmitting(false);
           return;
         }
-        discountData.discountLimitAmt = discountLimitAmt;
+        discountData.maxDiscountAmount = maxDiscountAmount;
       } else {
-        discountData.isLimitedDiscount = false;
+        discountData.hasDiscountAmountCap = false;
       }
 
       if (startsAt) {
@@ -391,7 +391,7 @@ export default function Discounts() {
   };
 
   const getRemainingUsesLabel = (discount: Discount) => {
-    if (!discount.isLimited) return 'Unlimited';
+    if (!discount.isQuantityLimited) return 'Unlimited';
     const totalLimit = typeof discount.limit === 'number' ? discount.limit : 0;
     const used = typeof discount.useCounter === 'number' ? discount.useCounter : 0;
     return String(Math.max(0, totalLimit - used));
@@ -551,26 +551,26 @@ export default function Discounts() {
                     <div className="flex items-center space-x-2">
                       <input 
                         type="checkbox" 
-                        id="isLimitedDiscount" 
-                        name="isLimitedDiscount" 
-                        checked={isLimitedDiscountChecked}
-                        onChange={(e) => setIsLimitedDiscountChecked(e.target.checked)}
+                        id="hasDiscountAmountCap" 
+                        name="hasDiscountAmountCap" 
+                        checked={hasDiscountAmountCapChecked}
+                        onChange={(e) => setHasDiscountAmountCapChecked(e.target.checked)}
                         className="rounded"
                       />
-                      <Label htmlFor="isLimitedDiscount" className="cursor-pointer">Set maximum discount amount</Label>
+                      <Label htmlFor="hasDiscountAmountCap" className="cursor-pointer">Set maximum discount amount</Label>
                     </div>
                     <p className="text-xs text-muted-foreground">Cap the maximum discount that can be applied to an order</p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="discountLimitAmt">Maximum Discount Amount (Rp)</Label>
+                    <Label htmlFor="maxDiscountAmount">Maximum Discount Amount (Rp)</Label>
                     <Input 
-                      id="discountLimitAmt"
-                      name="discountLimitAmt" 
+                      id="maxDiscountAmount"
+                      name="maxDiscountAmount" 
                       type="number" 
                       placeholder="100000" 
-                      defaultValue={editingDiscount?.discountLimitAmt}
-                      disabled={!isLimitedDiscountChecked}
+                      defaultValue={editingDiscount?.maxDiscountAmount}
+                      disabled={!hasDiscountAmountCapChecked}
                     />
                   </div>
                 </>
@@ -664,9 +664,9 @@ export default function Discounts() {
                       <TableCell className="font-medium">
                         <div className="space-y-1">
                           <div>{getDiscountValue(discount)}</div>
-                          {discount.isLimitedDiscount && discount.discountLimitAmt && (
-                            <div className="text-xs text-muted-foreground">
-                              Max: Rp {discount.discountLimitAmt.toLocaleString('id-ID')}
+                          {discount.hasDiscountAmountCap && discount.maxDiscountAmount && (
+                            <div className="text-xs text-gray-600">
+                              Max: Rp {discount.maxDiscountAmount.toLocaleString('id-ID')}
                             </div>
                           )}
                         </div>

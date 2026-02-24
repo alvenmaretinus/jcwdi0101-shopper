@@ -11,13 +11,18 @@ export type VoucherCreateReq = {
     voucherType: 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY';
     isWithMinimum: boolean;
     minimumPrice?: number;
-    isLimited?: boolean;
-    limit?: number;
+    isQuantityLimited?: boolean;
+    maxUses?: number;
     buyQuantity?: number;
     freeQuantity?: number;
     startsAt?: Date;
     endsAt?: Date;
 }
+
+/**
+ * A voucher is considered redeemed when its associated discount has reached its usage limit.
+ * The discount's useCounter and limit fields determine redemption status.
+ */
 
 export type VoucherUpdateReq = {
     code?: string;
@@ -30,8 +35,8 @@ export type VoucherUpdateReq = {
     voucherType?: 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY';
     isWithMinimum?: boolean;
     minimumPrice?: number;
-    isLimited?: boolean;
-    limit?: number;
+    isQuantityLimited?: boolean;
+    maxUses?: number;
     buyQuantity?: number;
     freeQuantity?: number;
     startsAt?: Date;
@@ -47,7 +52,6 @@ export type VoucherFilter = {
     amount?: number;
     type?: 'PERCENTAGE' | 'FIXED_AMOUNT' | 'QUANTITY';
     voucherType?: 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY';
-    isRedeemed?: boolean;
     isWithMinimum?: boolean;
     minimumPrice?: number;
     buyQuantity?: number;
@@ -62,8 +66,6 @@ export type VoucherResponse = {
     userId: string | null;
     voucherType: 'REFERRAL' | 'TRANSACTIONAL' | 'FREEDELIVERY';
     referralRole: 'REFERRER' | 'REFEREE' | null;
-    isRedeemed: boolean;
-    redeemedAt: Date | null;
     isSoftDeleted: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -76,10 +78,10 @@ export type VoucherResponse = {
         isVoucher: boolean;
         isWithMinimum: boolean;
         minimumPrice: number | null;
-        isLimitedDiscount: boolean;
-        discountLimitAmt: number | null;
-        isLimited: boolean;
-        limit: number | null;
+        hasDiscountAmountCap: boolean;
+        maxDiscountAmount: number | null;
+        isQuantityLimited: boolean;
+        maxUses: number | null;
         useCounter: number;
         isTiedToProduct: boolean;
         productId: string | null;

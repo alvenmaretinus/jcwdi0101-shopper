@@ -11,11 +11,11 @@ export type DiscountCreateReq = {
     isWithMinimum: boolean;
     minimumPrice?: number;
     
-    isLimitedDiscount?: boolean;
-    discountLimitAmt?: number;
+    hasDiscountAmountCap?: boolean;
+    maxDiscountAmount?: number;
     
-    isLimited?: boolean;
-    limit?: number;
+    isQuantityLimited?: boolean;
+    maxUses?: number;
     useCounter?: number;
     
     isTiedToProduct: boolean;
@@ -38,11 +38,11 @@ export type DiscountUpdateReq = {
     isWithMinimum?: boolean;
     minimumPrice?: number;
     
-    isLimitedDiscount?: boolean;
-    discountLimitAmt?: number;
+    hasDiscountAmountCap?: boolean;
+    maxDiscountAmount?: number;
     
-    isLimited?: boolean;
-    limit?: number;
+    isQuantityLimited?: boolean;
+    maxUses?: number;
     useCounter?: number;
     
     isTiedToProduct?: boolean;
@@ -65,11 +65,11 @@ export type DiscountFilter = {
     isWithMinimum?: boolean;
     minimumPrice?: number;
     
-    isLimitedDiscount?: boolean;
-    discountLimitAmt?: number;
+    hasDiscountAmountCap?: boolean;
+    maxDiscountAmount?: number;
     
-    isLimited?: boolean;
-    limit?: number;
+    isQuantityLimited?: boolean;
+    maxUses?: number;
     useCounter?: number;
     
     isTiedToProduct?: boolean;
@@ -94,11 +94,11 @@ export type  DiscountResponse = {
     isWithMinimum: boolean;
     minimumPrice: number | null;
 
-    isLimitedDiscount: boolean;
-    discountLimitAmt: number | null;
+    hasDiscountAmountCap: boolean;
+    maxDiscountAmount: number | null;
 
-    isLimited: boolean;
-    limit: number | null;
+    isQuantityLimited: boolean;
+    maxUses: number | null;
     useCounter: number;
     
     isTiedToProduct: boolean;

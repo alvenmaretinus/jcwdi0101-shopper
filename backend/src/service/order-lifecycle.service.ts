@@ -19,6 +19,124 @@ type StoreWithDistance = {
  * - Cancel order: user cancellation
  */
 export class OrderLifecycleService {
+  private static async getVoucherFreeQuantityMap(
+    db: PrismaClient,
+    params: {
+      orderSubtotal: number;
+      orderUserId: string;
+      voucherIdentifiers: string[];
+      items: Array<{ productId: string; quantity: number }>;
+    },
+  ): Promise<Record<string, number>> {
+    const voucherIdentifiers = params.voucherIdentifiers
+      .map((identifier) => identifier.trim())
+      .filter((identifier) => identifier.length > 0);
+
+    if (voucherIdentifiers.length === 0) {
+      return {};
+    }
+
+    const vouchers = await db.voucher.findMany({
+      where: {
+        isSoftDeleted: false,
+        OR: [
+          { id: { in: voucherIdentifiers } },
+          { code: { in: voucherIdentifiers } },
+        ],
+        discount: {
+          isSoftDeleted: false,
+        },
+      },
+      include: {
+        discount: {
+          select: {
+            id: true,
+            type: true,
+            buyQuantity: true,
+            freeQuantity: true,
+            isTiedToProduct: true,
+            productId: true,
+            startsAt: true,
+            endsAt: true,
+            isWithMinimum: true,
+            minimumPrice: true,
+            isQuantityLimited: true,
+            maxUses: true,
+            useCounter: true,
+            hasDiscountAmountCap: true,
+            maxDiscountAmount: true,
+          },
+        },
+      },
+    });
+
+    if (vouchers.length === 0) {
+      return {};
+    }
+
+    const now = new Date();
+    const itemByProductId = new Map<string, { productId: string; quantity: number }>();
+    for (const item of params.items) {
+      itemByProductId.set(item.productId, item);
+    }
+
+    const freeQuantityMap: Record<string, number> = {};
+
+    for (const voucher of vouchers) {
+      if (voucher.userId !== null && voucher.userId !== params.orderUserId) {
+        continue;
+      }
+
+      const discount = voucher.discount;
+      const hasStarted = !discount.startsAt || discount.startsAt <= now;
+      const hasNotEnded = !discount.endsAt || discount.endsAt >= now;
+      const minimumPassed =
+        !discount.isWithMinimum ||
+        discount.minimumPrice === null ||
+        params.orderSubtotal >= discount.minimumPrice;
+      const available =
+        !discount.isQuantityLimited ||
+        (discount.maxUses !== null && discount.useCounter < discount.maxUses);
+      const limitedDiscountAvailable =
+        !discount.hasDiscountAmountCap ||
+        (discount.maxDiscountAmount !== null &&
+          discount.useCounter < discount.maxDiscountAmount);
+
+      if (!hasStarted || !hasNotEnded || !minimumPassed || !available || !limitedDiscountAvailable) {
+        continue;
+      }
+
+      if (discount.type !== "QUANTITY") {
+        continue;
+      }
+
+      if (!discount.isTiedToProduct || !discount.productId) {
+        continue;
+      }
+
+      if (!discount.buyQuantity || !discount.freeQuantity) {
+        continue;
+      }
+
+      const item = itemByProductId.get(discount.productId);
+      if (!item) {
+        continue;
+      }
+
+      const setsEligible = Math.floor(item.quantity / discount.buyQuantity);
+      const freeItems = setsEligible * discount.freeQuantity;
+      if (freeItems <= 0) {
+        continue;
+      }
+
+      freeQuantityMap[discount.productId] =
+        (freeQuantityMap[discount.productId] ?? 0) + freeItems;
+    }
+
+    return freeQuantityMap;
+  }
+
+  
   private static async redeemAppliedVouchers(
     tx: Prisma.TransactionClient,
     params: {
@@ -54,8 +172,8 @@ export class OrderLifecycleService {
         discount: {
           select: {
             id: true,
-            isLimited: true,
-            limit: true,
+            isQuantityLimited: true,
+            maxUses: true,
           },
         },
       },
@@ -89,67 +207,35 @@ export class OrderLifecycleService {
       throw new BadRequestError("Assigned voucher does not belong to this user");
     }
 
-    const oneTimeVouchers = vouchers.filter(
-      (voucher) => voucher.userId !== null || voucher.voucherType === "REFERRAL",
-    );
-    const alreadyRedeemedOneTimeVoucher = oneTimeVouchers.find(
-      (voucher) => voucher.isRedeemed,
-    );
-    if (alreadyRedeemedOneTimeVoucher) {
-      throw new BadRequestError(
-        `Voucher already redeemed: ${alreadyRedeemedOneTimeVoucher.code}`,
-      );
-    }
-
-    if (oneTimeVouchers.length > 0) {
-      const now = new Date();
-      const redeemResult = await tx.voucher.updateMany({
-        where: {
-          id: { in: oneTimeVouchers.map((voucher) => voucher.id) },
-          isRedeemed: false,
-        },
-        data: {
-          isRedeemed: true,
-          redeemedAt: now,
-        },
-      });
-
-      if (redeemResult.count !== oneTimeVouchers.length) {
-        throw new BadRequestError(
-          "Voucher status changed during payment confirmation. Please retry checkout.",
-        );
-      }
-    }
+    const now = new Date();
+    // Voucher redemption is tracked via the discount's useCounter, which is incremented below.
+    // No need to update voucher record - the discount usage tracking handles it.
 
     const limitedDiscountIds = Array.from(
       new Set(
         vouchers
-          .filter((voucher) => voucher.discount.isLimited && voucher.discount.limit !== null)
+          .filter((voucher) => voucher.discount.isQuantityLimited && voucher.discount.maxUses !== null)
           .map((voucher) => voucher.discount.id),
       ),
     );
 
-    for (const discountId of limitedDiscountIds) {
-      const updateResult = await tx.discount.updateMany({
-        where: {
-          id: discountId,
-          isLimited: true,
-          limit: { not: null },
-          useCounter: {
-            lt: tx.discount.fields.limit,
+    await Promise.all(
+      limitedDiscountIds.map((discountId) =>
+        tx.discount.updateMany({
+          where: {
+            id: discountId,
+            isQuantityLimited: true,
+            maxUses: { not: null },
+            useCounter: {
+              lt: (tx.discount.fields.maxUses as any),
+            },
           },
-        },
-        data: {
-          useCounter: { increment: 1 },
-        },
-      });
-
-      if (updateResult.count === 0) {
-        throw new BadRequestError(
-          "Voucher quota reached during payment confirmation. Please checkout again.",
-        );
-      }
-    }
+          data: {
+            useCounter: { increment: 1 },
+          },
+        }),
+      ),
+    );
   }
 
   private static extractLimitedNonVoucherDiscountIds(
@@ -190,10 +276,10 @@ export class OrderLifecycleService {
           id: discountId,
           isSoftDeleted: false,
           isVoucher: false,
-          isLimited: true,
-          limit: { not: null },
+          isQuantityLimited: true,
+          maxUses: { not: null },
           useCounter: {
-            lt: tx.discount.fields.limit,
+            lt: (tx.discount.fields.maxUses as any),
           },
         },
         data: {
@@ -273,6 +359,12 @@ export class OrderLifecycleService {
       productId: oi.productId,
       quantity: oi.quantity,
     }));
+    const voucherFreeQuantityMap = await this.getVoucherFreeQuantityMap(db, {
+      orderSubtotal: order.subtotal,
+      orderUserId: order.userId,
+      voucherIdentifiers: order.voucherCodes,
+      items,
+    });
     const userAddress = await db.userAddress.findUnique({
       where: { id: order.userAddressId },
     });
@@ -364,9 +456,8 @@ export class OrderLifecycleService {
       for (const it of items) {
         const ps = psMap[it.productId];
         const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
-        const voucherBonusQuantity = voucherQuantityBonusMap[it.productId] ?? 0;
-        const totalQuantityNeeded =
-          it.quantity + bogoFreeQuantity + voucherBonusQuantity;
+        const voucherFreeQuantity = voucherFreeQuantityMap[it.productId] ?? 0;
+        const totalQuantityNeeded = it.quantity + bogoFreeQuantity + voucherFreeQuantity;
 
         if (!ps || ps.quantity < totalQuantityNeeded) {
           canFulfill = false;
@@ -397,9 +488,8 @@ export class OrderLifecycleService {
           // Atomically decrement stock (including promo and voucher bonus items)
           for (const it of items) {
             const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
-            const voucherBonusQuantity = voucherQuantityBonusMap[it.productId] ?? 0;
-            const totalQuantityToDeduct =
-              it.quantity + bogoFreeQuantity + voucherBonusQuantity;
+            const voucherFreeQuantity = voucherFreeQuantityMap[it.productId] ?? 0;
+            const totalQuantityToDeduct = it.quantity + bogoFreeQuantity + voucherFreeQuantity;
 
             const upd = await tx.productStore.updateMany({
               where: {
@@ -464,9 +554,8 @@ export class OrderLifecycleService {
           // Record product movement for audit trail (including promo and voucher bonus items)
           for (const it of items) {
             const bogoFreeQuantity = bogoFreeQuantityMap[it.productId] ?? 0;
-            const voucherBonusQuantity = voucherQuantityBonusMap[it.productId] ?? 0;
-            const totalQuantityToDeduct =
-              it.quantity + bogoFreeQuantity + voucherBonusQuantity;
+            const voucherFreeQuantity = voucherFreeQuantityMap[it.productId] ?? 0;
+            const totalQuantityToDeduct = it.quantity + bogoFreeQuantity + voucherFreeQuantity;
 
             await tx.productMovement.create({
               data: {
@@ -568,6 +657,15 @@ export class OrderLifecycleService {
       where: { id: orderId },
       data: { status: "CANCELLED" },
     });
+
+    // Decrement discount and voucher usage counters
+    const { OrderService } = await import("./order.service");
+    await OrderService.decrementAppliedDiscountCounters(
+      userId,
+      db,
+      order.appliedDiscountIds,
+      order.voucherCodes,
+    );
 
     return updated;
   }

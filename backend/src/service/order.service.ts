@@ -32,19 +32,19 @@ type VoucherReservationCandidate = {
   userId: string | null;
   voucherType: "REFERRAL" | "TRANSACTIONAL" | "FREEDELIVERY";
   discount: {
-    isLimited: boolean;
-    limit: number | null;
+    isQuantityLimited: boolean;
+    maxUses: number | null;
     useCounter: number;
   };
 };
 
 export class OrderService {
-  private static isDiscountApplicable(discount: { startsAt: Date | null; endsAt: Date | null; isWithMinimum: boolean; minimumPrice: number | null; isLimited: boolean; limit: number | null; useCounter: number }, subtotal: number) {
+  private static isDiscountApplicable(discount: { startsAt: Date | null; endsAt: Date | null; isWithMinimum: boolean; minimumPrice: number | null; isQuantityLimited: boolean; maxUses: number | null; useCounter: number }, subtotal: number) {
     const now = new Date();
     const hasStarted = !discount.startsAt || discount.startsAt <= now;
     const hasNotEnded = !discount.endsAt || discount.endsAt >= now;
     const minimumPassed = !discount.isWithMinimum || discount.minimumPrice === null || subtotal >= discount.minimumPrice;
-    const available = !discount.isLimited || (discount.limit !== null && discount.useCounter < discount.limit);
+    const available = !discount.isQuantityLimited || (discount.maxUses !== null && discount.useCounter < discount.maxUses);
     return hasStarted && hasNotEnded && minimumPassed && available;
   }
 
@@ -63,11 +63,11 @@ export class OrderService {
           endsAt: true,
           isWithMinimum: true,
           minimumPrice: true,
-          isLimited: true,
-          limit: true,
+          isQuantityLimited: true,
+          maxUses: true,
           useCounter: true,
-          isLimitedDiscount: true,
-          discountLimitAmt: true,
+          hasDiscountAmountCap: true,
+          maxDiscountAmount: true,
         },
       });
 
@@ -95,8 +95,8 @@ export class OrderService {
               endsAt: true,
               isWithMinimum: true,
               minimumPrice: true,
-              isLimited: true,
-              limit: true,
+              isQuantityLimited: true,
+              maxUses: true,
               useCounter: true,
             },
           },
@@ -119,14 +119,87 @@ export class OrderService {
         db.discount.updateMany({
           where: {
             id: discountId,
-            isLimited: true,
-            limit: { not: null },
+            isQuantityLimited: true,
+            maxUses: { not: null },
             useCounter: {
-              lt: db.discount.fields.limit,
+              lt: (db.discount.fields.maxUses as any),
             },
           },
           data: {
             useCounter: { increment: 1 },
+          },
+        }),
+      ),
+    );
+  }
+
+  static async decrementAppliedDiscountCounters(userId: string, db: PrismaClient, discountIds?: string[], voucherIds?: string[]) {
+    const applicableDiscountIds = new Set<string>();
+
+    if (discountIds && discountIds.length > 0) {
+      const discounts = await db.discount.findMany({
+        where: {
+          id: { in: discountIds },
+          isSoftDeleted: false,
+        },
+        select: {
+          id: true,
+          isQuantityLimited: true,
+          maxUses: true,
+          useCounter: true,
+        },
+      });
+
+      for (const discount of discounts) {
+        if (discount.isQuantityLimited && discount.maxUses !== null && discount.useCounter > 0) {
+          applicableDiscountIds.add(discount.id);
+        }
+      }
+    }
+
+    if (voucherIds && voucherIds.length > 0) {
+      const vouchers = await db.voucher.findMany({
+        where: {
+          isSoftDeleted: false,
+          OR: [{ id: { in: voucherIds } }, { code: { in: voucherIds } }],
+          discount: {
+            isSoftDeleted: false,
+          },
+        },
+        include: {
+          discount: {
+            select: {
+              id: true,
+              isQuantityLimited: true,
+              maxUses: true,
+              useCounter: true,
+            },
+          },
+        },
+      });
+
+      for (const voucher of vouchers) {
+        if (voucher.voucherType === "REFERRAL" && voucher.userId !== userId) {
+          continue;
+        }
+
+        if (voucher.discount.isQuantityLimited && voucher.discount.maxUses !== null && voucher.discount.useCounter > 0) {
+          applicableDiscountIds.add(voucher.discount.id);
+        }
+      }
+    }
+
+    await Promise.all(
+      Array.from(applicableDiscountIds).map((discountId) =>
+        db.discount.updateMany({
+          where: {
+            id: discountId,
+            isQuantityLimited: true,
+            maxUses: { not: null },
+            useCounter: { gt: 0 },
+          },
+          data: {
+            useCounter: { decrement: 1 },
           },
         }),
       ),
@@ -356,7 +429,7 @@ export class OrderService {
       const oneTimeVoucher =
         voucher.userId !== null ||
         voucher.voucherType === "REFERRAL" ||
-        (voucher.discount.isLimited && voucher.discount.limit === 1);
+        (voucher.discount.isQuantityLimited && voucher.discount.maxUses === 1);
 
       if (oneTimeVoucher && activeUsageCount > 0) {
         throw new BadRequestError(
@@ -364,9 +437,9 @@ export class OrderService {
         );
       }
 
-      if (voucher.discount.isLimited && voucher.discount.limit !== null) {
+      if (voucher.discount.isQuantityLimited && voucher.discount.maxUses !== null) {
         const projectedUsage = voucher.discount.useCounter + activeUsageCount;
-        if (projectedUsage >= voucher.discount.limit) {
+        if (projectedUsage >= voucher.discount.maxUses) {
           throw new BadRequestError(
             `Voucher quota reached. Please remove voucher: ${voucher.code}`,
           );
@@ -465,6 +538,144 @@ export class OrderService {
   }
 
   /**
+   * Get checkout pricing breakdown with per-item discount details
+   * Called on checkout page to display itemized discounts
+   */
+  static async getCheckoutPricingBreakdown(userId: string, addressId: string, voucherIds?: string[], discountIds?: string[]) {
+    const db: PrismaClient = prisma;
+
+    const address = await db.userAddress.findUnique({ where: { id: addressId } });
+    if (!address || address.userId !== userId) throw new BadRequestError("SHIPPING_ADDRESS_REQUIRED");
+
+    const cart = await CartRepository.findCartWithItemsAndProduct(userId);
+    if (!cart || !cart.cartItems || cart.cartItems.length === 0) throw new BadRequestError("Cart is empty.");
+
+    const items = cart.cartItems.map((ci) => ({ productId: ci.productId, quantity: ci.quantity }));
+    const products = await db.product.findMany({
+      where: { id: { in: items.map((i) => i.productId) } },
+      include: { category: true },
+    });
+    type ProductWithCategory = Prisma.ProductGetPayload<{ include: { category: true } }>;
+    const productMap: Record<string, ProductWithCategory | undefined> = {};
+    for (const p of products as ProductWithCategory[]) productMap[p.id] = p;
+
+    const subtotal = items.reduce((s, it) => s + (productMap[it.productId]?.price ?? 0) * it.quantity, 0);
+
+    // Get auto-applied global discounts
+    const autoGlobalDiscountIds = await PricingCalculationService.getAutoAppliedGlobalDiscountIds(
+      0,
+      db,
+    );
+    
+    // Get voucher discount IDs and details
+    const voucherDiscountIds: string[] = [];
+    const voucherAppliedDiscounts: Array<{ id: string; name: string; label: string; savedAmount: number; endsAt?: Date | null }> = [];
+    
+    if (voucherIds && voucherIds.length > 0) {
+      const vouchers = await db.voucher.findMany({
+        where: {
+          isSoftDeleted: false,
+          OR: [{ id: { in: voucherIds } }, { code: { in: voucherIds } }],
+          discount: {
+            isSoftDeleted: false,
+          },
+        },
+        include: {
+          discount: {
+            select: { 
+              id: true,
+              name: true,
+              type: true,
+              percentage: true,
+              amount: true,
+              endsAt: true,
+            },
+          },
+        },
+      });
+      
+      for (const voucher of vouchers) {
+        if (voucher.voucherType === "REFERRAL" && voucher.userId !== userId) {
+          continue;
+        }
+        voucherDiscountIds.push(voucher.discount.id);
+        
+        // Calculate label and saved amount for display
+        const label = voucher.discount.type === "PERCENTAGE"
+          ? `${Number(voucher.discount.percentage)}%`
+          : `Rp ${voucher.discount.amount?.toLocaleString("id-ID")}`;
+        
+        voucherAppliedDiscounts.push({
+          id: voucher.discount.id,
+          name: voucher.discount.name,
+          label,
+          savedAmount: 0, // Will be calculated as the actual discount applied
+          endsAt: voucher.discount.endsAt,
+        });
+      }
+    }
+    
+    const combinedDiscountIds = Array.from(
+      new Set([...(discountIds ?? []), ...voucherDiscountIds, ...autoGlobalDiscountIds]),
+    );
+
+    const combinedDiscounts = await db.discount.findMany({
+      where: {
+        id: { in: combinedDiscountIds },
+        isSoftDeleted: false,
+      },
+    });
+
+    // Get full breakdown with all discounts
+    const fullBreakdown = await PricingCalculationService.calculateProductPromotionBreakdown(
+      items.map((it) => ({
+        productId: it.productId,
+        quantity: it.quantity,
+        unitPrice: productMap[it.productId]?.price ?? 0,
+      })),
+      db,
+      combinedDiscounts.length > 0 ? combinedDiscounts : undefined,
+    );
+
+    // Build itemized breakdown with product details
+    const itemizedBreakdown = fullBreakdown.lines.map((line) => {
+      const product = productMap[line.productId];
+      const cartItem = items.find((i) => i.productId === line.productId);
+
+
+      console.log(`[Pricing Breakdown] ${product?.name}:`, {
+        totalDiscount: line.totalDiscount,
+        voucherAppliedDiscountsCount: voucherAppliedDiscounts.length,
+      });
+      
+
+      
+      // Combine item-specific discounts with voucher discounts
+      const allAppliedDiscounts = [
+        ...line.itemDiscounts,
+      ];
+      
+      return {
+        productId: line.productId,
+        productName: product?.name || "Unknown Product",
+        quantity: cartItem?.quantity || 0,
+        unitPrice: product?.price || 0,
+        totalPrice: (product?.price || 0) * (cartItem?.quantity || 0),
+        totalDiscount: line.totalDiscount,
+        bogoFreeQuantity: line.bogoFreeQuantity,
+        appliedDiscounts: allAppliedDiscounts,
+      };
+    });
+
+    return {
+      subtotal,
+      totalDiscount: fullBreakdown.totalDiscount,
+      grandTotal: subtotal - fullBreakdown.totalDiscount,
+      items: itemizedBreakdown,
+    };
+  }
+
+  /**
    * Create a pending order (checkout)
    * Now accepts shippingCost + shippingMethod from frontend (Early Store Selection)
    */
@@ -537,16 +748,8 @@ export class OrderService {
       for (const p of products as ProductWithCategory[]) productMap[p.id] = p;
 
       const subtotal = items.reduce((s, it) => s + (productMap[it.productId]?.price ?? 0) * it.quantity, 0);
-      const productPromotionDiscount = await PricingCalculationService.calculateProductPromotionDiscount(
-        items.map((it) => ({
-          productId: it.productId,
-          quantity: it.quantity,
-          unitPrice: productMap[it.productId]?.price ?? 0,
-        })),
-        db,
-      );
-      const subtotalAfterProductPromotion = Math.max(0, subtotal - productPromotionDiscount);
-
+      
+     
       // Use frontend-provided shipping cost (Early Selection) or fallback to auto-calculate
       let shippingCost: number;
       if (selectedShippingCost !== undefined && selectedShippingCost >= 0) {
@@ -570,55 +773,55 @@ export class OrderService {
         }
       }
 
-      const cartItemsForDiscount = items.map((it) => ({
-        productId: it.productId,
-        quantity: it.quantity,
-        price: productMap[it.productId]?.price ?? 0,
-      }));
-
       const autoGlobalDiscountIds =
         await PricingCalculationService.getAutoAppliedGlobalDiscountIds(
-          subtotalAfterProductPromotion,
+          subtotal,
           db,
         );
       const combinedDiscountIds = Array.from(
         new Set([...(discountIds ?? []), ...autoGlobalDiscountIds]),
       );
 
-      const additionalDiscount = await PricingCalculationService.calculateTotalDiscount(
-        subtotalAfterProductPromotion,
-        combinedDiscountIds.length > 0 ? combinedDiscountIds : undefined,
-        normalizedVoucherIdentifiers,
-        db,
-        userId,
-        shippingCost,
-        cartItemsForDiscount,
-      );
-      const globalDiscount =
-        autoGlobalDiscountIds.length > 0
-          ? await PricingCalculationService.calculateTotalDiscount(
-              subtotalAfterProductPromotion,
-              autoGlobalDiscountIds,
-              undefined,
-              db,
-              userId,
-              shippingCost,
-              cartItemsForDiscount,
-            )
-          : 0;
-      const totalDiscount = productPromotionDiscount + additionalDiscount;
-      const grandTotal = subtotal + shippingCost - totalDiscount;
+      const combinedDiscounts = await db.discount.findMany({
+        where: {
+          id: { in: combinedDiscountIds },
+          isSoftDeleted: false,
+        },
+      });
 
+      // Use unified function to calculate all discounts (item-level + global)
+      const promotionBreakdown = await PricingCalculationService.calculateProductPromotionBreakdown(
+        items.map((it) => ({
+          productId: it.productId,
+          quantity: it.quantity,
+          unitPrice: productMap[it.productId]?.price ?? 0,
+        })),
+        db,
+        combinedDiscounts.length > 0 ? combinedDiscounts : undefined,
+      );
+
+      // Product/global promotion discount from breakdown
+      const promotionDiscount = promotionBreakdown.totalDiscount;
+
+      // Voucher discount calculation (applied after product promotions)
       let voucherProductDiscount = 0;
       let voucherShippingDiscount = 0;
       let voucherQuantityBonuses: Array<{
         productId: string;
         freeQuantity: number;
       }> = [];
+
+      const cartItemsForDiscount = items.map((it) => ({
+        productId: it.productId,
+        quantity: it.quantity,
+        price: productMap[it.productId]?.price ?? 0,
+      }));
+
       if (normalizedVoucherIdentifiers.length > 0) {
         const { VoucherService } = await import("./voucher/voucher.service");
         const { PrismaVoucherRepository } = await import("../repository/voucher/adapter_prisma");
         const voucherService = new VoucherService(new PrismaVoucherRepository(db));
+        const subtotalAfterProductPromotion = subtotal - promotionDiscount;
         const breakdown = await voucherService.calculateVoucherDiscountBreakdown(
           normalizedVoucherIdentifiers,
           subtotalAfterProductPromotion,
@@ -651,14 +854,18 @@ export class OrderService {
             userId: voucher.userId,
             voucherType: voucher.voucherType,
             discount: {
-              isLimited: voucher.discount.isLimited,
-              limit: voucher.discount.limit,
+              isQuantityLimited: voucher.discount.isQuantityLimited,
+              maxUses: voucher.discount.maxUses,
               useCounter: voucher.discount.useCounter,
             },
           })),
         );
       }
 
+      const totalDiscount = promotionDiscount + voucherProductDiscount + voucherShippingDiscount;
+      const grandTotal = subtotal + shippingCost - totalDiscount;
+
+      // Collect limited non-voucher discount IDs for counter tracking
       const limitedNonVoucherDiscountIds =
         combinedDiscountIds.length > 0
           ? (
@@ -667,8 +874,8 @@ export class OrderService {
                   id: { in: combinedDiscountIds },
                   isSoftDeleted: false,
                   isVoucher: false,
-                  isLimited: true,
-                  limit: { not: null },
+                  isQuantityLimited: true,
+                  maxUses: { not: null },
                 },
                 select: { id: true },
               })
@@ -676,11 +883,8 @@ export class OrderService {
           : [];
 
       const discountNames: string[] = [];
-      if (productPromotionDiscount > 0) {
-        discountNames.push(`PRODUCT_PROMO_DISCOUNT:${productPromotionDiscount}`);
-      }
-      if (globalDiscount > 0) {
-        discountNames.push(`GLOBAL_DISCOUNT:${globalDiscount}`);
+      if (promotionDiscount > 0) {
+        discountNames.push(`PRODUCT_PROMO_DISCOUNT:${promotionDiscount}`);
       }
       if (voucherProductDiscount > 0) {
         discountNames.push(`VOUCHER_PRODUCT_DISCOUNT:${voucherProductDiscount}`);
@@ -712,6 +916,7 @@ export class OrderService {
             status: "PAYMENT_PENDING",
             paymentType,
             voucherCodes: normalizedVoucherIdentifiers,
+            appliedDiscountIds: combinedDiscountIds,
             discountNames,
             shippingAddress: `${address.recipientName} - ${address.addressName} | ${address.latitude},${address.longitude} | ${address.postCode}`,
             storeAddress: candidateStore.addressName,
@@ -742,6 +947,15 @@ export class OrderService {
 
         return createdOrder;
       });
+
+      // Increment discount usage counters for the successfully created order
+      await this.incrementAppliedDiscountCounters(
+        userId,
+        subtotal,
+        db,
+        combinedDiscountIds.length > 0 ? combinedDiscountIds : undefined,
+        normalizedVoucherIdentifiers.length > 0 ? normalizedVoucherIdentifiers : undefined,
+      );
 
       return order;
     } catch (err: any) {

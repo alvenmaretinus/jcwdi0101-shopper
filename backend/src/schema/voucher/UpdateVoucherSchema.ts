@@ -14,8 +14,8 @@ export const UpdateVoucherSchema = z.strictObject({
     referralRole: z.enum(['REFERRER', 'REFEREE']).optional(),
     isWithMinimum: z.boolean().optional(),
     minimumPrice: z.coerce.number().int().min(0, "Minimum price must be at least 0").optional(),
-    isLimited: z.boolean().optional(),
-    limit: z.coerce.number().int().min(1, "Limit must be at least 1").optional(),
+    isQuantityLimited: z.boolean().optional(),
+    maxUses: z.coerce.number().int().min(1, "Max uses must be at least 1").optional(),
     startsAt: z.coerce.date().optional(),
     endsAt: z.coerce.date().optional(),
 });

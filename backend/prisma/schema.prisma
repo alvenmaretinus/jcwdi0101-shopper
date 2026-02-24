@@ -162,8 +162,9 @@ model Order {
   status        OrderStatus
   paymentType   OrderPaymentType
 
-  voucherCodes  String[]  @default([])
-  discountNames String[]  @default([])
+  voucherCodes       String[]  @default([])
+  discountNames      String[]  @default([])
+  appliedDiscountIds String[]  @default([])
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -333,8 +334,6 @@ model Voucher {
   discount   Discount @relation(fields: [discountId], references: [id])
   user       User?    @relation(fields: [userId], references: [id])
 
-  isRedeemed Boolean @default(false)
-  redeemedAt DateTime?
   isSoftDeleted Boolean @default(false)
 
   createdAt DateTime @default(now())
@@ -364,14 +363,14 @@ model Discount {
   isWithMinimum Boolean @default(false)
   minimumPrice Int?
 
-  // Max Discount Amount is used when the discount is percentage-based and the business wants to cap the maximum discount amount that can be applied to an order.
-  isLimitedDiscount Boolean @default(false)
-  discountLimitAmt  Int?
-
-  //This field is for future use when business wants to limit the number of uses for a discount
-  isLimited   Boolean @default(false)
-  limit       Int?
+  // Quantity-based limit: Maximum number of times this discount can be used
+  isQuantityLimited Boolean @default(false)
+  maxUses     Int?
   useCounter  Int @default(0)
+
+  // Price cut cap: Maximum discount amount that can be applied (used with percentage discounts)
+  hasDiscountAmountCap Boolean @default(false)
+  maxDiscountAmount    Int?
 
   isTiedToProduct Boolean @default(false)
   productId   String?

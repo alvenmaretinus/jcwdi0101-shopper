@@ -34,8 +34,8 @@ export class VoucherService implements Service {
         const createData: VoucherCreateReq = {
             ...data,
             percentage: data.percentage !== undefined ? new Decimal(data.percentage) : undefined,
-            isLimited: data.voucherType === 'REFERRAL' ? true : data.isLimited,
-            limit: data.voucherType === 'REFERRAL' ? 1 : data.limit,
+            isQuantityLimited: data.voucherType === 'REFERRAL' ? true : data.isQuantityLimited,
+            maxUses: data.voucherType === 'REFERRAL' ? 1 : data.maxUses,
         };
         return this.repo.createVoucher(createData);
     }
@@ -292,18 +292,14 @@ export class VoucherService implements Service {
             const hasStarted = !discount.startsAt || discount.startsAt <= now;
             const hasNotEnded = !discount.endsAt || discount.endsAt >= now;
             const minimumPassed = !discount.isWithMinimum || discount.minimumPrice === null || subtotal >= discount.minimumPrice;
-            const available = !discount.isLimited || (discount.limit !== null && discount.useCounter < discount.limit);
-            // Keep the legacy model behavior:
-            // `isLimited` -> usage count quota, `isLimitedDiscount` -> capped percentage amount.
-            // Capped percentage is configured by `discountLimitAmt`, not by `useCounter`.
-            const secondaryCapAvailable =
-                !discount.isLimitedDiscount || discount.discountLimitAmt !== null;
+            const available = !discount.isQuantityLimited || (discount.maxUses !== null && discount.useCounter < discount.maxUses);
+            const limitedDiscountAvailable = !discount.hasDiscountAmountCap || (discount.maxDiscountAmount !== null);
             const isApplicable =
                 hasStarted &&
                 hasNotEnded &&
                 minimumPassed &&
                 available &&
-                secondaryCapAvailable;
+                limitedDiscountAvailable;
             if (!isApplicable) {
                 notApplicableVoucherCodes.push(voucher.code);
             }

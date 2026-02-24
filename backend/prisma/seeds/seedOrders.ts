@@ -200,11 +200,11 @@ export async function seedOrders() {
   });
 
   if (voucher) {
-    await prisma.voucher.update({
-      where: { id: voucher.id },
+    // Redemption is tracked via discount.useCounter, increment it
+    await prisma.discount.update({
+      where: { id: voucher.discountId },
       data: {
-        isRedeemed: true,
-        redeemedAt: now,
+        useCounter: { increment: 1 },
       },
     });
   }
