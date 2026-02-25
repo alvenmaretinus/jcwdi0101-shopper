@@ -9,6 +9,7 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useCart } from "@/hooks/useCart";
+import Image from "next/image";
 
 interface ProductCardProps {
   product: StoreProduct;
@@ -69,15 +70,21 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Badges */}
       <Link href={`/products/${product.id}`} className="flex-1">
         {/* Image with discount badge */}
-        <div className="relative aspect-square bg-muted/30 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+        <div className="relative aspect-square bg-muted/30 overflow-hidden">
           {hasDiscount && (
             <Badge className="absolute top-2 right-2 bg-red-500 text-white border-0 text-xs">
               -{discountPercentage}%
             </Badge>
           )}
-          <span className="text-4xl sm:text-5xl md:text-6xl group-hover:scale-110 transition-transform duration-300">
-            {product.images[0]}
-          </span>
+          <div className="relative h-full w-full">
+            <Image
+              fill
+              src={product.images[0]}
+              alt={product.name}
+              className="object-fill group-hover:scale-110 transition-transform duration-300"
+              sizes="(max-width: 640px) 100vw, 33vw"
+            />
+          </div>
         </div>
 
         {/* Content */}
