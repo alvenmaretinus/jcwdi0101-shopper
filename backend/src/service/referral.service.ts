@@ -80,8 +80,8 @@ export class ReferralService {
       endsAt: process.env.REFERRAL_DISCOUNT_ENDS_AT 
         ? new Date(process.env.REFERRAL_DISCOUNT_ENDS_AT) 
         : undefined,
-      isLimited: true,
-      limit: 1,
+      isQuantityLimited: true,
+      maxUses: 1,
     };
 
     // Create vouchers for both referrer and referee

@@ -19,9 +19,7 @@ export async function seedOrders() {
     return;
   }
 
-  const store =
-    (await prisma.store.findFirst({ where: { isDefault: true } })) ??
-    (await prisma.store.findFirst());
+  const store = (await prisma.store.findFirst({ where: { isDefault: true } })) ?? (await prisma.store.findFirst());
 
   if (!store) {
     console.log("No store found. Please run seedStoresWithProducts first.");
@@ -59,10 +57,7 @@ export async function seedOrders() {
     },
   ];
 
-  const subtotal = orderItemsData.reduce(
-    (total, item) => total + item.unitPrice * item.quantity,
-    0,
-  );
+  const subtotal = orderItemsData.reduce((total, item) => total + item.unitPrice * item.quantity, 0);
 
   const voucher = await prisma.voucher.findFirst({
     where: { code: "FRESH30", isSoftDeleted: false },
@@ -81,24 +76,15 @@ export async function seedOrders() {
   let voucherDiscountValue = 0;
   if (voucher?.discount) {
     const discount = voucher.discount;
-    const minimumSatisfied = !discount.isWithMinimum ||
-      (discount.minimumPrice != null && subtotal >= discount.minimumPrice);
+    const minimumSatisfied = !discount.isWithMinimum || (discount.minimumPrice != null && subtotal >= discount.minimumPrice);
 
     if (minimumSatisfied) {
       if (discount.type === "PERCENTAGE" && discount.percentage != null) {
-        voucherDiscountValue = Math.floor(
-          subtotal * (Number(discount.percentage) / 100),
-        );
+        voucherDiscountValue = Math.floor(subtotal * (Number(discount.percentage) / 100));
       } else if (discount.type === "FIXED_AMOUNT" && discount.amount != null) {
         voucherDiscountValue = discount.amount;
-      } else if (
-        discount.type === "QUANTITY" &&
-        discount.buyQuantity != null &&
-        discount.freeQuantity != null
-      ) {
-        const freeUnits = Math.floor(
-          orderItemsData[0].quantity / discount.buyQuantity,
-        ) * discount.freeQuantity;
+      } else if (discount.type === "QUANTITY" && discount.buyQuantity != null && discount.freeQuantity != null) {
+        const freeUnits = Math.floor(orderItemsData[0].quantity / discount.buyQuantity) * discount.freeQuantity;
         voucherDiscountValue = freeUnits * orderItemsData[0].unitPrice;
       }
     }
@@ -106,38 +92,22 @@ export async function seedOrders() {
 
   let productDiscountValue = 0;
   if (productDiscount) {
-    const discountedItem = orderItemsData.find(
-      (item) => item.product.id === productDiscount.productId,
-    );
+    const discountedItem = orderItemsData.find((item) => item.product.id === productDiscount.productId);
 
     if (discountedItem) {
       const itemTotal = discountedItem.unitPrice * discountedItem.quantity;
       if (productDiscount.type === "PERCENTAGE" && productDiscount.percentage != null) {
-        productDiscountValue = Math.floor(
-          itemTotal * (Number(productDiscount.percentage) / 100),
-        );
-      } else if (
-        productDiscount.type === "FIXED_AMOUNT" &&
-        productDiscount.amount != null
-      ) {
+        productDiscountValue = Math.floor(itemTotal * (Number(productDiscount.percentage) / 100));
+      } else if (productDiscount.type === "FIXED_AMOUNT" && productDiscount.amount != null) {
         productDiscountValue = productDiscount.amount;
-      } else if (
-        productDiscount.type === "QUANTITY" &&
-        productDiscount.buyQuantity != null &&
-        productDiscount.freeQuantity != null
-      ) {
-        const freeUnits = Math.floor(
-          discountedItem.quantity / productDiscount.buyQuantity,
-        ) * productDiscount.freeQuantity;
+      } else if (productDiscount.type === "QUANTITY" && productDiscount.buyQuantity != null && productDiscount.freeQuantity != null) {
+        const freeUnits = Math.floor(discountedItem.quantity / productDiscount.buyQuantity) * productDiscount.freeQuantity;
         productDiscountValue = freeUnits * discountedItem.unitPrice;
       }
     }
   }
 
-  const totalDiscount = Math.min(
-    subtotal,
-    voucherDiscountValue + productDiscountValue,
-  );
+  const totalDiscount = Math.min(subtotal, voucherDiscountValue + productDiscountValue);
   const shippingCost = 10000;
   const grandTotal = subtotal - totalDiscount + shippingCost;
 
@@ -173,10 +143,7 @@ export async function seedOrders() {
       status: "DELIVERED",
       paymentType: "BANK_TRANSFER",
       voucherCodes: voucher ? [voucher.code] : [],
-      discountNames: [
-        ...(voucher?.discount?.name ? [voucher.discount.name] : []),
-        ...(productDiscount?.name ? [productDiscount.name] : []),
-      ],
+      discountNames: [...(voucher?.discount?.name ? [voucher.discount.name] : []), ...(productDiscount?.name ? [productDiscount.name] : [])],
       paidAt,
       confirmedAt,
       shippedAt,
@@ -200,16 +167,14 @@ export async function seedOrders() {
   });
 
   if (voucher) {
-    await prisma.voucher.update({
-      where: { id: voucher.id },
+    // Redemption is tracked via discount.useCounter, increment it
+    await prisma.discount.update({
+      where: { id: voucher.discountId },
       data: {
-        isRedeemed: true,
-        redeemedAt: now,
+        useCounter: { increment: 1 },
       },
     });
   }
 
-  console.log(
-    `✅ Created completed order ${createdOrder.id} with voucher and discount applied`,
-  );
+  console.log(`✅ Created completed order ${createdOrder.id} with voucher and discount applied`);
 }

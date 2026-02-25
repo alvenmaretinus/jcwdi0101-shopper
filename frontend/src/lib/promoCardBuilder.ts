@@ -13,12 +13,12 @@ export interface PromoCard {
 }
 
 export function getRemainingUsesLabel(
-  isLimited?: boolean,
-  limit?: number,
+  isQuantityLimited?: boolean,
+  maxUses?: number,
   useCounter?: number
 ): string {
-  if (!isLimited) return "Unlimited";
-  const totalLimit = typeof limit === "number" ? limit : 0;
+  if (!isQuantityLimited) return "Unlimited";
+  const totalLimit = typeof maxUses === "number" ? maxUses : 0;
   const used = typeof useCounter === "number" ? useCounter : 0;
   return String(Math.max(0, totalLimit - used));
 }
@@ -133,8 +133,8 @@ export function buildPromoCards(vouchers: Voucher[]): PromoCard[] {
         emoji,
         expiresIn,
         remainingUses: getRemainingUsesLabel(
-          discount.isLimited,
-          discount.limit,
+          discount.isQuantityLimited,
+          discount.maxUses,
           discount.useCounter
         ),
       };
@@ -178,8 +178,8 @@ export function buildReferralCards(vouchers: Voucher[]): PromoCard[] {
         emoji: voucher.referralRole === "REFERRER" ? "🎉" : "🎁",
         expiresIn,
         remainingUses: getRemainingUsesLabel(
-          discount.isLimited,
-          discount.limit,
+          discount.isQuantityLimited,
+          discount.maxUses,
           discount.useCounter
         ),
       };
@@ -222,8 +222,8 @@ export function buildStorewideDiscountCards(discounts: Discount[]): PromoCard[] 
       emoji: getEmojiForDiscount(discount),
       expiresIn: getExpiresInLabel(discount.endsAt),
       remainingUses: getRemainingUsesLabel(
-        discount.isLimited,
-        discount.limit,
+        discount.isQuantityLimited,
+        discount.maxUses,
         discount.useCounter
       ),
     };

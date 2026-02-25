@@ -14,9 +14,9 @@ export class PrismaRepository implements DiscountRepo {
     }
 
     private isDiscountAvailable(discount: DiscountResponse): boolean {
-        if (!discount.isLimited) return true;
-        if (discount.limit === null) return false;
-        return discount.useCounter < discount.limit;
+        if (!discount.isQuantityLimited) return true;
+        if (discount.maxUses === null) return false;
+        return discount.useCounter < discount.maxUses;
     }
 
     async createDiscount(data: DiscountCreateReq): Promise<DiscountResponse> {
@@ -266,10 +266,10 @@ export class PrismaRepository implements DiscountRepo {
                     isVoucher: true,
                     isWithMinimum: true,
                     minimumPrice: true,
-                    isLimitedDiscount: true,
-                    discountLimitAmt: true,
-                    isLimited: true,
-                    limit: true,
+                    hasDiscountAmountCap: true,
+                    maxDiscountAmount: true,
+                    isQuantityLimited: true,
+                    maxUses: true,
                     useCounter: true,
                     isTiedToProduct: true,
                     productId: true,

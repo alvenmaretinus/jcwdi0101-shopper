@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import { Store, Package, ArrowLeft } from "lucide-react";
+import { Store, Package, ArrowLeft, Tag } from "lucide-react";
 import Link from "next/link";
 import { AddToCartSection } from "./_components/AddToCartSection";
 import { QuantityDiscountsSection } from "./_components/QuantityDiscountsSection";
@@ -54,6 +54,9 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
 
   // Get discount pricing from backend calculation
   const bestDiscount = product.discountedPricing;
+  const hasPriceDiscount =
+    !!bestDiscount && bestDiscount.appliedCount > 0 && bestDiscount.discountedPrice < product.price;
+  const unmetMinimumDiscounts = bestDiscount?.unmetMinimumDiscounts ?? [];
 
   return (
     <Layout>
@@ -105,25 +108,25 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
 
               {/* Price */}
               <div className="border-y py-4">
-                {bestDiscount ? (
+                {hasPriceDiscount ? (
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <div className="text-3xl font-bold text-primary">
-                        {formatPrice(bestDiscount.discountedPrice)}
+                        {formatPrice(bestDiscount!.discountedPrice)}
                       </div>
                       <Badge variant="secondary">
-                        {bestDiscount.appliedCount} discount{bestDiscount.appliedCount > 1 ? "s" : ""} applied
+                        {bestDiscount!.appliedCount} discount{bestDiscount!.appliedCount > 1 ? "s" : ""} applied
                       </Badge>
                     </div>
                     <div className="text-sm text-muted-foreground line-through">
                       {formatPrice(product.price)}
                     </div>
                     <div className="text-sm text-green-700">
-                      You save {formatPrice(bestDiscount.totalDiscount)}
+                      You save {formatPrice(bestDiscount!.totalDiscount)}
                     </div>
                     <div className="pt-2 space-y-1">
                       <p className="text-xs text-muted-foreground">Applied discounts:</p>
-                      {bestDiscount.appliedDiscounts.map((discount) => (
+                      {bestDiscount!.appliedDiscounts.map((discount) => (
                         <div
                           key={discount.id}
                           className="text-xs text-muted-foreground flex items-center justify-between"
@@ -140,6 +143,33 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
                   </div>
                 )}
               </div>
+
+              {unmetMinimumDiscounts.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-5 w-5 text-primary" />
+                    <span className="font-medium">Available Discounts:</span>
+                  </div>
+                  <div className="space-y-2">
+                    {unmetMinimumDiscounts.map((discount) => (
+                      <div
+                        key={discount.id}
+                        className="bg-muted/40 border border-muted/50 rounded-lg p-3"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">{discount.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {discount.label}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          If you buy until a minimum of {formatPrice(discount.minimumPrice)} per item, you&apos;ll get this discount. Discount will be applied at checkout.
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Quantity Discounts */}
               {bestDiscount?.quantityDiscounts && (
@@ -237,7 +267,7 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
               <div>
                 <dt className="text-sm text-muted-foreground">Price</dt>
                 <dd className="font-semibold">
-                  {bestDiscount ? formatPrice(bestDiscount.discountedPrice) : formatPrice(product.price)}
+                  {hasPriceDiscount ? formatPrice(bestDiscount!.discountedPrice) : formatPrice(product.price)}
                 </dd>
               </div>
               <div>

@@ -11,9 +11,9 @@ export class PrismaVoucherRepository implements VoucherRepo {
   }
 
   private isDiscountAvailable(voucher: VoucherResponse): boolean {
-    if (!voucher.discount.isLimited) return true;
-    if (voucher.discount.limit === null) return false;
-    return voucher.discount.useCounter < voucher.discount.limit;
+    if (!voucher.discount.isQuantityLimited) return true;
+    if (voucher.discount.maxUses === null) return false;
+    return voucher.discount.useCounter < voucher.discount.maxUses;
   }
 
   async createVoucher(data: VoucherCreateReq): Promise<VoucherResponse> {
@@ -29,8 +29,8 @@ export class PrismaVoucherRepository implements VoucherRepo {
           isVoucher: true,
           isWithMinimum: data.isWithMinimum,
           minimumPrice: data.minimumPrice,
-          isLimited: data.isLimited,
-          limit: data.limit,
+          isQuantityLimited: data.isQuantityLimited,
+          maxUses: data.maxUses,
           isTiedToProduct: false,
           buyQuantity: data.buyQuantity,
           freeQuantity: data.freeQuantity,
@@ -76,8 +76,8 @@ export class PrismaVoucherRepository implements VoucherRepo {
       if (data.type !== undefined) discountUpdateData.type = data.type as DiscountType;
       if (data.isWithMinimum !== undefined) discountUpdateData.isWithMinimum = data.isWithMinimum;
       if (data.minimumPrice !== undefined) discountUpdateData.minimumPrice = data.minimumPrice;
-      if (data.isLimited !== undefined) discountUpdateData.isLimited = data.isLimited;
-      if (data.limit !== undefined) discountUpdateData.limit = data.limit;
+      if (data.isQuantityLimited !== undefined) discountUpdateData.isQuantityLimited = data.isQuantityLimited;
+      if (data.maxUses !== undefined) discountUpdateData.maxUses = data.maxUses;
       if (data.buyQuantity !== undefined) discountUpdateData.buyQuantity = data.buyQuantity;
       if (data.freeQuantity !== undefined) discountUpdateData.freeQuantity = data.freeQuantity;
       if (data.startsAt !== undefined) discountUpdateData.startsAt = data.startsAt;
@@ -270,7 +270,6 @@ export class PrismaVoucherRepository implements VoucherRepo {
       where: {
         code: { equals: code, mode: "insensitive" },
         isSoftDeleted: false,
-        OR: [{ isRedeemed: false }, { voucherType: { not: "REFERRAL" } }],
         discount: {
           isSoftDeleted: false,
         },
@@ -289,7 +288,6 @@ export class PrismaVoucherRepository implements VoucherRepo {
       where: {
         id: { in: ids },
         isSoftDeleted: false,
-        OR: [{ isRedeemed: false }, { voucherType: { not: "REFERRAL" } }],
         discount: {
           isSoftDeleted: false,
         },
@@ -314,7 +312,6 @@ export class PrismaVoucherRepository implements VoucherRepo {
           code: { equals: code, mode: "insensitive" },
         })),
         isSoftDeleted: false,
-        AND: [{ OR: [{ isRedeemed: false }, { voucherType: { not: "REFERRAL" } }] }],
         discount: {
           isSoftDeleted: false,
         },

@@ -71,10 +71,10 @@ export class ProductService implements Service {
                 isVoucher: true,
                 isWithMinimum: true,
                 minimumPrice: true,
-                isLimitedDiscount: true,
-                discountLimitAmt: true,
-                isLimited: true,
-                limit: true,
+                hasDiscountAmountCap: true,
+                maxDiscountAmount: true,
+                isQuantityLimited: true,
+                maxUses: true,
                 useCounter: true,
                 isTiedToProduct: true,
                 productId: true,
@@ -87,6 +87,18 @@ export class ProductService implements Service {
                 updatedAt: true,
             }
         });
+
+        const formatDiscountLabel = (discount: (typeof discounts)[number]) => {
+            if (discount.type === 'PERCENTAGE') {
+                return `${Number(discount.percentage ?? 0)}%`;
+            }
+
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+            }).format(Number(discount.amount ?? 0));
+        };
 
         // Group discounts by product
         const discountsByProduct = new Map<string, typeof discounts>();
@@ -108,10 +120,27 @@ export class ProductService implements Service {
             }
 
             const pricing = calculateStackedDiscount(product.price, productDiscounts as any);
+
+            const unmetMinimumDiscounts = productDiscounts
+                .filter((discount) =>
+                    (discount.type === 'PERCENTAGE' || discount.type === 'FIXED_AMOUNT') &&
+                    discount.isWithMinimum &&
+                    discount.minimumPrice &&
+                    product.price < discount.minimumPrice
+                )
+                .map((discount) => ({
+                    id: discount.id,
+                    name: discount.name || 'Discount',
+                    label: formatDiscountLabel(discount),
+                    minimumPrice: discount.minimumPrice!,
+                }));
             
             return {
                 ...product,
-                discountedPricing: pricing,
+                discountedPricing: {
+                    ...pricing,
+                    unmetMinimumDiscounts: unmetMinimumDiscounts.length > 0 ? unmetMinimumDiscounts : undefined,
+                },
             };
         });
 

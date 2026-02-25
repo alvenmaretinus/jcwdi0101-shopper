@@ -14,6 +14,12 @@ export interface StackedDiscountResult {
   appliedCount: number;
   appliedDiscounts: CalculatedDiscount[];
   earliestEndsAt?: Date | null;
+  unmetMinimumDiscounts?: Array<{
+    id: string;
+    name: string;
+    label: string;
+    minimumPrice: number;
+  }>;
   quantityDiscounts?: Array<{
     id: string;
     name: string;
@@ -75,7 +81,7 @@ export function calculateStackedDiscount(
 
   // ── Bucket 1: Pure percentage discounts (no limit cap), sorted by pct desc ──
   const purePercentageDiscounts = applicableDiscounts
-    .filter((d) => d.type === "PERCENTAGE" && !d.isLimitedDiscount)
+    .filter((d) => d.type === "PERCENTAGE" && !d.hasDiscountAmountCap)
     .sort((a, b) => Number(b.percentage ?? 0) - Number(a.percentage ?? 0));
 
   // ── Bucket 2: Fixed-amount discounts, sorted by amount desc ──
@@ -85,7 +91,7 @@ export function calculateStackedDiscount(
 
   // ── Bucket 3: Percentage-with-limit discounts (effective amt changes each iter) ──
   const limitedPercentageDiscounts = applicableDiscounts
-    .filter((d) => d.type === "PERCENTAGE" && d.isLimitedDiscount && d.discountLimitAmt);
+    .filter((d) => d.type === "PERCENTAGE" && d.hasDiscountAmountCap && d.maxDiscountAmount);
 
   let totalDiscount = 0;
   let remainingPrice = price;
@@ -140,7 +146,7 @@ export function calculateStackedDiscount(
       // Calculate effective discount for each limited-percentage discount
       const effectiveAmounts = limitedPercentageDiscounts.map((d) => {
         const rawPct = remainingPrice * (Number(d.percentage ?? 0) / 100);
-        return Math.min(rawPct, d.discountLimitAmt!);
+        return Math.min(rawPct, d.maxDiscountAmount!);
       });
 
       // Find the one with the highest effective amount

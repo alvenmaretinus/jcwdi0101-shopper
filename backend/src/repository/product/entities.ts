@@ -87,6 +87,12 @@ export type DiscountedPricing = {
     totalDiscount: number;
     appliedCount: number;
     appliedDiscounts: CalculatedDiscount[];
+    unmetMinimumDiscounts?: Array<{
+        id: string;
+        name: string;
+        label: string;
+        minimumPrice: number;
+    }>;
 };
 
 export type ProductWithDiscounts = Product & {

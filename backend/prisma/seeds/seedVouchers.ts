@@ -10,11 +10,11 @@ export async function seedVouchers() {
   const freshProduceDiscount = await prisma.discount.findFirst({
     where: { name: "Weekend Fresh Produce" },
   });
-  
+
   const dairyDiscount = await prisma.discount.findFirst({
     where: { name: "Buy 2 Get 1 Any Product" },
   });
-  
+
   const freeDeliveryDiscount = await prisma.discount.findFirst({
     where: { name: "Free Delivery on Orders Above 150k" },
   });
@@ -55,25 +55,21 @@ export async function seedVouchers() {
     userId?: string;
     referralRole?: "REFERRER" | "REFEREE";
     voucherType: "REFERRAL" | "TRANSACTIONAL" | "FREEDELIVERY";
-    isRedeemed: boolean;
   }> = [
     {
       code: "FRESH30",
       discountId: freshProduceDiscount.id,
       voucherType: "TRANSACTIONAL",
-      isRedeemed: false,
     },
     {
       code: "DAIRY3",
       discountId: dairyDiscount.id,
       voucherType: "TRANSACTIONAL",
-      isRedeemed: false,
     },
     {
       code: "FREEDELIVERY",
       discountId: freeDeliveryDiscount.id,
       voucherType: "FREEDELIVERY",
-      isRedeemed: false,
     },
   ];
 
@@ -83,7 +79,6 @@ export async function seedVouchers() {
       code: "MEGAWEEKEND",
       discountId: megaWeekendDiscount.id,
       voucherType: "TRANSACTIONAL",
-      isRedeemed: false,
     });
   }
 
@@ -92,7 +87,6 @@ export async function seedVouchers() {
       code: "FRUITBASKET",
       discountId: fruitBasketDiscount.id,
       voucherType: "TRANSACTIONAL",
-      isRedeemed: false,
     });
   }
 
@@ -101,7 +95,6 @@ export async function seedVouchers() {
       code: "WELCOME20",
       discountId: newCustomerDiscount.id,
       voucherType: "TRANSACTIONAL",
-      isRedeemed: false,
     });
   }
 
@@ -110,7 +103,6 @@ export async function seedVouchers() {
       code: "SNACKS3FOR1",
       discountId: snacksDiscount.id,
       voucherType: "TRANSACTIONAL",
-      isRedeemed: false,
     });
   }
 
@@ -119,7 +111,6 @@ export async function seedVouchers() {
       code: "MIDWEEK35",
       discountId: midWeekDiscount.id,
       voucherType: "TRANSACTIONAL",
-      isRedeemed: false,
     });
   }
 
@@ -128,15 +119,10 @@ export async function seedVouchers() {
       code: "FREESHIP100",
       discountId: freeDelivery100kDiscount.id,
       voucherType: "FREEDELIVERY",
-      isRedeemed: false,
     });
   }
 
-  const ensureReferralDiscount = async (
-    name: string,
-    percentage: number,
-    minimumPrice?: number
-  ) => {
+  const ensureReferralDiscount = async (name: string, percentage: number, minimumPrice?: number) => {
     const existingDiscount = await prisma.discount.findFirst({
       where: {
         name,
@@ -157,8 +143,8 @@ export async function seedVouchers() {
         isVoucher: true,
         isWithMinimum: minimumPrice !== undefined,
         minimumPrice,
-        isLimited: true,
-        limit: 1,
+        isQuantityLimited: true,
+        maxUses: 1,
         isTiedToProduct: false,
       },
     });
@@ -182,10 +168,7 @@ export async function seedVouchers() {
     "user@example.com": userReferralDiscount,
   };
 
-  const addReferralVoucherPair = async (
-    referrer: { id: string; email: string },
-    referred: { id: string; email: string }
-  ) => {
+  const addReferralVoucherPair = async (referrer: { id: string; email: string }, referred: { id: string; email: string }) => {
     const referrerDiscount = userDiscountByEmail[referrer.email];
     const referredDiscount = userDiscountByEmail[referred.email];
     if (!referrerDiscount || !referredDiscount) return;
@@ -211,7 +194,6 @@ export async function seedVouchers() {
         userId: referrer.id,
         referralRole: "REFERRER",
         voucherType: "REFERRAL",
-        isRedeemed: false,
       },
       {
         code: `REFE-${pairToken}-${Date.now().toString().slice(-6)}`,
@@ -219,8 +201,7 @@ export async function seedVouchers() {
         userId: referred.id,
         referralRole: "REFEREE",
         voucherType: "REFERRAL",
-        isRedeemed: false,
-      }
+      },
     );
   };
 

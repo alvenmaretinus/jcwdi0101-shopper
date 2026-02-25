@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ShoppingBag } from "lucide-react";
 import Image from "next/image";
+import { DiscountBreakdown } from "./DiscountBreakdown";
+import { CheckoutPricingResponse } from "@/services/order/getCheckoutPricingBreakdown";
 
 export interface OrderItem {
   id: string;
@@ -18,29 +20,29 @@ export interface OrderItem {
 export interface OrderSummaryProps {
   items: OrderItem[];
   subtotal: number;
-  productDiscount: number;
-  globalDiscount: number;
-  voucherDiscount: number;
+  totalDiscount: number;
   shippingCost: number;
   shippingOriginalCost?: number;
   shippingDiscount?: number;
   total: number;
   onPlaceOrder: () => void;
   isCreatingOrder?: boolean;
+  pricingBreakdown?: CheckoutPricingResponse | null;
+  isLoadingPricing?: boolean;
 }
 
 export const OrderSummary = ({
   items,
   subtotal,
-  productDiscount,
-  globalDiscount,
-  voucherDiscount,
+  totalDiscount,
   shippingCost,
   shippingOriginalCost,
   shippingDiscount = 0,
   total,
   onPlaceOrder,
   isCreatingOrder = false,
+  pricingBreakdown,
+  isLoadingPricing = false,
 }: OrderSummaryProps) => {
   const originalShipping = Math.max(
     0,
@@ -103,32 +105,26 @@ export const OrderSummary = ({
 
       <Separator className="my-6" />
 
+      {/* Discount Breakdown Section */}
+      {pricingBreakdown && !isLoadingPricing && (
+        <>
+          <div className="mb-6">
+            <DiscountBreakdown items={pricingBreakdown.items} />
+          </div>
+          <Separator className="my-6" />
+        </>
+      )}
+
       <div className="space-y-3">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Subtotal</span>
           <span>Rp {subtotal.toLocaleString("id-ID")}</span>
         </div>
-        {productDiscount > 0 && (
+        {totalDiscount > 0 && (
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Product Promo</span>
+            <span className="text-muted-foreground">Discounts</span>
             <span className="text-red-500">
-              -Rp {productDiscount.toLocaleString("id-ID")}
-            </span>
-          </div>
-        )}
-        {globalDiscount > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Global Discount</span>
-            <span className="text-red-500">
-              -Rp {globalDiscount.toLocaleString("id-ID")}
-            </span>
-          </div>
-        )}
-        {voucherDiscount > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Voucher Discount</span>
-            <span className="text-red-500">
-              -Rp {voucherDiscount.toLocaleString("id-ID")}
+              -Rp {totalDiscount.toLocaleString("id-ID")}
             </span>
           </div>
         )}

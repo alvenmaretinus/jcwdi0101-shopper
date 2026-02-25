@@ -59,9 +59,9 @@ interface PromoCard {
   remainingUses: string;
 }
 
-const getRemainingUsesLabel = (isLimited?: boolean, limit?: number, useCounter?: number) => {
-  if (!isLimited) return "Unlimited";
-  const totalLimit = typeof limit === "number" ? limit : 0;
+const getRemainingUsesLabel = (isQuantityLimited?: boolean, maxUses?: number, useCounter?: number) => {
+  if (!isQuantityLimited) return "Unlimited";
+  const totalLimit = typeof maxUses === "number" ? maxUses : 0;
   const used = typeof useCounter === "number" ? useCounter : 0;
   return String(Math.max(0, totalLimit - used));
 };
@@ -117,7 +117,7 @@ export const mapVouchersToPromoCards = (vouchers: Voucher[]): PromoCard[] => {
         code: voucher.code,
         emoji,
         expiresIn: getExpiresInLabel(discount.endsAt),
-        remainingUses: getRemainingUsesLabel(discount.isLimited, discount.limit, discount.useCounter),
+        remainingUses: getRemainingUsesLabel(discount.isQuantityLimited, discount.maxUses, discount.useCounter),
       };
     });
 };

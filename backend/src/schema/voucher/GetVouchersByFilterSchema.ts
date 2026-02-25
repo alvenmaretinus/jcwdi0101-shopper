@@ -8,7 +8,6 @@ export const GetVouchersByFilterSchema = z.object({
     type: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']).optional(),
     voucherType: z.enum(['REFERRAL', 'TRANSACTIONAL', 'FREEDELIVERY']).optional(),
     referralRole: z.enum(['REFERRER', 'REFEREE']).optional(),
-    isRedeemed: z.string().transform(val => val === 'true').pipe(z.boolean()).optional(),
     activeOnDate: z.coerce.date().optional(),
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
