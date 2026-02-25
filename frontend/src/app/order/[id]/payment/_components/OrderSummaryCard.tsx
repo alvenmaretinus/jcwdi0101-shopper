@@ -58,7 +58,7 @@ export const OrderSummaryCard = ({
       </div>
       {pricingSummary.productDiscount > 0 && (
         <div className="flex justify-between mb-2">
-          <span>Product Discount</span>
+          <span>Total Product Discount</span>
           <span className="text-red-500">
             - {formatRupiah(pricingSummary.productDiscount)}
           </span>
