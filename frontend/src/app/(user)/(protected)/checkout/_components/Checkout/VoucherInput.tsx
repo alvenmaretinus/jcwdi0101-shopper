@@ -8,7 +8,7 @@ interface VoucherInputProps {
   setVoucherInput: Dispatch<SetStateAction<string>>;
   appliedVouchers: string[];
   applyVoucher: () => Promise<void>;
-  removeVoucher: (id: string) => void;
+  removeVoucher: (id: string) => Promise<void>;
   errorMessage?: string | null;
 }
 
