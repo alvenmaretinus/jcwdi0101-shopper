@@ -139,7 +139,7 @@ const Orders = () => {
                   name: it.productName,
                   quantity: it.quantity,
                   price: it.unitPrice,
-                  originalPrice: (it as any).originalPrice ?? (it as any).priceBeforeDiscount,
+                  originalPrice: it.originalPrice ?? it.priceBeforeDiscount,
                   bogoFreeQuantity: bogoFreeQuantityMap[it.productId] ?? 0,
                   image: undefined,
                 }))

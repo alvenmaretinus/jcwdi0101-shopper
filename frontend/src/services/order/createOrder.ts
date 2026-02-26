@@ -15,6 +15,9 @@ export interface OrderItem {
   productCategory: string;
   quantity: number;
   unitPrice: number;
+  /** Pre-discount price; the API may return either field name. */
+  originalPrice?: number;
+  priceBeforeDiscount?: number;
 }
 
 export interface CreateOrderResponse {
