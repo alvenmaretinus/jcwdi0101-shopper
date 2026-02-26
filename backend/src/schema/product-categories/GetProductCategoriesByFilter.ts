@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const idField = z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? v : undefined),
-    z.string().uuid("Invalid category ID").optional(),
+    z.uuid("Invalid category ID").optional(),
 );
 
 const categoryField = z.preprocess(

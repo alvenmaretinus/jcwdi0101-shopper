@@ -202,7 +202,7 @@ const Cart = () => {
                 )}
                 {globalDiscount > 0 && (
                   <div className="flex justify-between text-primary">
-                    <span>Auto Discounts</span>
+                    <span>Total Discounts</span>
                     <span className="font-medium">
                       -{formatPrice(globalDiscount)}
                     </span>

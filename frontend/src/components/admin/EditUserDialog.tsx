@@ -37,6 +37,7 @@ export function EditUserDialog({
   onClose,
   onSuccess,
 }: EditUserDialogProps) {
+  console.log('EditUserDialog props:', { user, stores, isOpen });
   const [formData, setFormData] = useState({
     email: user?.email || '',
     role: user?.role || 'USER',
@@ -57,7 +58,10 @@ export function EditUserDialog({
       const updateData: Record<string, any> = {};
       if (formData.email !== user.email) updateData.email = formData.email;
       if (formData.role !== user.role) updateData.role = formData.role;
-      if (formData.image !== user.image) updateData.image = formData.image;
+      const trimmedImage = formData.image.trim();
+      if (trimmedImage !== '' && trimmedImage !== user.image) {
+        updateData.image = trimmedImage;
+      }
       const storeIdValue = formData.storeId === 'none' ? null : formData.storeId;
       if (storeIdValue !== user.storeId) updateData.storeId = storeIdValue;
 

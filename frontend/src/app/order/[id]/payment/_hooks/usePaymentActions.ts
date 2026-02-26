@@ -113,45 +113,91 @@ export const usePaymentActions = ({
         });
       } catch (error) {
         console.error("[Payment] snap load error:", error);
-        if (transaction.redirectUrl) window.location.href = transaction.redirectUrl;
+        if (transaction.redirectUrl)
+          window.location.href = transaction.redirectUrl;
         else toast.error("Payment initiation failed");
       }
     } catch (error: unknown) {
       console.error("[Payment] createCharge error:", error);
       let message = parseErrorMessage(error, "Failed to create payment charge");
-      if (message.includes("order_id sudah digunakan")) {
+
+      // Handle duplicate order_id from Midtrans: try to recover using cached transaction
+      if (
+        message.includes("order_id sudah digunakan") ||
+        message.includes("order_id has already been taken")
+      ) {
+        const existing = orderId ? readCachedMidtransTx(orderId) : null;
+        if (existing?.token) {
+          try {
+            await loadMidtransSnap(existing);
+            window.snap?.pay(existing.token, {
+              onSuccess: async () => {
+                clearCachedMidtransTx(orderId!);
+                setCachedMidtransTx(null);
+                toast.success("Payment successful, updating order...");
+                const latestOrder = await fetchOrder(orderId!);
+                setOrder(latestOrder);
+              },
+              onPending: () => toast("Payment pending"),
+              onError: () => toast.error("Payment failed"),
+            });
+            return;
+          } catch (e) {
+            console.error(
+              "[Payment] recover from duplicate order_id failed:",
+              e
+            );
+            message =
+              "Sesi pembayaran Midtrans sudah dibuat namun tidak dapat dibuka ulang otomatis. Muat ulang halaman dan coba lagi.";
+            toast.error(message);
+            return;
+          }
+        }
+
+        // If no cached transaction found, show instructive message
         message =
-          "Sesi pembayaran Midtrans untuk order ini sudah dibuat. Tutup pesan ini lalu klik kembali tombol pembayaran.";
+          "Sesi pembayaran Midtrans untuk order ini sudah dibuat. Muat ulang halaman (F5) lalu klik tombol pembayaran kembali.";
+        toast.error(message);
+        return;
       }
+
       toast.error(message);
     } finally {
       setIsProcessing(false);
     }
   }, [cachedMidtransTx, fetchOrder, orderId, setOrder]);
 
-  const onProofFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
-    if (!file) {
-      setProofFile(null);
-      return;
-    }
+  const onProofFileChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0] ?? null;
+      if (!file) {
+        setProofFile(null);
+        return;
+      }
 
-    const allowedMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
-    if (!allowedMimeTypes.includes(file.type)) {
-      toast.error("Format tidak didukung. Gunakan JPG/PNG/GIF.");
-      setProofFile(null);
-      return;
-    }
+      const allowedMimeTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+      ];
+      if (!allowedMimeTypes.includes(file.type)) {
+        toast.error("Format tidak didukung. Gunakan JPG/PNG/GIF.");
+        setProofFile(null);
+        return;
+      }
 
-    const maxSize = 1 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast.error("File terlalu besar. Maks 1MB.");
-      setProofFile(null);
-      return;
-    }
+      const maxSize = 1 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast.error("File terlalu besar. Maks 1MB.");
+        setProofFile(null);
+        return;
+      }
 
-    setProofFile(file);
-  }, []);
+      setProofFile(file);
+    },
+    []
+  );
 
   const onUploadProof = useCallback(async () => {
     if (!proofFile) {
@@ -166,7 +212,9 @@ export const usePaymentActions = ({
     try {
       setIsProcessing(true);
       await uploadPaymentProof(orderId, proofFile);
-      toast.success("Bukti pembayaran berhasil diupload. Menunggu konfirmasi admin.");
+      toast.success(
+        "Bukti pembayaran berhasil diupload. Menunggu konfirmasi admin."
+      );
 
       const latestOrder = await fetchOrder(orderId);
       setOrder(latestOrder);
@@ -205,7 +253,8 @@ export const usePaymentActions = ({
           ? (response.data ?? null)
           : null;
         if (cancelledOrder) setOrder(cancelledOrder);
-        else setOrder((prev) => (prev ? { ...prev, status: "CANCELLED" } : prev));
+        else
+          setOrder((prev) => (prev ? { ...prev, status: "CANCELLED" } : prev));
         clearTimers();
         return;
       }

@@ -119,6 +119,30 @@ export default function Categories() {
     setIsDialogOpen(true);
   };
 
+  const refreshCategories = async () => {
+    const apiInit: ApiInit = { method: HttpMethod.GET };
+    const query = new URLSearchParams({
+      page: currentPage.toString(),
+      limit: ITEMS_PER_PAGE.toString(),
+    });
+    if (searchQuery.trim()) {
+      query.set('category', searchQuery.trim());
+    }
+    const data = await apiFetch<CategoriesResponse>(`/product-category?${query.toString()}`, apiInit);
+    setCategories(Array.isArray(data?.data) ? data.data : []);
+    setPaginationMeta(data?.meta ?? {
+      page: 1,
+      limit: ITEMS_PER_PAGE,
+      total: 0,
+      totalPages: 1,
+    });
+  }
+
+  const handleDelete = async (category: Categories) => {
+    await apiFetch(`/product-category/${category.id}`, { method: HttpMethod.DELETE });
+    await refreshCategories();
+  };
+
   const handleCreate = () => {
     setEditingCategory(null);
     setCategoryName('');
@@ -138,24 +162,7 @@ export default function Categories() {
         const apiInit: ApiInit = { method: HttpMethod.POST, body };
         await apiFetch(`/product-category`, apiInit);
       }
-      // refresh
-      const apiInit2: ApiInit = { method: HttpMethod.GET };
-      const query = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: ITEMS_PER_PAGE.toString(),
-      });
-      if (searchQuery.trim()) {
-        query.set('category', searchQuery.trim());
-      }
-
-      const data = await apiFetch<CategoriesResponse>(`/product-category?${query.toString()}`, apiInit2);
-      setCategories(Array.isArray(data?.data) ? data.data : []);
-      setPaginationMeta(data?.meta ?? {
-        page: 1,
-        limit: ITEMS_PER_PAGE,
-        total: 0,
-        totalPages: 1,
-      });
+      await refreshCategories();
       setIsDialogOpen(false);
     } catch (err) {
       console.error('Failed to save category', err);
@@ -257,7 +264,7 @@ export default function Categories() {
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(category)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(category)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

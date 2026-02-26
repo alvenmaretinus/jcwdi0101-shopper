@@ -39,7 +39,7 @@ export const ProductGrid = ({ initialProducts, isDefaultAddress }: Props) => {
             
             switch (error.code) {
               case error.PERMISSION_DENIED:
-                errorMessage = "Location permission denied. Please enable location access in your browser settings.";
+                errorMessage = "Location permission denied. Sorting from default store.";
                 break;
               case error.POSITION_UNAVAILABLE:
                 errorMessage = "Location information is unavailable. Please try again.";
