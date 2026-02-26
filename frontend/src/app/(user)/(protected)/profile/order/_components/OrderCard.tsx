@@ -109,7 +109,7 @@ export const OrderCard = ({
       {/* Order Items */}
       <div className="space-y-4 mb-6 max-h-96 overflow-y-auto pr-2">
         {order.items.map((item, index) => (
-          <div key={index} className="border border-border rounded-lg p-4">
+          <div key={`${item.productId}-${index}`} className="border border-border rounded-lg p-4">
             <div className="flex gap-4">
               {item.image ? (
                 <div className="relative h-20 w-20 rounded-lg overflow-hidden border border-border bg-muted shrink-0">
