@@ -176,9 +176,7 @@ export class VoucherService implements Service {
       return { discount: 0, quantityBonuses: [], perVoucherSavings: [] };
     }
 
-    let totalDiscount = 0;
     const quantityBonusByProductId = new Map<string, number>();
-    const perVoucherSavings = new Map<string, number>();
 
     for (const item of cartItems) {
       if (item.quantity <= 0 || item.unitPrice <= 0) {
@@ -194,7 +192,6 @@ export class VoucherService implements Service {
         continue;
       }
 
-      let bestVoucher: VoucherResponse | null = null;
       let bestFreeQuantity = 0;
 
       for (const voucher of applicableVouchers) {
@@ -210,7 +207,6 @@ export class VoucherService implements Service {
 
         if (voucherFreeQuantity > bestFreeQuantity) {
           bestFreeQuantity = voucherFreeQuantity;
-          bestVoucher = voucher;
         }
       }
 
@@ -218,25 +214,15 @@ export class VoucherService implements Service {
         continue;
       }
 
-      const lineSaving = bestFreeQuantity * item.unitPrice;
-      totalDiscount += lineSaving;
       const currentFreeQuantity = quantityBonusByProductId.get(item.productId) ?? 0;
       quantityBonusByProductId.set(item.productId, currentFreeQuantity + bestFreeQuantity);
 
-      if (bestVoucher?.code) {
-        perVoucherSavings.set(
-          bestVoucher.code,
-          (perVoucherSavings.get(bestVoucher.code) ?? 0) + lineSaving,
-        );
-      }
     }
 
     return {
-      discount: Math.max(0, Math.round(totalDiscount)),
+      discount: 0,
       quantityBonuses: Array.from(quantityBonusByProductId.entries()).map(([productId, freeQuantity]) => ({ productId, freeQuantity })),
-      perVoucherSavings: Array.from(perVoucherSavings.entries()).map(
-        ([code, savedAmount]) => ({ code, savedAmount: Math.max(0, Math.round(savedAmount)) }),
-      ),
+      perVoucherSavings: [],
     };
   }
 
@@ -394,17 +380,6 @@ export class VoucherService implements Service {
       const quantityVoucher = this.calculateQuantityVoucherDiscount(productVouchers, cartItems);
 
       quantityBonuses = quantityVoucher.quantityBonuses;
-      quantityVoucher.perVoucherSavings.forEach((entry) => {
-        if (entry.savedAmount <= 0) {
-          return;
-        }
-
-        appliedVouchers.push({
-          code: entry.code,
-          type: "QUANTITY",
-          savedAmount: entry.savedAmount,
-        });
-      });
       productDiscount = Math.min(subtotal, Math.max(0, priceDiscount + quantityVoucher.discount));
     }
 

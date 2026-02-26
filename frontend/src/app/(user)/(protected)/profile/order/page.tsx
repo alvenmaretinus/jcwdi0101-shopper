@@ -39,6 +39,7 @@ type UIOrder = {
   shippingOriginalCost?: number;
   totalDiscount?: number;
   voucherCodes?: string[];
+  voucherDiscountDetails?: Array<{ code: string; savedAmount: number }>;
   discountNames?: string[];
 };
 
@@ -89,6 +90,8 @@ const Orders = () => {
           // - "PROMO_QTY_BONUSES:productId1:qty1|productId2:qty2"
           // - "VOUCHER_QTY_BONUSES:productId1:qty1|productId2:qty2"
           const bogoFreeQuantityMap: Record<string, number> = {};
+          const voucherDiscountMap: Record<string, number> = {};
+          let voucherProductDiscountTotal = 0;
           const quantityBonusPrefixes = ["PROMO_QTY_BONUSES:", "VOUCHER_QTY_BONUSES:"];
 
           const parseQuantityBonusEntries = (rawValue: string) => {
@@ -105,6 +108,34 @@ const Orders = () => {
 
           if (Array.isArray(o.discountNames)) {
             for (const discount of o.discountNames) {
+              if (discount.startsWith("VOUCHER_PRODUCT_DISCOUNT:")) {
+                const rawAmount = discount.slice("VOUCHER_PRODUCT_DISCOUNT:".length);
+                voucherProductDiscountTotal = Math.max(
+                  0,
+                  parseInt(rawAmount || "0", 10) || 0,
+                );
+                continue;
+              }
+
+              if (discount.startsWith("VOUCHER_APPLIED_AMOUNTS:")) {
+                const rawValue = discount.slice("VOUCHER_APPLIED_AMOUNTS:".length);
+                rawValue.split("|").forEach((entry) => {
+                  const [codeRaw, amountRaw] = entry.split(":");
+                  const code = (codeRaw ?? "").trim();
+                  const savedAmount = Math.max(
+                    0,
+                    parseInt(amountRaw || "0", 10) || 0,
+                  );
+                  if (!code || savedAmount <= 0) {
+                    return;
+                  }
+
+                  voucherDiscountMap[code] =
+                    (voucherDiscountMap[code] ?? 0) + savedAmount;
+                });
+                continue;
+              }
+
               const matchedPrefix = quantityBonusPrefixes.find((prefix) =>
                 discount.startsWith(prefix),
               );
@@ -116,6 +147,24 @@ const Orders = () => {
               parseQuantityBonusEntries(rawValue);
             }
           }
+
+          const fallbackVoucherCodes = Array.isArray(o.voucherCodes)
+            ? o.voucherCodes.filter((code) =>
+                !code.toLowerCase().includes("freeship"),
+              )
+            : [];
+
+          if (
+            Object.keys(voucherDiscountMap).length === 0 &&
+            voucherProductDiscountTotal > 0 &&
+            fallbackVoucherCodes.length === 1
+          ) {
+            voucherDiscountMap[fallbackVoucherCodes[0]] = voucherProductDiscountTotal;
+          }
+
+          const voucherDiscountDetails = Object.entries(voucherDiscountMap)
+            .map(([code, savedAmount]) => ({ code, savedAmount }))
+            .filter((line) => line.code.length > 0 && line.savedAmount > 0);
 
           const status = statusMap[o.status] ?? "processing";
           const createdAtDate = new Date(o.createdAt);
@@ -132,6 +181,7 @@ const Orders = () => {
             shippingOriginalCost: o.shippingCost ?? 0,
             totalDiscount: o.totalDiscount ?? 0,
             voucherCodes: Array.isArray(o.voucherCodes) ? o.voucherCodes : [],
+            voucherDiscountDetails,
             discountNames: Array.isArray(o.discountNames) ? o.discountNames : [],
             items: Array.isArray(o.orderItems)
               ? o.orderItems.map((it: OrderServiceItem) => ({

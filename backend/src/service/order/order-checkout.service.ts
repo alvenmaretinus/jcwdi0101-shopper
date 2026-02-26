@@ -260,7 +260,7 @@ export class OrderCheckoutService {
     const totalDiscount = productDiscount + voucherShippingDiscount;
     const grandTotal = subtotal - productDiscount + finalShippingCost;
     const appliedVoucherDiscounts = appliedVouchers.filter(
-      (voucher) => voucher.type !== "SHIPPING",
+      (voucher) => voucher.type === "PRODUCT",
     );
 
     return {
@@ -453,6 +453,10 @@ export class OrderCheckoutService {
         productId: string;
         freeQuantity: number;
       }> = [];
+      let appliedVoucherDiscounts: Array<{
+        code: string;
+        savedAmount: number;
+      }> = [];
 
       const cartItemsForDiscount = items.map((item) => ({
         productId: item.productId,
@@ -484,6 +488,12 @@ export class OrderCheckoutService {
         voucherProductDiscount = breakdown.productDiscount;
         voucherShippingDiscount = breakdown.shippingDiscount;
         voucherQuantityBonuses = breakdown.quantityBonuses;
+        appliedVoucherDiscounts = (breakdown.appliedVouchers ?? [])
+          .filter((voucher) => voucher.type === "PRODUCT")
+          .map((voucher) => ({
+            code: voucher.code,
+            savedAmount: voucher.savedAmount,
+          }));
 
         const [vouchersByIds, vouchersByCodes] = await Promise.all([
           voucherService.getVouchersByIds(normalizedVoucherIdentifiers),
@@ -558,6 +568,14 @@ export class OrderCheckoutService {
         );
       if (voucherQuantityBonusesToken) {
         discountNames.push(voucherQuantityBonusesToken);
+      }
+
+      const voucherAppliedAmountsToken =
+        OrderVoucherReservationService.serializeVoucherAppliedAmounts(
+          appliedVoucherDiscounts,
+        );
+      if (voucherAppliedAmountsToken) {
+        discountNames.push(voucherAppliedAmountsToken);
       }
 
       if (limitedNonVoucherDiscountIds.length > 0) {

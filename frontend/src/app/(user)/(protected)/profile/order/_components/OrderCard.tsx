@@ -38,6 +38,7 @@ type UIOrder = {
   shippingOriginalCost?: number;
   totalDiscount?: number;
   voucherCodes?: string[];
+  voucherDiscountDetails?: Array<{ code: string; savedAmount: number }>;
   discountNames?: string[];
 };
 
@@ -78,6 +79,13 @@ export const OrderCard = ({
   const itemsSubtotal = order.items.reduce(
     (total, item) => total + item.price * item.quantity,
     0,
+  );
+  const voucherDiscountDetails = Array.isArray(order.voucherDiscountDetails)
+    ? order.voucherDiscountDetails
+    : [];
+  const totalDiscountExcludingShipping = Math.max(
+    0,
+    (order.totalDiscount ?? 0) - shippingDiscount,
   );
 
   return (
@@ -190,14 +198,30 @@ export const OrderCard = ({
             </span>
           </div>
 
-          {/* Voucher Codes */}
-          {Array.isArray(order.voucherCodes) && order.voucherCodes.length > 0 && (
-            <div className="flex justify-end gap-2">
-              {order.voucherCodes.map((v) => (
-                <Badge key={v} className="bg-primary/10 text-primary text-xs">
-                  {v}
-                </Badge>
+          {voucherDiscountDetails.length > 0 && (
+            <div className="space-y-1">
+              {voucherDiscountDetails.map((voucher) => (
+                <div
+                  key={voucher.code}
+                  className="flex justify-between text-xs"
+                >
+                  <span className="text-muted-foreground">
+                    Voucher {voucher.code}
+                  </span>
+                  <span className="text-red-500">
+                    -{formatPrice(voucher.savedAmount)}
+                  </span>
+                </div>
               ))}
+            </div>
+          )}
+
+          {totalDiscountExcludingShipping > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Total Discount</span>
+              <span className="text-red-500 font-medium">
+                -{formatPrice(totalDiscountExcludingShipping)}
+              </span>
             </div>
           )}
 
