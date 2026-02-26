@@ -286,7 +286,8 @@ export const OrderCard = ({
       {/* Additional Info */}
       {Array.isArray(order.discountNames) && order.discountNames.length > 0 && (
         <p className="text-[10px] text-center text-muted-foreground mt-4 italic">
-          Applied discounts: {order.discountNames.join(", ")}
+          Applied discounts: {order.discountNames.length} discount
+          {order.discountNames.length > 1 ? "s" : ""} applied
         </p>
       )}
     </div>
