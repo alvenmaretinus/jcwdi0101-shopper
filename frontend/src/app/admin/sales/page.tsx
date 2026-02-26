@@ -44,6 +44,7 @@ export default function SalesReport() {
   const [selectedMonth, setSelectedMonth] = useState<string>(String(getMonth(new Date())));
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [productSearch, setProductSearch] = useState('');
   const [allSalesRecords, setAllSalesRecords] = useState<SalesReportEntity[]>([]);
   const [stores, setStores] = useState<{ id: string; name: string }[]>([]);
@@ -55,6 +56,11 @@ export default function SalesReport() {
     total: 0,
     totalPages: 1,
   });
+
+  const handleCategoryChange = (category: string, categoryIdAny: any) => {
+    setSelectedCategory(category);
+    setSelectedCategoryId(categoryIdAny as string);
+  }
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -108,7 +114,7 @@ export default function SalesReport() {
       const limit = 20;
       const skip = (currentPage - 1) * limit;
       let query = `skip=${skip}&take=${limit}`
-      if (selectedCategory !== 'all') query += `&categoryId=${selectedCategory}`
+      if (selectedCategory !== 'all') query += `&category=${selectedCategory}`
       if (selectedStoreId !== 'all') query += `&storeId=${selectedStoreId}`
       if (productSearch.trim() !== '') query += `&productName=${encodeURIComponent(productSearch.trim())}`
       query += `&monthAndYear=${selectedYear}-${String(Number(selectedMonth) + 1).padStart(2, '0')}`
@@ -188,7 +194,7 @@ export default function SalesReport() {
                 />
               </div>
               <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <Select value={selectedCategory} onValueChange={(value) => handleCategoryChange(value, value)}>
                   <SelectTrigger className="w-full sm:w-44">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>

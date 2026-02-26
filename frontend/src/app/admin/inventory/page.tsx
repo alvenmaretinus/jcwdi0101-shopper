@@ -16,6 +16,8 @@ import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
 import { getStores } from '@/services/store/getStores';
 import { Pagination } from '@/components/Pagination/Pagination';
+import ProductSelectionModal from '@/components/Dialog/ProductSelectionModal';
+import { ProductWithDetails } from '@/services/product/getProducts';
 
 
 export default function Inventory() {
@@ -30,6 +32,7 @@ export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedAddProduct, setSelectedAddProduct] = useState<string>('');
+  const [selectedAddProductName, setSelectedAddProductName] = useState<string>('');
   const [selectedAddStore, setSelectedAddStore] = useState<string>('');
   const [addQuantity, setAddQuantity] = useState<number>(0);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -53,6 +56,7 @@ export default function Inventory() {
     total: 0,
     totalPages: 1,
   });
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 
   // Map mock data to the API shape
   const [stockRecords, setStockRecords] = useState<Product[]>([]);
@@ -179,6 +183,16 @@ export default function Inventory() {
   useEffect(() => {
     setProductsPage(1);
   }, [productsForDropdown]);
+
+  const handleProductSelect = (product: ProductWithDetails | null) => {
+    if (product) {
+      setSelectedAddProduct(product.id);
+      setSelectedAddProductName(product.name);
+    } else {
+      setSelectedAddProduct('');
+      setSelectedAddProductName('');
+    }
+  };
   
   const handleAddStock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -401,49 +415,14 @@ export default function Inventory() {
           <form className="space-y-4" onSubmit={handleAddStock}>
             <div className="space-y-2">
               <Label>Product</Label>
-              <Select value={selectedAddProduct} onValueChange={setSelectedAddProduct}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select product" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getPaginatedStores(productsForDropdown, productsPage).map(product => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name}
-                    </SelectItem>
-                  ))}
-                  {getTotalPages(productsForDropdown) > 1 && (
-                    <div className="border-t p-2 space-y-1">
-                      <div className="text-xs text-gray-500 px-2">Page {productsPage} of {getTotalPages(productsForDropdown)}</div>
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setProductsPage(p => Math.max(1, p - 1));
-                          }}
-                          disabled={productsPage === 1}
-                          className="flex-1 text-xs px-2 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Previous
-                        </button>
-                        <button
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setProductsPage(p => Math.min(getTotalPages(productsForDropdown), p + 1));
-                          }}
-                          disabled={productsPage === getTotalPages(productsForDropdown)}
-                          className="flex-1 text-xs px-2 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+                onClick={() => setIsProductModalOpen(true)}
+              >
+                {selectedAddProductName || 'Select a product'}
+              </Button>
             </div>
             {isSuperAdmin && (
               <div className="space-y-2">
@@ -726,6 +705,15 @@ export default function Inventory() {
           onChange={setCurrentPage}
         />
       </Card>
+      {/* Product Selection Modal */}
+      <ProductSelectionModal
+        open={isProductModalOpen}
+        onOpenChange={setIsProductModalOpen}
+        onSelect={handleProductSelect}
+        selectedProductId={selectedAddProduct}
+        title="Select Product"
+        description="Search and select a product to view its detailed inventory history"
+      />
 
       {/* Store Filter Modal */}
       <Dialog open={isStoreFilterModalOpen} onOpenChange={setIsStoreFilterModalOpen}>
