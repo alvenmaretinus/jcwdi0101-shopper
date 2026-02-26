@@ -3,7 +3,10 @@
 import type { CreateOrderResponse } from "@/services/order/createOrder";
 import type { BankInfo } from "@/services/order/getBankInfo";
 import type { ChangeEvent } from "react";
-import { formatRupiah } from "../_lib/payment-utils";
+import {
+  extractQuantityBonusByProductId,
+  formatRupiah,
+} from "../_lib/payment-utils";
 import { BankTransferSection } from "./BankTransferSection";
 import { MidtransSection } from "./MidtransSection";
 
@@ -39,6 +42,10 @@ export const OrderSummaryCard = ({
   onUploadProof,
   onPayWithMidtrans,
 }: OrderSummaryCardProps) => {
+  const freeQuantityByProductId = extractQuantityBonusByProductId(
+    order.discountNames,
+  );
+
   return (
     <div className="lg:col-span-2 bg-card rounded-2xl p-6">
       <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
@@ -46,6 +53,12 @@ export const OrderSummaryCard = ({
         <div key={item.productId} className="flex justify-between text-sm mb-2">
           <div>
             {item.productName} x{item.quantity}
+            {(freeQuantityByProductId[item.productId] ?? 0) > 0 && (
+              <div className="text-xs text-primary font-medium">
+                🎁 Free {freeQuantityByProductId[item.productId]} item
+                {(freeQuantityByProductId[item.productId] ?? 0) > 1 ? "s" : ""}
+              </div>
+            )}
           </div>
           <div>{formatRupiah(item.unitPrice * item.quantity)}</div>
         </div>

@@ -8,7 +8,8 @@ interface VoucherInputProps {
   setVoucherInput: Dispatch<SetStateAction<string>>;
   appliedVouchers: string[];
   applyVoucher: () => Promise<void>;
-  removeVoucher: (id: string) => void;
+  removeVoucher: (id: string) => Promise<void>;
+  errorMessage?: string | null;
 }
 
 export const VoucherInput = ({
@@ -17,6 +18,7 @@ export const VoucherInput = ({
   appliedVouchers,
   applyVoucher,
   removeVoucher,
+  errorMessage,
 }: VoucherInputProps) => {
   return (
     <div className="bg-card rounded-2xl p-6 shadow-soft">
@@ -32,6 +34,9 @@ export const VoucherInput = ({
           Apply
         </Button>
       </div>
+      {errorMessage && (
+        <p className="mt-3 text-sm text-red-500">{errorMessage}</p>
+      )}
       {appliedVouchers.length > 0 && (
         <div className="mt-3 space-y-2">
           {appliedVouchers.map((v) => (

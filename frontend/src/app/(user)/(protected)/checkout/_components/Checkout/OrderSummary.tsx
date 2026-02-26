@@ -55,6 +55,15 @@ export const OrderSummary = ({
   const finalShipping = Math.max(0, shippingCost);
   const hasShippingDiscount =
     appliedShippingDiscount > 0 && originalShipping > finalShipping;
+  const appliedVoucherDiscounts = pricingBreakdown?.appliedVoucherDiscounts ?? [];
+  const defaultProductDiscount = Math.max(
+    0,
+    pricingBreakdown?.defaultProductDiscount ?? 0
+  );
+  const totalDiscountValue = Math.max(
+    0,
+    pricingBreakdown?.totalDiscountExcludingShipping ?? totalDiscount
+  );
 
   return (
     <div className="bg-card rounded-2xl border border-border p-6 shadow-soft sticky top-24">
@@ -120,11 +129,36 @@ export const OrderSummary = ({
           <span className="text-muted-foreground">Subtotal</span>
           <span>Rp {subtotal.toLocaleString("id-ID")}</span>
         </div>
-        {totalDiscount > 0 && (
+        {appliedVoucherDiscounts.length > 0 && (
+          <div className="space-y-1">
+            {appliedVoucherDiscounts.map((voucher) => (
+              <div
+                key={`${voucher.code}-${voucher.type}`}
+                className="flex justify-between text-xs"
+              >
+                <span className="text-muted-foreground">
+                  Voucher {voucher.code}
+                </span>
+                <span className="text-red-500">
+                  -Rp {voucher.savedAmount.toLocaleString("id-ID")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {defaultProductDiscount > 0 && (
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Discounts</span>
+            <span className="text-muted-foreground">Product Discount</span>
             <span className="text-red-500">
-              -Rp {totalDiscount.toLocaleString("id-ID")}
+              -Rp {defaultProductDiscount.toLocaleString("id-ID")}
+            </span>
+          </div>
+        )}
+        {totalDiscountValue > 0 && (
+          <div className="flex justify-between text-sm font-medium">
+            <span className="text-muted-foreground">Total Discount</span>
+            <span className="text-red-500">
+              -Rp {totalDiscountValue.toLocaleString("id-ID")}
             </span>
           </div>
         )}

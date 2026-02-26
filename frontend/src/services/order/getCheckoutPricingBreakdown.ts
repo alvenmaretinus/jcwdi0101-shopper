@@ -21,18 +21,33 @@ export interface ItemBreakdown {
 
 export interface CheckoutPricingResponse {
   subtotal: number;
-  itemLevelDiscount: number;
-  globalDiscount: number;
+  defaultProductDiscount: number;
+  voucherDiscount: number;
+  totalDiscountExcludingShipping: number;
+  productDiscount: number;
+  shippingDiscount: number;
+  shippingCost: number;
+  finalShippingCost: number;
   totalDiscount: number;
   grandTotal: number;
   items: ItemBreakdown[];
-  globalAppliedDiscounts?: AppliedDiscount[];
+  appliedVouchers?: Array<{
+    code: string;
+    type: "PRODUCT" | "QUANTITY" | "SHIPPING";
+    savedAmount: number;
+  }>;
+  appliedVoucherDiscounts?: Array<{
+    code: string;
+    type: "PRODUCT" | "QUANTITY";
+    savedAmount: number;
+  }>;
 }
 
 export async function getCheckoutPricingBreakdown(
   addressId: string,
   voucherIds?: string[],
-  discountIds?: string[]
+  discountIds?: string[],
+  shippingCost?: number,
 ): Promise<CheckoutPricingResponse> {
   const response = await apiFetch<{ data: CheckoutPricingResponse }>(
     "/order/checkout/pricing-breakdown",
@@ -42,6 +57,7 @@ export async function getCheckoutPricingBreakdown(
         addressId,
         voucherIds,
         discountIds,
+        shippingCost,
       },
     }
   );

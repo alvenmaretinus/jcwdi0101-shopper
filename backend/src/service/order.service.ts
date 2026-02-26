@@ -26,12 +26,14 @@ export class OrderService {
     addressId: string,
     voucherIds?: string[],
     discountIds?: string[],
+    shippingCost?: number,
   ) {
     return OrderCheckoutService.getCheckoutPricingBreakdown(
       userId,
       addressId,
       voucherIds,
       discountIds,
+      shippingCost,
     );
   }
 

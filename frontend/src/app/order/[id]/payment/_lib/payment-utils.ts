@@ -75,6 +75,43 @@ export const extractDiscountAmountByPrefix = (
 export const extractShippingDiscount = (discountNames?: string[]): number =>
   extractDiscountAmountByPrefix(discountNames, "SHIPPING_DISCOUNT:");
 
+export const extractQuantityBonusByProductId = (
+  discountNames?: string[],
+  prefixes: string[] = ["PROMO_QTY_BONUSES:", "VOUCHER_QTY_BONUSES:"],
+): Record<string, number> => {
+  const result: Record<string, number> = {};
+  if (!Array.isArray(discountNames) || discountNames.length === 0) {
+    return result;
+  }
+
+  for (const discountName of discountNames) {
+    const matchedPrefix = prefixes.find((prefix) =>
+      discountName.startsWith(prefix),
+    );
+    if (!matchedPrefix) {
+      continue;
+    }
+
+    const rawValue = discountName.slice(matchedPrefix.length);
+    if (!rawValue) {
+      continue;
+    }
+
+    for (const entry of rawValue.split("|")) {
+      const [productIdRaw, freeQtyRaw] = entry.split(":");
+      const productId = (productIdRaw ?? "").trim();
+      const freeQty = Math.max(0, Number(freeQtyRaw) || 0);
+      if (!productId || freeQty <= 0) {
+        continue;
+      }
+
+      result[productId] = (result[productId] ?? 0) + freeQty;
+    }
+  }
+
+  return result;
+};
+
 export const parseErrorMessage = (
   error: unknown,
   fallbackMessage: string

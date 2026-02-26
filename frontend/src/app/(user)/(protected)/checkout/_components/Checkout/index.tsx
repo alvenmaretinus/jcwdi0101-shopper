@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback} from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/hooks/useCart";
 import { getUserAddresses } from "@/services/user-address/getUserAddresses";
@@ -23,6 +23,125 @@ import PaymentMethod from "./PaymentMethod";
 import ShippingInfo from "./ShippingInfo";
 import { ShippingMethodSelection } from "./ShippingMethodSelection";
 import { resolveProductImageUrl } from "@/lib/resolveProductImageUrl";
+
+const formatMinimumPrice = (raw?: string) => {
+  const parsed = Number(raw ?? "0");
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(parsed);
+};
+
+const mapNotApplicableReason = (reasonRaw: string) => {
+  const reason = reasonRaw.trim().toLowerCase();
+
+  if (reason.includes("not started yet")) {
+    return "voucher belum aktif";
+  }
+  if (reason.includes("expired")) {
+    return "voucher sudah kedaluwarsa";
+  }
+  if (reason.includes("no remaining uses")) {
+    return "kuota voucher sudah habis";
+  }
+  if (reason.includes("invalid discount cap configuration")) {
+    return "konfigurasi voucher tidak valid";
+  }
+  if (reason.includes("eligible cart item not found")) {
+    return "produk syarat voucher tidak ada di keranjang";
+  }
+  if (reason.includes("invalid quantity voucher rule")) {
+    return "aturan voucher quantity tidak valid";
+  }
+
+  const minimumQtyMatch = reasonRaw.match(/minimum quantity not met \(required qty:\s*([0-9]+)\)/i);
+  if (minimumQtyMatch) {
+    const qty = Number(minimumQtyMatch[1]);
+    if (Number.isFinite(qty) && qty > 0) {
+      return `jumlah item minimum ${qty} belum terpenuhi`;
+    }
+    return "jumlah item minimum voucher belum terpenuhi";
+  }
+
+  const minimumMatch = reasonRaw.match(/minimum not met \(required:\s*([0-9]+)\)/i);
+  if (minimumMatch) {
+    const formattedMinimum = formatMinimumPrice(minimumMatch[1]);
+    if (formattedMinimum) {
+      return `minimum belanja ${formattedMinimum} belum terpenuhi`;
+    }
+    return "minimum belanja voucher belum terpenuhi";
+  }
+
+  return "voucher tidak memenuhi syarat";
+};
+
+const mapVoucherErrorMessage = (error: unknown) => {
+  const rawMessage =
+    error instanceof Error && error.message.trim().length > 0
+      ? error.message
+      : "Voucher tidak bisa digunakan saat ini.";
+
+  const message = rawMessage.trim();
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("voucher is invalid, unavailable, or already redeemed")) {
+    const identifiers = message.split(":").slice(1).join(":").trim();
+    if (identifiers) {
+      return `Kode voucher ${identifiers} tidak valid, tidak tersedia, atau sudah digunakan.`;
+    }
+    return "Kode voucher tidak valid, tidak tersedia, atau sudah digunakan.";
+  }
+
+  if (normalized.includes("voucher can only be used by its assigned user")) {
+    return "Voucher ini hanya bisa dipakai oleh akun yang ditentukan.";
+  }
+
+  if (normalized.includes("voucher is currently used in another active order")) {
+    const code = message.split(":").slice(1).join(":").trim();
+    return code
+      ? `Voucher ${code} sedang dipakai di order aktif lain.`
+      : "Voucher sedang dipakai di order aktif lain.";
+  }
+
+  if (normalized.includes("voucher quota reached")) {
+    const code = message.split(":").slice(1).join(":").trim();
+    return code
+      ? `Kuota voucher ${code} sudah habis.`
+      : "Kuota voucher sudah habis.";
+  }
+
+  if (normalized.startsWith("voucher is not applicable:")) {
+    const rawEntries = message.slice("Voucher is not applicable:".length).trim();
+    if (!rawEntries) {
+      return "Voucher tidak memenuhi syarat penggunaan.";
+    }
+
+    const mappedEntries = rawEntries
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+      .map((entry) => {
+        const separatorIndex = entry.indexOf(":");
+        if (separatorIndex === -1) {
+          return mapNotApplicableReason(entry);
+        }
+
+        const code = entry.slice(0, separatorIndex).trim();
+        const reason = entry.slice(separatorIndex + 1).trim();
+        const mappedReason = mapNotApplicableReason(reason);
+        return code ? `${code}: ${mappedReason}` : mappedReason;
+      });
+
+    return mappedEntries.join(". ");
+  }
+
+  return message;
+};
 
 export default function CheckoutShell() {
   const router = useRouter();
@@ -68,6 +187,7 @@ export default function CheckoutShell() {
     useState<CheckoutPricingResponse | null>(null);
   const [isLoadingPricing, setIsLoadingPricing] = useState(false);
   const [pricingError, setPricingError] = useState<string | null>(null);
+  const pricingRequestIdRef = useRef(0);
 
   // Fetch shipping info when address changes (Early Store Selection)
   const fetchShippingInfo = useCallback(async (addressId: string) => {
@@ -104,27 +224,41 @@ export default function CheckoutShell() {
 
   // Fetch pricing breakdown when dependencies change
   const fetchPricingBreakdown = useCallback(
-    async (addressId: string, voucherIds?: string[]) => {
+    async (
+      addressId: string,
+      voucherIds?: string[],
+      shippingCost?: number,
+    ): Promise<CheckoutPricingResponse | null> => {
+      const requestId = ++pricingRequestIdRef.current;
       setIsLoadingPricing(true);
       setPricingError(null);
-      setPricingBreakdown(null);
 
       try {
         const breakdown = await getCheckoutPricingBreakdown(
           addressId,
-          voucherIds
+          voucherIds,
+          undefined,
+          shippingCost,
         );
-        setPricingBreakdown(breakdown);
+
+        if (requestId === pricingRequestIdRef.current) {
+          setPricingBreakdown(breakdown);
+        }
+        return breakdown;
       } catch (err) {
         console.error(
           "[CheckoutShell] Failed to fetch pricing breakdown:",
           err
         );
-        const msg =
-          err instanceof Error ? err.message : "Gagal memuat rincian harga";
-        setPricingError(msg);
+        const msg = mapVoucherErrorMessage(err);
+        if (requestId === pricingRequestIdRef.current) {
+          setPricingError(msg);
+        }
+        return null;
       } finally {
-        setIsLoadingPricing(false);
+        if (requestId === pricingRequestIdRef.current) {
+          setIsLoadingPricing(false);
+        }
       }
     },
     []
@@ -152,19 +286,27 @@ export default function CheckoutShell() {
     fetchAddresses();
   }, []);
 
-  // Trigger shipping and pricing fetch when address or vouchers change
+  // Fetch shipping info only when address changes
   useEffect(() => {
-    if (selectedAddress?.id) {
-      fetchShippingInfo(selectedAddress.id);
-      fetchPricingBreakdown(
-        selectedAddress.id,
-        appliedVouchers.length > 0 ? appliedVouchers : undefined
-      );
-    }
+    if (!selectedAddress?.id) return;
+    fetchShippingInfo(selectedAddress.id);
+  }, [selectedAddress?.id, fetchShippingInfo]);
+
+  // Fetch pricing when address/vouchers/shipping selection changes
+  useEffect(() => {
+    if (!selectedAddress?.id) return;
+    if (!selectedShippingMethod) return;
+
+    fetchPricingBreakdown(
+      selectedAddress.id,
+      appliedVouchers.length > 0 ? appliedVouchers : undefined,
+      selectedShippingCost,
+    );
   }, [
     selectedAddress?.id,
+    selectedShippingMethod,
+    selectedShippingCost,
     appliedVouchers,
-    fetchShippingInfo,
     fetchPricingBreakdown,
   ]);
 
@@ -221,36 +363,76 @@ export default function CheckoutShell() {
 
   // Calculate pricing from backend breakdown
   const baseSubtotal = pricingBreakdown?.subtotal ?? 0;
-  const totalDiscount = pricingBreakdown?.totalDiscount ?? 0;
-  const shippingCost = selectedShippingCost;
-  const appliedShippingDiscount = 0; // Shipping vouchers handled separately if needed
-  const finalShippingCost = shippingCost;
-  const total = pricingBreakdown?.grandTotal ?? 0;
+  const totalDiscountExcludingShipping =
+    pricingBreakdown?.totalDiscountExcludingShipping ?? 0;
+  const shippingCost = pricingBreakdown?.shippingCost ?? selectedShippingCost;
+  const appliedShippingDiscount = pricingBreakdown?.shippingDiscount ?? 0;
+  const finalShippingCost =
+    pricingBreakdown?.finalShippingCost ??
+    Math.max(0, shippingCost - appliedShippingDiscount);
+  const total = pricingBreakdown?.grandTotal ?? baseSubtotal;
 
   const applyVoucher = async (): Promise<void> => {
     const normalizedCode = voucherInput.trim().toUpperCase();
     if (!normalizedCode) return;
     if (appliedVouchers.includes(normalizedCode)) {
       setVoucherInput("");
+      setPricingError("Voucher tersebut sudah ditambahkan.");
       return;
     }
 
-    // Add voucher and refetch pricing breakdown
+    if (!selectedAddress?.id) {
+      setPricingError("Pilih alamat pengiriman dulu sebelum memakai voucher.");
+      return;
+    }
+
+    if (!selectedShippingMethod) {
+      setPricingError("Pilih metode pengiriman dulu sebelum memakai voucher.");
+      return;
+    }
+
     try {
       const ids = [...appliedVouchers, normalizedCode];
+      const breakdown = await fetchPricingBreakdown(
+        selectedAddress.id,
+        ids,
+        selectedShippingCost,
+      );
+
+      if (!breakdown) {
+        return;
+      }
+
       setAppliedVouchers(ids);
       setVoucherInput("");
-      // Pricing breakdown will be refetched by the useEffect watching appliedVouchers
+      setPricingError(null);
     } catch (err) {
       console.error("[CheckoutShell] Apply voucher failed:", err);
-      await refreshCheckoutForVoucherFailure();
+      setPricingError(mapVoucherErrorMessage(err));
     }
   };
 
-  const removeVoucher = (id: string) => {
+  const removeVoucher = async (id: string) => {
+    if (!selectedAddress?.id || !selectedShippingMethod) {
+      const ids = appliedVouchers.filter((v) => v !== id);
+      setAppliedVouchers(ids);
+      setPricingError(null);
+      return;
+    }
+
     const ids = appliedVouchers.filter((v) => v !== id);
+    const breakdown = await fetchPricingBreakdown(
+      selectedAddress.id,
+      ids.length > 0 ? ids : undefined,
+      selectedShippingCost,
+    );
+
+    if (!breakdown) {
+      return;
+    }
+
     setAppliedVouchers(ids);
-    // Pricing breakdown will be refetched by the useEffect watching appliedVouchers
+    setPricingError(null);
   };
   const orderItems = (cartItems || []).map((it) => {
     const originalUnitPrice = it.price || 0;
@@ -296,6 +478,7 @@ export default function CheckoutShell() {
               appliedVouchers={appliedVouchers}
               applyVoucher={applyVoucher}
               removeVoucher={removeVoucher}
+              errorMessage={pricingError}
             />
 
             <PaymentMethod
@@ -310,7 +493,7 @@ export default function CheckoutShell() {
             <SummarySidebar
               items={orderItems}
               subtotal={baseSubtotal}
-              totalDiscount={totalDiscount}
+              totalDiscount={totalDiscountExcludingShipping}
               shippingCost={finalShippingCost}
               shippingOriginalCost={shippingCost}
               shippingDiscount={appliedShippingDiscount}

@@ -15,6 +15,11 @@ export type VoucherDiscountBreakdown = {
     productId: string;
     freeQuantity: number;
   }>;
+  appliedVouchers: Array<{
+    code: string;
+    type: "PRODUCT" | "QUANTITY" | "SHIPPING";
+    savedAmount: number;
+  }>;
 };
 
 export type VoucherCartLine = {
@@ -157,9 +162,10 @@ export class VoucherService implements Service {
   ): {
     discount: number;
     quantityBonuses: Array<{ productId: string; freeQuantity: number }>;
+    perVoucherSavings: Array<{ code: string; savedAmount: number }>;
   } {
     if (!cartItems || cartItems.length === 0) {
-      return { discount: 0, quantityBonuses: [] };
+      return { discount: 0, quantityBonuses: [], perVoucherSavings: [] };
     }
 
     const quantityVouchers = vouchers.filter((voucher) => {
@@ -167,45 +173,70 @@ export class VoucherService implements Service {
     });
 
     if (quantityVouchers.length === 0) {
-      return { discount: 0, quantityBonuses: [] };
+      return { discount: 0, quantityBonuses: [], perVoucherSavings: [] };
     }
 
     let totalDiscount = 0;
     const quantityBonusByProductId = new Map<string, number>();
+    const perVoucherSavings = new Map<string, number>();
 
     for (const item of cartItems) {
       if (item.quantity <= 0 || item.unitPrice <= 0) {
         continue;
       }
 
-      const applicableRules = quantityVouchers
-        .filter((voucher) => {
-          const tiedProductId = voucher.discount.productId;
-          return !tiedProductId || tiedProductId === item.productId;
-        })
-        .map((voucher) => ({
-          buyQuantity: voucher.discount.buyQuantity ?? 0,
-          freeQuantity: voucher.discount.freeQuantity ?? 0,
-        }))
-        .filter((rule) => rule.buyQuantity > 0 && rule.freeQuantity > 0);
+      const applicableVouchers = quantityVouchers.filter((voucher) => {
+        const tiedProductId = voucher.discount.productId;
+        return !tiedProductId || tiedProductId === item.productId;
+      });
 
-      if (applicableRules.length === 0) {
+      if (applicableVouchers.length === 0) {
         continue;
       }
 
-      const bestFreeQuantity = this.calculateBestFreeQuantity(item.quantity, applicableRules);
+      let bestVoucher: VoucherResponse | null = null;
+      let bestFreeQuantity = 0;
+
+      for (const voucher of applicableVouchers) {
+        const buyQuantity = voucher.discount.buyQuantity ?? 0;
+        const freeQuantity = voucher.discount.freeQuantity ?? 0;
+        if (buyQuantity <= 0 || freeQuantity <= 0) {
+          continue;
+        }
+
+        const voucherFreeQuantity = this.calculateBestFreeQuantity(item.quantity, [
+          { buyQuantity, freeQuantity },
+        ]);
+
+        if (voucherFreeQuantity > bestFreeQuantity) {
+          bestFreeQuantity = voucherFreeQuantity;
+          bestVoucher = voucher;
+        }
+      }
+
       if (bestFreeQuantity <= 0) {
         continue;
       }
 
-      totalDiscount += bestFreeQuantity * item.unitPrice;
+      const lineSaving = bestFreeQuantity * item.unitPrice;
+      totalDiscount += lineSaving;
       const currentFreeQuantity = quantityBonusByProductId.get(item.productId) ?? 0;
       quantityBonusByProductId.set(item.productId, currentFreeQuantity + bestFreeQuantity);
+
+      if (bestVoucher?.code) {
+        perVoucherSavings.set(
+          bestVoucher.code,
+          (perVoucherSavings.get(bestVoucher.code) ?? 0) + lineSaving,
+        );
+      }
     }
 
     return {
       discount: Math.max(0, Math.round(totalDiscount)),
       quantityBonuses: Array.from(quantityBonusByProductId.entries()).map(([productId, freeQuantity]) => ({ productId, freeQuantity })),
+      perVoucherSavings: Array.from(perVoucherSavings.entries()).map(
+        ([code, savedAmount]) => ({ code, savedAmount: Math.max(0, Math.round(savedAmount)) }),
+      ),
     };
   }
 
@@ -222,6 +253,7 @@ export class VoucherService implements Service {
         shippingDiscount: 0,
         totalDiscount: 0,
         quantityBonuses: [],
+        appliedVouchers: [],
       };
     }
 
@@ -262,7 +294,43 @@ export class VoucherService implements Service {
       const minimumPassed = !discount.isWithMinimum || discount.minimumPrice === null || subtotal >= discount.minimumPrice;
       const available = !discount.isQuantityLimited || (discount.maxUses !== null && discount.useCounter < discount.maxUses);
       const limitedDiscountAvailable = !discount.hasDiscountAmountCap || discount.maxDiscountAmount !== null;
-      const isApplicable = hasStarted && hasNotEnded && minimumPassed && available && limitedDiscountAvailable;
+      let quantityVoucherConditionPassed = true;
+      let quantityVoucherReason: string | null = null;
+
+      if (discount.type === "QUANTITY") {
+        if (!discount.buyQuantity || !discount.freeQuantity) {
+          quantityVoucherConditionPassed = false;
+          quantityVoucherReason = "invalid quantity voucher rule";
+        } else {
+          const candidateItems = (cartItems ?? []).filter((item) => {
+            if (item.quantity <= 0) {
+              return false;
+            }
+            if (!discount.productId) {
+              return true;
+            }
+            return item.productId === discount.productId;
+          });
+
+          if (candidateItems.length === 0) {
+            quantityVoucherConditionPassed = false;
+            quantityVoucherReason = "eligible cart item not found";
+          } else if (
+            !candidateItems.some((item) => item.quantity >= (discount.buyQuantity ?? 0))
+          ) {
+            quantityVoucherConditionPassed = false;
+            quantityVoucherReason = `minimum quantity not met (required qty: ${discount.buyQuantity ?? 0})`;
+          }
+        }
+      }
+
+      const isApplicable =
+        hasStarted &&
+        hasNotEnded &&
+        minimumPassed &&
+        available &&
+        limitedDiscountAvailable &&
+        quantityVoucherConditionPassed;
       if (!isApplicable) {
         let reason = "not applicable";
         if (!hasStarted) reason = "not started yet";
@@ -270,6 +338,7 @@ export class VoucherService implements Service {
         else if (!minimumPassed) reason = `minimum not met (required: ${discount.minimumPrice ?? "-"})`;
         else if (!available) reason = "no remaining uses";
         else if (!limitedDiscountAvailable) reason = "invalid discount cap configuration";
+        else if (!quantityVoucherConditionPassed) reason = quantityVoucherReason ?? "quantity voucher condition not met";
         notApplicable.push({ code: voucher.code, reason });
       }
       return isApplicable;
@@ -282,10 +351,20 @@ export class VoucherService implements Service {
 
     const productVouchers = applicableVouchers.filter((voucher) => voucher.voucherType !== "FREEDELIVERY");
     const shippingVouchers = applicableVouchers.filter((voucher) => voucher.voucherType === "FREEDELIVERY");
+    const appliedVouchers: Array<{
+      code: string;
+      type: "PRODUCT" | "QUANTITY" | "SHIPPING";
+      savedAmount: number;
+    }> = [];
 
     let productDiscount = 0;
     let quantityBonuses: Array<{ productId: string; freeQuantity: number }> = [];
     if (productVouchers.length > 0) {
+      const productVoucherMapByDiscountId = new Map<string, VoucherResponse>();
+      productVouchers.forEach((voucher) => {
+        productVoucherMapByDiscountId.set(voucher.discount.id, voucher);
+      });
+
       const priceDiscounts: DiscountResponse[] = productVouchers
         .filter((voucher) => voucher.discount.type !== "QUANTITY")
         .map(
@@ -299,26 +378,76 @@ export class VoucherService implements Service {
       const stackedResult = calculateStackedDiscount(subtotal, priceDiscounts);
       const priceDiscount = Math.min(stackedResult.totalDiscount, subtotal);
 
+      stackedResult.appliedDiscounts.forEach((applied) => {
+        const sourceVoucher = productVoucherMapByDiscountId.get(applied.id);
+        if (!sourceVoucher || applied.savedAmount <= 0) {
+          return;
+        }
+
+        appliedVouchers.push({
+          code: sourceVoucher.code,
+          type: "PRODUCT",
+          savedAmount: Math.max(0, Math.round(applied.savedAmount)),
+        });
+      });
+
       const quantityVoucher = this.calculateQuantityVoucherDiscount(productVouchers, cartItems);
 
       quantityBonuses = quantityVoucher.quantityBonuses;
+      quantityVoucher.perVoucherSavings.forEach((entry) => {
+        if (entry.savedAmount <= 0) {
+          return;
+        }
+
+        appliedVouchers.push({
+          code: entry.code,
+          type: "QUANTITY",
+          savedAmount: entry.savedAmount,
+        });
+      });
       productDiscount = Math.min(subtotal, Math.max(0, priceDiscount + quantityVoucher.discount));
     }
 
     let shippingDiscount = 0;
     if (shippingCost > 0 && shippingVouchers.length > 0) {
+      let bestShippingVoucherCode: string | null = null;
       shippingDiscount = shippingVouchers.reduce((best, voucher) => {
         const candidate = this.calculateFreeDeliveryDiscount(voucher, shippingCost);
+        if (candidate > best) {
+          bestShippingVoucherCode = voucher.code;
+        }
         return Math.max(best, candidate);
       }, 0);
       shippingDiscount = Math.min(shippingDiscount, shippingCost);
+
+      if (bestShippingVoucherCode && shippingDiscount > 0) {
+        appliedVouchers.push({
+          code: bestShippingVoucherCode,
+          type: "SHIPPING",
+          savedAmount: Math.max(0, Math.round(shippingDiscount)),
+        });
+      }
     }
+
+    const mergedAppliedVouchers = Array.from(
+      appliedVouchers.reduce((acc, voucher) => {
+        const key = `${voucher.code}:${voucher.type}`;
+        const existing = acc.get(key);
+        if (existing) {
+          existing.savedAmount += voucher.savedAmount;
+          return acc;
+        }
+        acc.set(key, { ...voucher });
+        return acc;
+      }, new Map<string, { code: string; type: "PRODUCT" | "QUANTITY" | "SHIPPING"; savedAmount: number }>() ).values(),
+    );
 
     return {
       productDiscount,
       shippingDiscount,
       totalDiscount: productDiscount + shippingDiscount,
       quantityBonuses,
+      appliedVouchers: mergedAppliedVouchers,
     };
   }
 

@@ -3,7 +3,8 @@ import type { PrismaClient } from "../../../prisma/generated/client";
 import type { VoucherReservationCandidate } from "./order.types";
 
 export class OrderVoucherReservationService {
-  static serializeVoucherQuantityBonuses(
+  static serializeQuantityBonuses(
+    prefix: string,
     quantityBonuses: Array<{ productId: string; freeQuantity: number }>,
   ): string | null {
     if (!quantityBonuses || quantityBonuses.length === 0) {
@@ -22,7 +23,16 @@ export class OrderVoucherReservationService {
       return null;
     }
 
-    return `VOUCHER_QTY_BONUSES:${pairs.join("|")}`;
+    return `${prefix}:${pairs.join("|")}`;
+  }
+
+  static serializeVoucherQuantityBonuses(
+    quantityBonuses: Array<{ productId: string; freeQuantity: number }>,
+  ): string | null {
+    return this.serializeQuantityBonuses(
+      "VOUCHER_QTY_BONUSES",
+      quantityBonuses,
+    );
   }
 
   static async enforceVoucherReservationConstraints(

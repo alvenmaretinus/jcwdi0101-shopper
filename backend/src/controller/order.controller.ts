@@ -79,13 +79,19 @@ router.post("/checkout/shipping-info", isAuth, async (req: Request, res: Respons
 router.post("/checkout/pricing-breakdown", isAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id as string;
-    const { addressId, voucherIds, discountIds } = req.body;
+    const { addressId, voucherIds, discountIds, shippingCost } = req.body;
 
     if (!userId || !addressId) {
       return res.status(400).json({ success: false, message: "SHIPPING_ADDRESS_REQUIRED" });
     }
 
-    const result = await OrderService.getCheckoutPricingBreakdown(userId, addressId, voucherIds, discountIds);
+    const result = await OrderService.getCheckoutPricingBreakdown(
+      userId,
+      addressId,
+      voucherIds,
+      discountIds,
+      shippingCost,
+    );
     return res.status(200).json({ success: true, data: result });
   } catch (err: any) {
     next(err);

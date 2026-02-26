@@ -114,7 +114,7 @@ const Cart = () => {
                           )}
                       </div>
                       {(item.bogoFreeQuantity ?? 0) > 0 && (
-                        <span className="inline-block mt-1 text-xs font-medium bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">
+                        <span className="inline-block mt-1 text-xs text-green-600 font-medium bg-secondary/20  px-2 py-0.5 rounded-full">
                           +{item.bogoFreeQuantity} free item
                           {(item.bogoFreeQuantity ?? 0) > 1 ? "s" : ""}
                         </span>
