@@ -13,9 +13,12 @@ import OrderPagination from "./_components/OrderPagination";
 import OrderFilters from "./_components/OrderFilters";
 
 type UIOrderItem = {
+  productId: string;
   name: string;
   quantity: number;
   price: number;
+  originalPrice?: number;
+  bogoFreeQuantity?: number;
   image?: string;
 };
 
@@ -32,6 +35,11 @@ type UIOrder = {
   paymentMethod?: string;
   paymentDeadline?: string | null;
   trackingNumber?: string | null;
+  shippingCost?: number;
+  shippingOriginalCost?: number;
+  totalDiscount?: number;
+  voucherCodes?: string[];
+  discountNames?: string[];
 };
 
 const ITEMS_PER_PAGE = 5;
@@ -76,6 +84,39 @@ const Orders = () => {
             CANCELLED: "cancelled",
           };
 
+          // Parse quantity bonus tokens from discountNames
+          // Supported formats:
+          // - "PROMO_QTY_BONUSES:productId1:qty1|productId2:qty2"
+          // - "VOUCHER_QTY_BONUSES:productId1:qty1|productId2:qty2"
+          const bogoFreeQuantityMap: Record<string, number> = {};
+          const quantityBonusPrefixes = ["PROMO_QTY_BONUSES:", "VOUCHER_QTY_BONUSES:"];
+
+          const parseQuantityBonusEntries = (rawValue: string) => {
+            rawValue.split("|").forEach((entry) => {
+              const [productIdRaw, freeQtyRaw] = entry.split(":");
+              const productId = (productIdRaw ?? "").trim();
+              const freeQty = Math.max(0, parseInt(freeQtyRaw || "0", 10) || 0);
+              if (productId && freeQty > 0) {
+                bogoFreeQuantityMap[productId] =
+                  (bogoFreeQuantityMap[productId] ?? 0) + freeQty;
+              }
+            });
+          };
+
+          if (Array.isArray(o.discountNames)) {
+            for (const discount of o.discountNames) {
+              const matchedPrefix = quantityBonusPrefixes.find((prefix) =>
+                discount.startsWith(prefix),
+              );
+              if (!matchedPrefix) {
+                continue;
+              }
+
+              const rawValue = discount.slice(matchedPrefix.length);
+              parseQuantityBonusEntries(rawValue);
+            }
+          }
+
           const status = statusMap[o.status] ?? "processing";
           const createdAtDate = new Date(o.createdAt);
 
@@ -87,11 +128,19 @@ const Orders = () => {
             rawStatus: o.status,
             statusLabel: status.charAt(0).toUpperCase() + status.slice(1),
             total: o.grandTotal ?? 0,
+            shippingCost: o.shippingCost ?? 0,
+            shippingOriginalCost: o.shippingCost ?? 0,
+            totalDiscount: o.totalDiscount ?? 0,
+            voucherCodes: Array.isArray(o.voucherCodes) ? o.voucherCodes : [],
+            discountNames: Array.isArray(o.discountNames) ? o.discountNames : [],
             items: Array.isArray(o.orderItems)
               ? o.orderItems.map((it: OrderServiceItem) => ({
+                  productId: it.productId,
                   name: it.productName,
                   quantity: it.quantity,
                   price: it.unitPrice,
+                  originalPrice: (it as any).originalPrice ?? (it as any).priceBeforeDiscount,
+                  bogoFreeQuantity: bogoFreeQuantityMap[it.productId] ?? 0,
                   image: undefined,
                 }))
               : [],
@@ -176,8 +225,8 @@ const Orders = () => {
                   key={order.id}
                   order={order}
                   confirmingIds={confirmingIds}
-                  onConfirming={(id) => setConfirmingIds((s) => [...s, id])}
-                  onConfirmed={(id) =>
+                  onConfirming={(id: string) => setConfirmingIds((s) => [...s, id])}
+                  onConfirmed={(id: string) =>
                     setConfirmingIds((s) => s.filter((x) => x !== id))
                   }
                   onReload={loadOrders}

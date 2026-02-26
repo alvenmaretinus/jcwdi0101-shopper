@@ -132,6 +132,7 @@ export class OrderCheckoutService {
     addressId: string,
     voucherIds?: string[],
     discountIds?: string[],
+    shippingCost: number = 0,
   ) {
     const db: PrismaClient = prisma;
 
@@ -159,65 +160,11 @@ export class OrderCheckoutService {
     );
 
     // Get auto-applied global discounts
-    const autoGlobalDiscountIds = await PricingCalculationService.getAutoAppliedGlobalDiscountIds(0, db);
-
-    // Get voucher discount IDs and details
-    const voucherDiscountIds: string[] = [];
-    const voucherAppliedDiscounts: Array<{
-      id: string;
-      name: string;
-      label: string;
-      savedAmount: number;
-      endsAt?: Date | null;
-    }> = [];
-
-    if (voucherIds && voucherIds.length > 0) {
-      const vouchers = await db.voucher.findMany({
-        where: {
-          isSoftDeleted: false,
-          OR: [{ id: { in: voucherIds } }, { code: { in: voucherIds } }],
-          discount: {
-            isSoftDeleted: false,
-          },
-        },
-        include: {
-          discount: {
-            select: {
-              id: true,
-              name: true,
-              type: true,
-              percentage: true,
-              amount: true,
-              endsAt: true,
-            },
-          },
-        },
-      });
-
-      for (const voucher of vouchers) {
-        if (voucher.voucherType === "REFERRAL" && voucher.userId !== userId) {
-          continue;
-        }
-        voucherDiscountIds.push(voucher.discount.id);
-
-        // Calculate label and saved amount for display
-        const label =
-          voucher.discount.type === "PERCENTAGE"
-            ? `${Number(voucher.discount.percentage)}%`
-            : `Rp ${voucher.discount.amount?.toLocaleString("id-ID")}`;
-
-        voucherAppliedDiscounts.push({
-          id: voucher.discount.id,
-          name: voucher.discount.name,
-          label,
-          savedAmount: 0,
-          endsAt: voucher.discount.endsAt,
-        });
-      }
-    }
+    const autoGlobalDiscountIds =
+      await PricingCalculationService.getAutoAppliedGlobalDiscountIds(subtotal, db);
 
     const combinedDiscountIds = Array.from(
-      new Set([...(discountIds ?? []), ...voucherDiscountIds, ...autoGlobalDiscountIds]),
+      new Set([...(discountIds ?? []), ...autoGlobalDiscountIds]),
     );
 
     const combinedDiscounts = await db.discount.findMany({
@@ -227,8 +174,8 @@ export class OrderCheckoutService {
       },
     });
 
-    // Get full breakdown with all discounts
-    const fullBreakdown = await PricingCalculationService.calculateProductPromotionBreakdown(
+    // Product/global promotion breakdown (excluding vouchers)
+    const promotionBreakdown = await PricingCalculationService.calculateProductPromotionBreakdown(
       items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -238,18 +185,62 @@ export class OrderCheckoutService {
       combinedDiscounts.length > 0 ? combinedDiscounts : undefined,
     );
 
+    const promotionDiscount = promotionBreakdown.totalDiscount;
+    let voucherProductDiscount = 0;
+    let voucherShippingDiscount = 0;
+    let voucherQuantityBonuses: Array<{
+      productId: string;
+      freeQuantity: number;
+    }> = [];
+    let appliedVouchers: Array<{
+      code: string;
+      type: "PRODUCT" | "QUANTITY" | "SHIPPING";
+      savedAmount: number;
+    }> = [];
+
+    const normalizedShippingCost = Math.max(0, Number(shippingCost) || 0);
+    const normalizedVoucherIdentifiers = (voucherIds ?? [])
+      .map((identifier) => identifier.trim())
+      .filter((identifier) => identifier.length > 0);
+
+    if (normalizedVoucherIdentifiers.length > 0) {
+      const { VoucherService } = await import("../voucher/voucher.service");
+      const { PrismaVoucherRepository } = await import(
+        "../../repository/voucher/adapter_prisma"
+      );
+
+      const voucherService = new VoucherService(new PrismaVoucherRepository(db));
+      const subtotalAfterPromotion = subtotal - promotionDiscount;
+      const voucherBreakdown = await voucherService.calculateVoucherDiscountBreakdown(
+        normalizedVoucherIdentifiers,
+        subtotalAfterPromotion,
+        userId,
+        normalizedShippingCost,
+        items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: productMap[item.productId]?.price ?? 0,
+        })),
+      );
+
+      voucherProductDiscount = voucherBreakdown.productDiscount;
+      voucherShippingDiscount = voucherBreakdown.shippingDiscount;
+      voucherQuantityBonuses = voucherBreakdown.quantityBonuses;
+      appliedVouchers = voucherBreakdown.appliedVouchers;
+    }
+
+    const voucherBonusMap = new Map<string, number>();
+    for (const line of voucherQuantityBonuses) {
+      voucherBonusMap.set(
+        line.productId,
+        (voucherBonusMap.get(line.productId) ?? 0) + line.freeQuantity,
+      );
+    }
+
     // Build itemized breakdown with product details
-    const itemizedBreakdown = fullBreakdown.lines.map((line) => {
+    const itemizedBreakdown = promotionBreakdown.lines.map((line) => {
       const product = productMap[line.productId];
       const cartItem = items.find((item) => item.productId === line.productId);
-
-      console.log(`[Pricing Breakdown] ${product?.name}:`, {
-        totalDiscount: line.totalDiscount,
-        voucherAppliedDiscountsCount: voucherAppliedDiscounts.length,
-      });
-
-      // Combine item-specific discounts with voucher discounts
-      const allAppliedDiscounts = [...line.itemDiscounts];
 
       return {
         productId: line.productId,
@@ -258,16 +249,34 @@ export class OrderCheckoutService {
         unitPrice: product?.price || 0,
         totalPrice: (product?.price || 0) * (cartItem?.quantity || 0),
         totalDiscount: line.totalDiscount,
-        bogoFreeQuantity: line.bogoFreeQuantity,
-        appliedDiscounts: allAppliedDiscounts,
+        bogoFreeQuantity:
+          line.bogoFreeQuantity + (voucherBonusMap.get(line.productId) ?? 0),
+        appliedDiscounts: [...line.itemDiscounts],
       };
     });
 
+    const productDiscount = promotionDiscount + voucherProductDiscount;
+    const finalShippingCost = Math.max(0, normalizedShippingCost - voucherShippingDiscount);
+    const totalDiscount = productDiscount + voucherShippingDiscount;
+    const grandTotal = subtotal - productDiscount + finalShippingCost;
+    const appliedVoucherDiscounts = appliedVouchers.filter(
+      (voucher) => voucher.type !== "SHIPPING",
+    );
+
     return {
       subtotal,
-      totalDiscount: fullBreakdown.totalDiscount,
-      grandTotal: subtotal - fullBreakdown.totalDiscount,
+      defaultProductDiscount: promotionDiscount,
+      voucherDiscount: voucherProductDiscount,
+      totalDiscountExcludingShipping: productDiscount,
+      productDiscount,
+      shippingDiscount: voucherShippingDiscount,
+      shippingCost: normalizedShippingCost,
+      finalShippingCost,
+      totalDiscount,
+      grandTotal,
       items: itemizedBreakdown,
+      appliedVouchers,
+      appliedVoucherDiscounts,
     };
   }
 
@@ -430,6 +439,12 @@ export class OrderCheckoutService {
 
       // Product/global promotion discount from breakdown
       const promotionDiscount = promotionBreakdown.totalDiscount;
+      const promotionQuantityBonuses = promotionBreakdown.lines
+        .map((line) => ({
+          productId: line.productId,
+          freeQuantity: Math.max(0, Number(line.bogoFreeQuantity) || 0),
+        }))
+        .filter((line) => line.freeQuantity > 0);
 
       // Voucher discount calculation (applied after product promotions)
       let voucherProductDiscount = 0;
@@ -526,6 +541,15 @@ export class OrderCheckoutService {
       }
       if (voucherShippingDiscount > 0) {
         discountNames.push(`SHIPPING_DISCOUNT:${voucherShippingDiscount}`);
+      }
+
+      const promotionQuantityBonusesToken =
+        OrderVoucherReservationService.serializeQuantityBonuses(
+          "PROMO_QTY_BONUSES",
+          promotionQuantityBonuses,
+        );
+      if (promotionQuantityBonusesToken) {
+        discountNames.push(promotionQuantityBonusesToken);
       }
 
       const voucherQuantityBonusesToken =

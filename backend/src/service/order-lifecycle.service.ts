@@ -69,7 +69,6 @@ export class OrderLifecycleService {
       return {};
     }
 
-    const now = new Date();
     const itemByProductId = new Map<string, { productId: string; quantity: number }>();
     for (const item of params.items) {
       itemByProductId.set(item.productId, item);
@@ -83,16 +82,6 @@ export class OrderLifecycleService {
       }
 
       const discount = voucher.discount;
-      const hasStarted = !discount.startsAt || discount.startsAt <= now;
-      const hasNotEnded = !discount.endsAt || discount.endsAt >= now;
-      const minimumPassed = !discount.isWithMinimum || discount.minimumPrice === null || params.orderSubtotal >= discount.minimumPrice;
-      const available = !discount.isQuantityLimited || (discount.maxUses !== null && discount.useCounter < discount.maxUses);
-      const limitedDiscountAvailable = !discount.hasDiscountAmountCap || (discount.maxDiscountAmount !== null && discount.useCounter < discount.maxDiscountAmount);
-
-      if (!hasStarted || !hasNotEnded || !minimumPassed || !available || !limitedDiscountAvailable) {
-        continue;
-      }
-
       if (discount.type !== "QUANTITY") {
         continue;
       }
@@ -252,18 +241,21 @@ export class OrderLifecycleService {
     }
   }
 
-  private static extractVoucherQuantityBonusByProductId(discountNames: string[] | null | undefined): Record<string, number> {
+  private static extractQuantityBonusByProductId(
+    discountNames: string[] | null | undefined,
+    prefix: string,
+  ): Record<string, number> {
     const result: Record<string, number> = {};
     if (!discountNames || discountNames.length === 0) {
       return result;
     }
 
-    const token = discountNames.find((name) => name.startsWith("VOUCHER_QTY_BONUSES:"));
+    const token = discountNames.find((name) => name.startsWith(prefix));
     if (!token) {
       return result;
     }
 
-    const rawValue = token.slice("VOUCHER_QTY_BONUSES:".length);
+    const rawValue = token.slice(prefix.length);
     if (!rawValue) {
       return result;
     }
@@ -281,6 +273,10 @@ export class OrderLifecycleService {
     });
 
     return result;
+  }
+
+  private static hasAnyPositiveQuantity(quantityMap: Record<string, number>): boolean {
+    return Object.values(quantityMap).some((value) => Number(value) > 0);
   }
 
   /**
@@ -312,12 +308,16 @@ export class OrderLifecycleService {
       productId: oi.productId,
       quantity: oi.quantity,
     }));
-    const voucherFreeQuantityMap = await this.getVoucherFreeQuantityMap(db, {
-      orderSubtotal: order.subtotal,
-      orderUserId: order.userId,
-      voucherIdentifiers: order.voucherCodes,
-      items,
-    });
+
+    let bogoFreeQuantityMap = this.extractQuantityBonusByProductId(
+      order.discountNames,
+      "PROMO_QTY_BONUSES:",
+    );
+    let voucherFreeQuantityMap = this.extractQuantityBonusByProductId(
+      order.discountNames,
+      "VOUCHER_QTY_BONUSES:",
+    );
+
     const userAddress = await db.userAddress.findUnique({
       where: { id: order.userAddressId },
     });
@@ -360,20 +360,30 @@ export class OrderLifecycleService {
     const productMap: Record<string, any> = {};
     for (const p of products) productMap[p.id] = p;
 
-    // Calculate BOGO promotion breakdown once to determine total quantities needed
-    const promotionBreakdown = await PricingCalculationService.calculateProductPromotionBreakdown(
-      items.map((it) => ({
-        productId: it.productId,
-        quantity: it.quantity,
-        unitPrice: productMap[it.productId]?.price ?? 0,
-      })),
-      db,
-    );
+    // Fallback for legacy orders created before quantity-bonus tokens were persisted.
+    if (!this.hasAnyPositiveQuantity(bogoFreeQuantityMap)) {
+      const promotionBreakdown = await PricingCalculationService.calculateProductPromotionBreakdown(
+        items.map((it) => ({
+          productId: it.productId,
+          quantity: it.quantity,
+          unitPrice: productMap[it.productId]?.price ?? 0,
+        })),
+        db,
+      );
 
-    // Create map of productId -> bogoFreeQuantity for easy lookup
-    const bogoFreeQuantityMap: Record<string, number> = {};
-    for (const line of promotionBreakdown.lines) {
-      bogoFreeQuantityMap[line.productId] = line.bogoFreeQuantity;
+      for (const line of promotionBreakdown.lines) {
+        bogoFreeQuantityMap[line.productId] = line.bogoFreeQuantity;
+      }
+    }
+
+    // Fallback for legacy orders without voucher quantity token.
+    if (!this.hasAnyPositiveQuantity(voucherFreeQuantityMap)) {
+      voucherFreeQuantityMap = await this.getVoucherFreeQuantityMap(db, {
+        orderSubtotal: order.subtotal,
+        orderUserId: order.userId,
+        voucherIdentifiers: order.voucherCodes,
+        items,
+      });
     }
     // Try candidate stores (nearest first)
     for (const candidate of storesWithDistance) {
