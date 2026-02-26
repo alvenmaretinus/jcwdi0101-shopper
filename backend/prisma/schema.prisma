@@ -74,7 +74,7 @@ model User {
   referrals        User[]    @relation("Referrals")
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
-  storeId          String?   @unique
+  storeId          String?   
   store            Store?    @relation(fields: [storeId], references: [id])
   employeeJoinedAt DateTime?
 

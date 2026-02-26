@@ -56,14 +56,12 @@ export function EditUserDialog({
       setError(null);
 
       const updateData: Record<string, any> = {};
-      if (formData.email !== user.email) updateData.email = formData.email;
-      if (formData.role !== user.role) updateData.role = formData.role;
+      if (formData.email !== '' && formData.email !== user.email) updateData.email = formData.email;
+      if (formData.role && formData.role !== user.role) updateData.role = formData.role;
       const trimmedImage = formData.image.trim();
-      if (trimmedImage !== '' && trimmedImage !== user.image) {
-        updateData.image = trimmedImage;
-      }
+      if (formData.image !== '' && formData.image !== user.image) updateData.image = trimmedImage;
       const storeIdValue = formData.storeId === 'none' ? null : formData.storeId;
-      if (storeIdValue !== user.storeId) updateData.storeId = storeIdValue;
+      if (storeIdValue !== null && storeIdValue !== '' && storeIdValue !== user.storeId) updateData.storeId = storeIdValue;
 
       if (Object.keys(updateData).length === 0) {
         onClose();

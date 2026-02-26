@@ -103,7 +103,7 @@ export default function StockReports() {
 
   useEffect(() => {
     const fetchStockRecords = async () => {
-      if (selectedStoreId === '') return;
+      if (selectedStoreId === '') return; 
       try {
         let url = `/product?withStock=true&page=1&limit=100`;
         if (selectedStoreId !== 'all') {
@@ -127,6 +127,7 @@ export default function StockReports() {
 
     const fetchSummaryReport = async () => {
       setIsSummaryLoading(true);
+      if (selectedStoreId === '') return;
       try {
         const response = await getSummaryStockReport({
           month: reportMonth,
