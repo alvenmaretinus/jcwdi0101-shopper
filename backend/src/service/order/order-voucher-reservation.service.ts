@@ -3,6 +3,28 @@ import type { PrismaClient } from "../../../prisma/generated/client";
 import type { VoucherReservationCandidate } from "./order.types";
 
 export class OrderVoucherReservationService {
+  static serializeVoucherAppliedAmounts(
+    voucherAppliedAmounts: Array<{ code: string; savedAmount: number }>,
+  ): string | null {
+    if (!voucherAppliedAmounts || voucherAppliedAmounts.length === 0) {
+      return null;
+    }
+
+    const pairs = voucherAppliedAmounts
+      .map((line) => ({
+        code: String(line.code ?? "").trim(),
+        savedAmount: Math.max(0, Number(line.savedAmount) || 0),
+      }))
+      .filter((line) => line.code.length > 0 && line.savedAmount > 0)
+      .map((line) => `${line.code}:${line.savedAmount}`);
+
+    if (pairs.length === 0) {
+      return null;
+    }
+
+    return `VOUCHER_APPLIED_AMOUNTS:${pairs.join("|")}`;
+  }
+
   static serializeQuantityBonuses(
     prefix: string,
     quantityBonuses: Array<{ productId: string; freeQuantity: number }>,
