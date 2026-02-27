@@ -12,6 +12,7 @@ import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
 import { Pagination } from '@/components/Pagination/Pagination';
 import { apiFetch, HttpMethod } from '@/lib/apiFetch';
+import { set } from 'zod';
 
 interface SalesReportEntity {
   number: number;
@@ -83,6 +84,13 @@ export default function SalesReport() {
   useEffect(() => {
     const fetchStoresAndCategories = async () => {
       try {
+        if (!isSuperAdmin) {
+          // the fetchUserRole hook will deal with setting store id for non-superadmin, 
+          // so if user is not superadmin and store id is not set yet, 
+          // we should not fetch stores list because it won't be used and 
+          // might cause confusion if the user's store is not in the list of fetched stores
+          return; 
+        }
         const storesData = await apiFetch<{ id: string; name: string }[] | { data?: { id: string; name: string }[] }>('/stores', {
           method: HttpMethod.GET,
         });
