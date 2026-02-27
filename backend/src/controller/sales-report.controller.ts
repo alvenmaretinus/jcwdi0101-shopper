@@ -26,10 +26,10 @@ router.get("/", isAuth, isAdmin, async (req, res) => {
     if (req.user!.role === UserRole.ADMIN) {
         const adminStoreId = req.user!.storeId
         if (!adminStoreId) {
-            return res.status(403).json({ message: "Forbidden" })
+            return res.status(403).json({ message: "Forbidden. Admin does not have a store assigned." })
         }
         if (inputData.storeId && inputData.storeId !== adminStoreId) {
-            return res.status(403).json({ message: "Forbidden" })
+            return res.status(403).json({ message: "Forbidden. Admin cannot access other stores." })
         }
         inputData.storeId = adminStoreId
     }
