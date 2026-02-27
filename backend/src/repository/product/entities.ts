@@ -47,7 +47,7 @@ export type ProductWhereClause = {
 
 export type ProductCategory = {
     id: string;
-    category: string;
+    name: string;
     createdAt: Date;
     updatedAt: Date;
 }

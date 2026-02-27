@@ -5,13 +5,14 @@ import CreateButton from "./_components/create-button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import Header from "./_components/header";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { apiFetch, ApiInit, HttpMethod } from '@/lib/apiFetch';
 import { X, Upload, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import SelectionModal from "@/components/Dialog/SelectionModal";
+import { getProductCategories } from "@/services/product/getProductCategories";
 
 interface ProductImage {
   id: string;
@@ -34,13 +35,14 @@ export default function ProductForm(props: {
   editingProduct?: EditingProduct | null;
   handleCreate?: () => void;
   onCreated?: () => void;
-  categories: { id: string; category: string }[];
+  categories: { id: string; name: string }[];
 }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState<string | number>('');
   const [weight, setWeight] = useState<string | number>('');
   const [categoryId, setCategoryId] = useState('');
+  const [isCategorySelectionModalOpen, setIsCategorySelectionModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -244,6 +246,14 @@ export default function ProductForm(props: {
   };
 
   const totalImages = existingImages.length + selectedFiles.length;
+  const selectedCategoryName = useMemo(() => {
+    if (!categoryId) return 'Select category';
+    return props.categories?.find((cat) => cat.id === categoryId)?.name || 'Select category';
+  }, [categoryId, props.categories]);
+
+  const handleCategorySelect = (category: { id: string; name: string } | null) => {
+    setCategoryId(category?.id ?? '');
+  };
 
   return (
     <Dialog open={props.isDialogOpen} onOpenChange={props.setIsDialogOpen}>
@@ -297,19 +307,25 @@ export default function ProductForm(props: {
           </div>
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
-            <Select value={categoryId} onValueChange={(v) => setCategoryId(v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {props.categories?.map(cat => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start text-left font-normal"
+              onClick={() => setIsCategorySelectionModalOpen(true)}
+            >
+              {selectedCategoryName}
+            </Button>
           </div>
+
+          <SelectionModal
+            open={isCategorySelectionModalOpen}
+            onOpenChange={setIsCategorySelectionModalOpen}
+            onSelect={handleCategorySelect}
+            selectedSelectionId={categoryId || undefined}
+            title="Select Category"
+            description="Search and select a category for this product"
+            getType={getProductCategories}
+          />
 
           {/* Product Images Section */}
           <div className="space-y-3">

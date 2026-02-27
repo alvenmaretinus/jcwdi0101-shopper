@@ -11,7 +11,7 @@ export interface ProductImage {
 
 export interface ProductCategory {
   id: string;
-  category: string;
+  name: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -28,6 +28,21 @@ export class PrismaRepository implements SalesReportRepository {
         };
     }
 
+    generateOrderItemWhereInput(categoryId: string | undefined, productName: string | undefined): OrderItemWhereInput | undefined {
+        if (categoryId === undefined && productName === undefined) {
+            return undefined;
+        }
+
+        const productWhereInput: ProductWhereInput = {
+            categoryId: categoryId ? categoryId : undefined,
+            name: productName ? { contains: productName, mode: QueryMode.insensitive } : undefined,
+        };
+
+        return {
+            product: productWhereInput,
+        };
+    }
+
     async execute(params: OrderWhereInput,  orderInclude: OrderInclude,take: number, skip: number, orderBy: OrderOrderByWithRelationInput[]): Promise<[OrderItemSalesReportEntity[], number]> {
         const orderFindManyArgs: OrderFindManyArgs = {
             where: params,
@@ -44,11 +59,14 @@ export class PrismaRepository implements SalesReportRepository {
         return [results, count];
     }
 
-    prepareOrderInclude(): OrderInclude {
+    prepareOrderInclude(orderItemWhereInput?: OrderItemWhereInput): OrderInclude {
         const productInclude: ProductInclude = { category: true };
         const productArgs: ProductDefaultArgs = { include: productInclude };
         const orderItemProduct: OrderItemInclude = { product: productArgs };
-        const orderItems: Order$orderItemsArgs = { include: orderItemProduct };
+        const orderItems: Order$orderItemsArgs = {
+            include: orderItemProduct,
+            where: orderItemWhereInput,
+        };
         const orderInclude: OrderInclude = { orderItems: orderItems };
 
         return orderInclude;
@@ -77,8 +95,9 @@ export class PrismaRepository implements SalesReportRepository {
     async getSalesReportByFilterPaginated(params: SalesReportByFilterEntity): Promise<[SalesReportEntity[], number]> {
         const completionDateFilter: DateTimeFilter = this.prepareDateTimeFilter(params.monthAndYear);
         const optionalOrderItemsFilter: OrderItemListRelationFilter | undefined = this.generateOptionalOrderItemsFilter(params.categoryId, params.productName);
+        const orderItemWhereInput: OrderItemWhereInput | undefined = this.generateOrderItemWhereInput(params.categoryId, params.productName);
         const orderWhereInput: OrderWhereInput = this.prepareOrderWhereInput(params.storeId, completionDateFilter, optionalOrderItemsFilter);
-        const orderInclude: OrderInclude = this.prepareOrderInclude();
+        const orderInclude: OrderInclude = this.prepareOrderInclude(orderItemWhereInput);
         const orderBy: OrderOrderByWithRelationInput[] = [{ deliveredAt: 'desc' }, { id: 'asc' }];
         
         const [results, totalRowsInDBCount] = await this.execute(orderWhereInput, orderInclude, params.take, params.skip, orderBy);

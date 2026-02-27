@@ -17,7 +17,7 @@ import { Pagination } from '@/components/Pagination/Pagination';
 
 type Categories = {
   id: string;
-  category: string;
+  name: string;
   productCount?: number;
   createdAt?: string | number | null;
 }
@@ -75,7 +75,7 @@ export default function Categories() {
         });
 
         if (searchQuery.trim()) {
-          query.set('category', searchQuery.trim());
+          query.set('name', searchQuery.trim());
         }
 
         const data = await apiFetch<CategoriesResponse>(`/product-category?${query.toString()}`, apiInit);
@@ -115,7 +115,7 @@ export default function Categories() {
 
   const handleEdit = (category: Categories) => {
     setEditingCategory(category);
-    setCategoryName(category.category);
+    setCategoryName(category.name);
     setIsDialogOpen(true);
   };
 
@@ -126,7 +126,7 @@ export default function Categories() {
       limit: ITEMS_PER_PAGE.toString(),
     });
     if (searchQuery.trim()) {
-      query.set('category', searchQuery.trim());
+      query.set('name', searchQuery.trim());
     }
     const data = await apiFetch<CategoriesResponse>(`/product-category?${query.toString()}`, apiInit);
     setCategories(Array.isArray(data?.data) ? data.data : []);
@@ -154,11 +154,11 @@ export default function Categories() {
     setSubmitting(true);
     try {
       if (editingCategory) {
-        const body = { category: categoryName };
+        const body = { name: categoryName };
         const apiInit: ApiInit = { method: HttpMethod.PATCH, body };
         await apiFetch(`/product-category/${editingCategory.id}`, apiInit);
       } else {
-        const body = { category: categoryName };
+        const body = { name: categoryName };
         const apiInit: ApiInit = { method: HttpMethod.POST, body };
         await apiFetch(`/product-category`, apiInit);
       }
@@ -247,7 +247,7 @@ export default function Categories() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <FolderTree className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{category.category}</span>
+                      <span className="font-medium">{category.name}</span>
                     </div>
                   </TableCell>
                   {/*

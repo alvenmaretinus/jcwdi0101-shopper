@@ -20,7 +20,7 @@ export interface ProductWithDiscount extends Discount {
     categoryId: string;
     category?: {
       id: string;
-      category: string;
+      name: string;
     };
     productImages?: Array<{
       id: string;

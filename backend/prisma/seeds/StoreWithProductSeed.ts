@@ -50,9 +50,9 @@ export async function StoreWithProductSeed({
 
   console.log("Creating categories...");
   const category = await prisma.productCategory.upsert({
-    where: { category: "General" },
+    where: { name: "General" },
     update: {},
-    create: { category: "General" },
+    create: { name: "General" },
   });
 
   console.log("Creating stores...");

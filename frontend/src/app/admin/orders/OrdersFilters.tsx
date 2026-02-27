@@ -1,7 +1,9 @@
 "use client";
+import { useState } from "react";
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -9,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Store } from "@/types/Store";
+import SelectionModal from "@/components/Dialog/SelectionModal";
+import { getStores } from "@/services/store/getStores";
 
 interface Props {
   searchQuery: string;
@@ -18,7 +21,6 @@ interface Props {
   setStatusFilter: (s: string) => void;
   storeFilter: string;
   setStoreFilter: (s: string) => void;
-  stores: (Store & { employeeCount: number })[];
   isSuperAdmin: boolean;
 }
 
@@ -29,9 +31,50 @@ export default function OrdersFilters({
   setStatusFilter,
   storeFilter,
   setStoreFilter,
-  stores,
   isSuperAdmin,
 }: Props) {
+  const [isStoreSelectionModalOpen, setIsStoreSelectionModalOpen] =
+    useState(false);
+  const [selectedStoreName, setSelectedStoreName] = useState("All Stores");
+
+  const handleStoreSelect = (store: { id: string; name: string } | null) => {
+    if (!store) {
+      setStoreFilter("all");
+      setSelectedStoreName("All Stores");
+      return;
+    }
+
+    setStoreFilter(store.id);
+    setSelectedStoreName(store.name);
+  };
+
+  const getStoresForSelection = async ({
+    name,
+    page,
+    limit,
+  }: {
+    name: string | undefined;
+    page: number;
+    limit: number;
+  }) => {
+    const response = await getStores({
+      query: {
+        page,
+        search: name,
+        sortBy: "createdAt",
+        sortOrder: "desc",
+      },
+    });
+
+    return {
+      data: (response.data || []).map((store) => ({
+        id: store.id,
+        name: store.name,
+      })),
+      meta: response.meta,
+    };
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-4">
       <div className="relative flex-1 min-w-50 max-w-sm">
@@ -63,19 +106,26 @@ export default function OrdersFilters({
       </Select>
 
       {isSuperAdmin && (
-        <Select value={storeFilter} onValueChange={setStoreFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by store" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Stores</SelectItem>
-            {stores.map((store) => (
-              <SelectItem key={store.id} value={store.id}>
-                {store.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-48 justify-start text-left font-normal"
+            onClick={() => setIsStoreSelectionModalOpen(true)}
+          >
+            {storeFilter === "all" ? "All Stores" : selectedStoreName}
+          </Button>
+
+          <SelectionModal
+            open={isStoreSelectionModalOpen}
+            onOpenChange={setIsStoreSelectionModalOpen}
+            onSelect={handleStoreSelect}
+            selectedSelectionId={storeFilter === "all" ? undefined : storeFilter}
+            title="Select Store"
+            description="Search and select a store to filter orders"
+            getType={getStoresForSelection}
+          />
+        </>
       )}
     </div>
   );

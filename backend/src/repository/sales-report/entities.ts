@@ -26,7 +26,7 @@ export type SalesReportByFilterEntity = {
 type category = {
     id: string;
     updatedAt: Date;
-    category: string;
+    name: string;
     createdAt: Date;
 };
 

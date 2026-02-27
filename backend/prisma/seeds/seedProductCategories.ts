@@ -4,35 +4,35 @@ export async function seedProductCategories() {
   console.log("Seeding product categories...");
 
   const categories = [
-    { category: "Tropical Fruits" },
-    { category: "Citrus Fruits" },
-    { category: "Berries" },
-    { category: "Stone Fruits" },
-    { category: "Exotic Fruits" },
-    { category: "Melons" },
-    { category: "Apples & Pears" },
-    { category: "Dried Fruits" },
-    { category: "Leafy Greens" },
-    { category: "Root Vegetables" },
-    { category: "Cruciferous Vegetables" },
-    { category: "Herbs" },
-    { category: "Alliums" },
-    { category: "Legumes" },
-    { category: "Mushrooms" },
-    { category: "Nuts & Seeds" },
-    { category: "Fresh Juices" },
-    { category: "Salad Mixes" },
-    { category: "Organic Produce" },
-    { category: "Seasonal Picks" },
+    { name: "Tropical Fruits" },
+    { name: "Citrus Fruits" },
+    { name: "Berries" },
+    { name: "Stone Fruits" },
+    { name: "Exotic Fruits" },
+    { name: "Melons" },
+    { name: "Apples & Pears" },
+    { name: "Dried Fruits" },
+    { name: "Leafy Greens" },
+    { name: "Root Vegetables" },
+    { name: "Cruciferous Vegetables" },
+    { name: "Herbs" },
+    { name: "Alliums" },
+    { name: "Legumes" },
+    { name: "Mushrooms" },
+    { name: "Nuts & Seeds" },
+    { name: "Fresh Juices" },
+    { name: "Salad Mixes" },
+    { name: "Organic Produce" },
+    { name: "Seasonal Picks" },
   ];
 
   for (const cat of categories) {
     await prisma.productCategory.upsert({
-      where: { category: cat.category },
+      where: { name: cat.name },
       update: {},
       create: cat,
     });
-    console.log(`Created category: ${cat.category}`);
+    console.log(`Created category: ${cat.name}`);
   }
 
   console.log("Product categories seeding completed.");

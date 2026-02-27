@@ -25,7 +25,7 @@ import { ProductCard } from "../../../../components/products/ProductCard";
 
 interface ProductCategory {
   id: string;
-  category: string;
+  name: string;
 }
 
 interface PaginationMeta {
@@ -61,7 +61,7 @@ export function ProductsList({
   const router = useRouter();
   const searchParams = useSearchParams();
   const categoryOptions = [
-    { id: "all", category: "All Categories" },
+    { id: "all", name: "All Categories" },
     ...categories,
   ];
 
@@ -147,7 +147,7 @@ export function ProductsList({
                   : "hover:bg-muted"
               }`}
             >
-              {category.category}
+              {category.name}
             </button>
           ))}
         </div>
@@ -286,7 +286,7 @@ export function ProductsList({
                     className="rounded-full"
                     onClick={() => handleCategoryChange("all")}
                   >
-                    {selectedCategory.category}
+                    {selectedCategory.name}
                     <X className="ml-1 h-3 w-3" />
                   </Button>
                 )}

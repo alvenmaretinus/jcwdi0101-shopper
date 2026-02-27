@@ -138,7 +138,7 @@ const Categories = async ({
           {/* Categories grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {productCounts.map((category) => {
-              const style = categoryStyles[category.category] || {
+              const style = categoryStyles[category.name] || {
                 icon: "🍇",
                 color: "from-purple-100 to-pink-100",
                 description: "Fresh fruits"
@@ -160,7 +160,7 @@ const Categories = async ({
                       </span>
                     </div>
                     <h3 className="text-xl font-bold text-foreground mb-2">
-                      {category.category}
+                      {category.name}
                     </h3>
                     <p className="text-sm text-muted-foreground">
                       {style.description}

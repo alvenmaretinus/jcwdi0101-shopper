@@ -171,7 +171,7 @@ const Deals = () => {
         categoryId: product.categoryId,
         category: {
           id: product.category?.id || product.categoryId,
-          category: product.category?.category || "Products",
+          name: product.category?.name || "Products",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -240,7 +240,7 @@ const Deals = () => {
           categoryId: product.categoryId,
           category: {
             id: product.category?.id || product.categoryId,
-            category: product.category?.category || "Products",
+            name: product.category?.name || "Products",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },

@@ -6,7 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { authClient } from '@/lib/authClient';
@@ -17,8 +16,8 @@ import { getDetailedStockReport, DetailedMovementRecord } from '@/services/stock
 import { Pagination } from '@/components/Pagination/Pagination';
 import { apiFetch, HttpMethod } from '@/lib/apiFetch';
 import { Product } from '@/types/Product';
-import ProductSelectionModal from '@/components/Dialog/ProductSelectionModal';
-import type { ProductWithDetails } from '@/services/product/getProducts';
+import SelectionModal from '@/components/Dialog/SelectionModal';
+import { getProducts, type ProductWithDetails } from '@/services/product/getProducts';
 
 export default function StockReports() {
   const { data, isPending } = authClient.useSession();
@@ -26,11 +25,8 @@ export default function StockReports() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [userStoreId, setUserStoreId] = useState<string>('');
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
-  const [stores, setStores] = useState<any[]>([]);
-  const [storesPage, setStoresPage] = useState(1);
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [selectedStoreName, setSelectedStoreName] = useState<string>('');
-  const ITEMS_PER_PAGE = 10;
 
   // Report State
   const [activeTab, setActiveTab] = useState<string>('summary');
@@ -84,22 +80,6 @@ export default function StockReports() {
     };
     fetchUserRole();
   }, [sessionUser, isPending]);
-
-  useEffect(() => {
-    if (isSuperAdmin) {
-      const fetchAllStores = async () => {
-        try {
-          const response = await getStores();
-          const storesData = Array.isArray(response) ? response : response?.data || [];
-          setStores(storesData);
-        } catch (error) {
-          console.error('Failed to fetch stores:', error);
-          setStores([]);
-        }
-      };
-      fetchAllStores();
-    }
-  }, [isSuperAdmin]);
 
   useEffect(() => {
     const fetchStockRecords = async () => {
@@ -190,35 +170,56 @@ export default function StockReports() {
     fetchDetailedReport();
   }, [activeTab, selectedProductForDetail, reportMonth, reportYear, selectedStoreId, detailedCurrentPage]);
 
-  const getPaginatedStores = (storesList: any[], page: number) => {
-    const startIdx = (page - 1) * ITEMS_PER_PAGE;
-    return storesList.slice(startIdx, startIdx + ITEMS_PER_PAGE);
-  };
-
-  const getTotalPages = (storesList: any[]) => Math.ceil(storesList.length / ITEMS_PER_PAGE);
-  const paginatedStores = getPaginatedStores(stores, storesPage);
-
   const handleProductSelect = (product: ProductWithDetails | null) => {
     if (product) {
       setSelectedProductForDetail(product.id);
       setSelectedProductName(product.name);
-      setDetailedCurrentPage(1);
     } else {
       setSelectedProductForDetail('');
       setSelectedProductName('');
     }
+    setDetailedCurrentPage(1);
   };
 
-  const handleStoreSelect = (storeId: string, storeName: string) => {
-    setSelectedStoreId(storeId);
-    setSelectedStoreName(storeName);
-    setIsStoreModalOpen(false);
-    setStoresPage(1);
+  const handleStoreSelect = (store: { id: string; name: string } | null) => {
+    if (!store) {
+      if (activeTab === 'summary') {
+        setSelectedStoreId('all');
+        setSelectedStoreName('All Stores');
+      } else {
+        setSelectedStoreId('');
+        setSelectedStoreName('');
+      }
+      return;
+    }
+
+    setSelectedStoreId(store.id);
+    setSelectedStoreName(store.name);
   };
 
-  useEffect(() => {
-    setStoresPage(1);
-  }, [stores]);
+  const getStoresForSelection = async ({
+    name,
+    page,
+    limit,
+  }: {
+    name: string | undefined;
+    page: number;
+    limit: number;
+  }) => {
+    const response = await getStores({
+      query: {
+        page,
+        search: name,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      },
+    });
+
+    return {
+      data: (response.data || []).map((store) => ({ id: store.id, name: store.name })),
+      meta: response.meta,
+    };
+  };
 
   // For detailed tab, set store automatically for non-superadmins
   useEffect(() => {
@@ -488,88 +489,25 @@ export default function StockReports() {
       </Tabs>
 
       {/* Product Selection Modal */}
-      <ProductSelectionModal
+      <SelectionModal
         open={isProductModalOpen}
         onOpenChange={setIsProductModalOpen}
         onSelect={handleProductSelect}
-        selectedProductId={selectedProductForDetail}
+        selectedSelectionId={selectedProductForDetail}
         title="Select Product"
         description="Search and select a product to view its detailed inventory history"
+        getType={getProducts}
       />
 
-      {/* Store Selection Modal */}
-      <Dialog open={isStoreModalOpen} onOpenChange={setIsStoreModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>Select Store</DialogTitle>
-            <DialogDescription>
-              Choose a store to {activeTab === 'detailed' ? 'view detailed inventory history' : 'filter the inventory reports'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="border rounded-lg overflow-hidden">
-              <div className="max-h-[400px] overflow-y-auto">
-                <div className="divide-y">
-                  {activeTab === 'summary' && (
-                    <button
-                      onClick={() => handleStoreSelect('all', 'All Stores')}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center justify-between group"
-                    >
-                      <span className="font-medium">All Stores</span>
-                      {selectedStoreId === 'all' && (
-                        <Badge variant="default" className="ml-2">Selected</Badge>
-                      )}
-                    </button>
-                  )}
-                  {paginatedStores.map((store) => (
-                    <button
-                      key={store.id}
-                      onClick={() => handleStoreSelect(store.id, store.name)}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center justify-between group"
-                    >
-                      <span className="font-medium">{store.name}</span>
-                      {selectedStoreId === store.id && (
-                        <Badge variant="default" className="ml-2">Selected</Badge>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {getTotalPages(stores) > 1 && (
-                <div className="border-t bg-gray-50 px-4 py-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-600">
-                      Page {storesPage} of {getTotalPages(stores)}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setStoresPage(p => Math.max(1, p - 1))}
-                        disabled={storesPage === 1}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setStoresPage(p => Math.min(getTotalPages(stores), p + 1))}
-                        disabled={storesPage === getTotalPages(stores)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SelectionModal
+        open={isStoreModalOpen}
+        onOpenChange={setIsStoreModalOpen}
+        onSelect={handleStoreSelect}
+        selectedSelectionId={selectedStoreId === 'all' ? undefined : selectedStoreId}
+        title="Select Store"
+        description={`Choose a store to ${activeTab === 'detailed' ? 'view detailed inventory history' : 'filter the inventory reports'}`}
+        getType={getStoresForSelection}
+      />
     </div>
   );
 }

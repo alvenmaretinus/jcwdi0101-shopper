@@ -68,7 +68,7 @@ export interface Store {
 
 export interface ProductCategory {
   id: string;
-  category: string;
+  name: string;
   createdAt: Date;
   updatedAt: Date;
 }

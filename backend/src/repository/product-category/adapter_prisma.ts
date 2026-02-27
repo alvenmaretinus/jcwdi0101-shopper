@@ -20,8 +20,8 @@ export class PrismaRepository implements ProductCategoryRepo {
 
         const where = {
             id: filter.id,
-            category: filter.category
-                ? { contains: filter.category, mode: 'insensitive' as const }
+            name: filter.name
+                ? { contains: filter.name, mode: 'insensitive' as const }
                 : undefined,
         };
 
@@ -30,7 +30,7 @@ export class PrismaRepository implements ProductCategoryRepo {
                 where,
                 skip,
                 take: limit,
-                orderBy: { category: 'asc' },
+                orderBy: { name: 'asc' },
             }),
             this.prisma.productCategory.count({ where }),
         ]);

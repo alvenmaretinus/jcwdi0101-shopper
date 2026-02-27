@@ -290,7 +290,7 @@ model Product {
 
 model ProductCategory {
   id       String    @id @default(uuid())
-  category String    @unique
+  name     String    @unique
   products Product[]
 
   createdAt DateTime @default(now())

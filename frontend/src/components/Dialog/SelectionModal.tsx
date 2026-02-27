@@ -19,7 +19,7 @@ interface SelectionModalProps<SelectionType extends { id: string, name: string}>
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (product: SelectionType | null) => void;
-  selectedProductId?: string | null;
+  selectedSelectionId?: string | null;
   title?: string;
   description?: string;
   getType: (params: SelectionGetParamsType) => Promise<{ data: SelectionType[]; meta: { page: number; limit: number; total: number; totalPages: number } }>;
@@ -29,7 +29,7 @@ export default function SelectionModal<SelectionType extends { id: string, name:
   open,
   onOpenChange,
   onSelect,
-  selectedProductId: selectedSelectionId,
+  selectedSelectionId: selectedSelectionId,
   title = 'Select option',
   description = 'Search and select from the possible options',
   getType,

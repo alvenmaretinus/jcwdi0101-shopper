@@ -12,6 +12,10 @@ import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
 import { Pagination } from '@/components/Pagination/Pagination';
 import { apiFetch, HttpMethod } from '@/lib/apiFetch';
+import { getProductCategories } from '@/services/product/getProductCategories';
+import SelectionModal from '@/components/Dialog/SelectionModal';
+import { Button } from '@/components/ui/button';
+import { getStores } from '@/services/store/getStores';
 
 interface SalesReportEntity {
   number: number;
@@ -41,14 +45,15 @@ export default function SalesReport() {
   const [userStoreId, setUserStoreId] = useState<string>('');
 
   const [selectedStoreId, setSelectedStoreId] = useState<string>('all');
+  const [selectedStoreName, setSelectedStoreName] = useState<string>('All Stores');
+  const [isStoreSelectionModalOpen, setIsStoreSelectionModalOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>(String(getMonth(new Date())));
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Select Category');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [productSearch, setProductSearch] = useState('');
   const [allSalesRecords, setAllSalesRecords] = useState<SalesReportEntity[]>([]);
-  const [stores, setStores] = useState<{ id: string; name: string }[]>([]);
-  const [categories, setCategories] = useState<{ id: string; category: string }[]>([]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -56,11 +61,53 @@ export default function SalesReport() {
     total: 0,
     totalPages: 1,
   });
+  const [isCategorySelectionModalOpen, 
+    setIsCategorySelectionModalOpen] = useState(false);
 
-  const handleCategoryChange = (category: string, categoryIdAny: any) => {
-    setSelectedCategory(category);
-    setSelectedCategoryId(categoryIdAny as string);
-  }
+  const handleCategorySelect = (category: { id: string; name: string } | null) => {
+    if (category) {
+      setSelectedCategory(category.name);
+      setSelectedCategoryId(category.id);
+    } else {
+      setSelectedCategory('all');
+      setSelectedCategoryId('');
+    }
+  };
+
+  const handleStoreSelect = (store: { id: string; name: string } | null) => {
+    if (!store) {
+      setSelectedStoreId('all');
+      setSelectedStoreName('All Stores');
+      return;
+    }
+
+    setSelectedStoreId(store.id);
+    setSelectedStoreName(store.name);
+  };
+
+  const getStoresForSelection = async ({
+    name,
+    page,
+    limit,
+  }: {
+    name: string | undefined;
+    page: number;
+    limit: number;
+  }) => {
+    const response = await getStores({
+      query: {
+        page,
+        search: name,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      },
+    });
+
+    return {
+      data: (response.data || []).map((store) => ({ id: store.id, name: store.name })),
+      meta: response.meta,
+    };
+  };
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -81,40 +128,12 @@ export default function SalesReport() {
   }, [sessionUser]);
 
   useEffect(() => {
-    const fetchStoresAndCategories = async () => {
-      try {
-        const storesData = await apiFetch<{ id: string; name: string }[] | { data?: { id: string; name: string }[] }>('/stores', {
-          method: HttpMethod.GET,
-        });
-        const storesArray = Array.isArray(storesData) ? storesData : storesData?.data || [];
-        setStores(storesArray);
-      } catch (err) {
-        console.error('Failed to fetch stores:', err);
-        setStores([]);
-      }
-
-      try {
-        const categoriesData = await apiFetch<{ id: string; category: string }[] | { data?: { id: string; category: string }[] }>('/product-category', {
-          method: HttpMethod.GET,
-        });
-        const categoriesArray = Array.isArray(categoriesData) ? categoriesData : categoriesData?.data || [];
-        setCategories(categoriesArray);
-      } catch (err) {
-        console.error('Failed to fetch categories:', err);
-        setCategories([]);
-      }
-    };
-    fetchStoresAndCategories(); 
-  }, [])
-  
-
-  useEffect(() => {
     // Fetch sales records with pagination
     const fetchSalesRecords = async () => {
       const limit = 20;
       const skip = (currentPage - 1) * limit;
       let query = `skip=${skip}&take=${limit}`
-      if (selectedCategory !== 'all') query += `&category=${selectedCategory}`
+      if (selectedCategoryId !== '') query += `&categoryId=${selectedCategoryId}`
       if (selectedStoreId !== 'all') query += `&storeId=${selectedStoreId}`
       if (productSearch.trim() !== '') query += `&productName=${encodeURIComponent(productSearch.trim())}`
       query += `&monthAndYear=${selectedYear}-${String(Number(selectedMonth) + 1).padStart(2, '0')}`
@@ -159,19 +178,14 @@ export default function SalesReport() {
         </div>
         {isSuperAdmin && (
           <div className="ml-auto sm:w-auto">
-            <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Select store" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Stores</SelectItem>
-                {stores.map(store => (
-                  <SelectItem key={store.id} value={store.id}>
-                    {store.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-48 justify-start text-left font-normal"
+              onClick={() => setIsStoreSelectionModalOpen(true)}
+            >
+              {selectedStoreId === 'all' ? 'All Stores' : selectedStoreName}
+            </Button>
           </div>
         )}
       </div>
@@ -194,23 +208,15 @@ export default function SalesReport() {
                 />
               </div>
               <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-                {/**TODO: REPLACE THIS WITH DYNAMIC CATEGORY OPTIONS */}
-                <Select value={selectedCategory} onValueChange={(value) => handleCategoryChange(value, value)}>
-                  <SelectTrigger className="w-full sm:w-44">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-
                   
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.category}>
-                        {cat.category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {/**END TODO */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal sm:w-auto"
+                  onClick={() => setIsCategorySelectionModalOpen(true)}
+                >
+                  {selectedCategory || 'Select a category'}
+                </Button>
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                   <SelectTrigger className="w-full sm:w-36">
                     <SelectValue />
@@ -308,6 +314,26 @@ export default function SalesReport() {
           }}
         />
       </Card>
+
+        <SelectionModal
+          open={isCategorySelectionModalOpen}
+          getType={getProductCategories}
+          onOpenChange={setIsCategorySelectionModalOpen}
+          onSelect={handleCategorySelect}
+          selectedSelectionId={selectedCategoryId}
+          title="Select Category"
+          description="Search and select a category to filter sales report"
+        />
+
+        <SelectionModal
+          open={isStoreSelectionModalOpen}
+          onOpenChange={setIsStoreSelectionModalOpen}
+          onSelect={handleStoreSelect}
+          selectedSelectionId={selectedStoreId === 'all' ? undefined : selectedStoreId}
+          title="Select Store"
+          description="Search and select a store to filter sales report"
+          getType={getStoresForSelection}
+        />
     </div>
   );
 }

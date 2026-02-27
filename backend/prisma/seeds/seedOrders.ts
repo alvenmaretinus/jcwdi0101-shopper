@@ -159,7 +159,7 @@ export async function seedOrders() {
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           productName: item.product.name,
-          productCategory: item.product.category.category,
+          productCategory: item.product.category.name,
           productId: item.product.id,
         })),
       },
