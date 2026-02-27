@@ -16,8 +16,8 @@ import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
 import { getStores } from '@/services/store/getStores';
 import { Pagination } from '@/components/Pagination/Pagination';
-import ProductSelectionModal from '@/components/Dialog/ProductSelectionModal';
-import { ProductWithDetails } from '@/services/product/getProducts';
+import SelectionModal from '@/components/Dialog/SelectionModal';
+import { getProducts, ProductWithDetails } from '@/services/product/getProducts';
 
 
 export default function Inventory() {
@@ -345,11 +345,39 @@ export default function Inventory() {
     }
   };
 
-  const handleStoreFilterSelect = (storeId: string, storeName: string) => {
-    setSelectedStoreId(storeId);
-    setSelectedStoreName(storeName);
-    setIsStoreFilterModalOpen(false);
-    setStoresPage(1);
+  const handleStoreFilterSelect = (store: { id: string; name: string } | null) => {
+    if (!store) {
+      setSelectedStoreId('all');
+      setSelectedStoreName('All Stores');
+      return;
+    }
+
+    setSelectedStoreId(store.id);
+    setSelectedStoreName(store.name);
+  };
+
+  const getStoresForSelection = async ({
+    name,
+    page,
+    limit,
+  }: {
+    name: string | undefined;
+    page: number;
+    limit: number;
+  }) => {
+    const response = await getStores({
+      query: {
+        page,
+        search: name,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      },
+    });
+
+    return {
+      data: (response.data || []).map((store) => ({ id: store.id, name: store.name })),
+      meta: response.meta,
+    };
   };
 
   return (
@@ -706,86 +734,25 @@ export default function Inventory() {
         />
       </Card>
       {/* Product Selection Modal */}
-      <ProductSelectionModal
+      <SelectionModal
         open={isProductModalOpen}
         onOpenChange={setIsProductModalOpen}
         onSelect={handleProductSelect}
-        selectedProductId={selectedAddProduct}
+        selectedSelectionId={selectedAddProduct}
         title="Select Product"
         description="Search and select a product to view its detailed inventory history"
+        getType={getProducts}
       />
 
-      {/* Store Filter Modal */}
-      <Dialog open={isStoreFilterModalOpen} onOpenChange={setIsStoreFilterModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>Select Store</DialogTitle>
-            <DialogDescription>
-              Choose a store to filter the inventory
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="border rounded-lg overflow-hidden">
-              <div className="max-h-[400px] overflow-y-auto">
-                <div className="divide-y">
-                  <button
-                    onClick={() => handleStoreFilterSelect('all', 'All Stores')}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center justify-between group"
-                  >
-                    <span className="font-medium">All Stores</span>
-                    {selectedStoreId === 'all' && (
-                      <Badge variant="default" className="ml-2">Selected</Badge>
-                    )}
-                  </button>
-                  {paginatedStores.map((store) => (
-                    <button
-                      key={store.id}
-                      onClick={() => handleStoreFilterSelect(store.id, store.name)}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center justify-between group"
-                    >
-                      <span className="font-medium">{store.name}</span>
-                      {selectedStoreId === store.id && (
-                        <Badge variant="default" className="ml-2">Selected</Badge>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {getTotalPages(stores) > 1 && (
-                <div className="border-t bg-gray-50 px-4 py-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-600">
-                      Page {storesPage} of {getTotalPages(stores)}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setStoresPage(p => Math.max(1, p - 1))}
-                        disabled={storesPage === 1}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setStoresPage(p => Math.min(getTotalPages(stores), p + 1))}
-                        disabled={storesPage === getTotalPages(stores)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SelectionModal
+        open={isStoreFilterModalOpen}
+        onOpenChange={setIsStoreFilterModalOpen}
+        onSelect={handleStoreFilterSelect}
+        selectedSelectionId={selectedStoreId === 'all' ? undefined : selectedStoreId}
+        title="Select Store"
+        description="Choose a store to filter the inventory"
+        getType={getStoresForSelection}
+      />
     </div>
   );
 }

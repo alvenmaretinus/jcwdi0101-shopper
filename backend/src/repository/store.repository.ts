@@ -104,7 +104,7 @@ export class StoreRepository {
           ...ps.product,
           quantity: ps.quantity,
           images: ps.product.productImages.map((pi) => pi.url),
-          category: ps.product.category.category,
+          category: ps.product.category.name,
         })),
       }),
     );

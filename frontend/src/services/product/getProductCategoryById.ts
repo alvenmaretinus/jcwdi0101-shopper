@@ -3,7 +3,7 @@ import { ReadonlyHeaders } from "next/dist/server/web/spec-extension/adapters/he
 
 export interface ProductCategory {
   id: string;
-  category: string;
+  name: string;
   createdAt: string;
   updatedAt: string;
 }

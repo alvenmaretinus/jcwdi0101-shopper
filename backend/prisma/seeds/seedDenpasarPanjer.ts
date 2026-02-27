@@ -62,9 +62,9 @@ async function seedDenpasarPanjer() {
 
   // Ensure category
   const category = await prisma.productCategory.upsert({
-    where: { category: "PanjerTest" },
+    where: { name: "PanjerTest" },
     update: {},
-    create: { category: "PanjerTest" },
+    create: { name: "PanjerTest" },
   });
 
   // Create 3 products and productStore entries (idempotent by name + storeId)

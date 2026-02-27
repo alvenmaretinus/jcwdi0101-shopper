@@ -96,7 +96,7 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
             <div className="space-y-6">
               <div>
                 <Badge variant="secondary" className="mb-2">
-                  {product.category?.category || "Uncategorized"}
+                  {product.category?.name || "Uncategorized"}
                 </Badge>
                 <h1 className="text-4xl font-bold mb-2">{product.name}</h1>
                 {product.description && (
@@ -262,7 +262,7 @@ const ProductDetailPage = async ({ params }: ProductDetailPageProps) => {
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Category</dt>
-                <dd>{product.category?.category || "N/A"}</dd>
+                <dd>{product.category?.name || "N/A"}</dd>
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Price</dt>

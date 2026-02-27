@@ -614,7 +614,7 @@ export class OrderCheckoutService {
                 unitPrice: productMap[item.productId]?.price ?? 0,
                 productName: productMap[item.productId]?.name ?? "",
                 productCategory:
-                  productMap[item.productId]?.category?.category ?? "",
+                  productMap[item.productId]?.category?.name ?? "",
                 productId: item.productId,
               })),
             },

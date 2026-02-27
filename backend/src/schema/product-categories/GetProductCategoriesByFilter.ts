@@ -5,7 +5,7 @@ const idField = z.preprocess(
     z.uuid("Invalid category ID").optional(),
 );
 
-const categoryField = z.preprocess(
+const nameField = z.preprocess(
     (v) => (typeof v === "string" && v.trim() !== "" ? v : undefined),
     z.string().max(255, "Category must be at most 255 characters").optional(),
 );
@@ -13,14 +13,14 @@ const categoryField = z.preprocess(
 export const GetProductCategoriesByFilterSchema = z
     .object({
         id: idField,
-        category: categoryField,
+        name: nameField,
         page: z.coerce.number().int().min(1).optional().default(1),
         limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     })
     .transform((raw) => ({
         filter: {
             id: raw.id,
-            category: raw.category,
+            name: raw.name,
         },
         pagination: {
             page: raw.page,

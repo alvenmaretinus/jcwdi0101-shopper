@@ -1,6 +1,9 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import SelectionModal from "@/components/Dialog/SelectionModal";
+import { getProductCategories } from "@/services/product/getProductCategories";
 
-type Category = { id: string; category: string };
+type Category = { id: string; name: string };
 
 interface Props {
   categories: Category[];
@@ -10,19 +13,42 @@ interface Props {
 
 
 export default function ProductCategorySelect(props: Props) {
+    const [isCategorySelectionModalOpen, setIsCategorySelectionModalOpen] = useState(false);
+
+    const selectedCategoryName = useMemo(() => {
+        if (props.categoryFilter === 'all') return 'All Categories';
+        const selectedCategory = props.categories.find((category) => category.id === props.categoryFilter);
+        return selectedCategory?.name ?? 'Select Category';
+    }, [props.categories, props.categoryFilter]);
+
+    const handleCategorySelect = (category: Category | null) => {
+        if (category) {
+            props.setCategoryFilter(category.id);
+            return;
+        }
+        props.setCategoryFilter('all');
+    };
+
     return (
-        <Select value={props.categoryFilter} onValueChange={props.setCategoryFilter}>
-            <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by category" />
-            </SelectTrigger>
-            <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {props.categories ? props.categories.map(cat => (
-                <SelectItem key={cat.id} value={cat.id}>
-                {cat.category}
-                </SelectItem>
-            )): null}
-            </SelectContent>
-        </Select>
+        <>
+            <Button
+                type="button"
+                variant="outline"
+                className="w-48 justify-start text-left font-normal"
+                onClick={() => setIsCategorySelectionModalOpen(true)}
+            >
+                {selectedCategoryName}
+            </Button>
+
+            <SelectionModal
+                open={isCategorySelectionModalOpen}
+                getType={getProductCategories}
+                onOpenChange={setIsCategorySelectionModalOpen}
+                onSelect={handleCategorySelect}
+                selectedSelectionId={props.categoryFilter === 'all' ? null : props.categoryFilter}
+                title="Select Category"
+                description="Search and select a category to filter products"
+            />
+        </>
     );
 }

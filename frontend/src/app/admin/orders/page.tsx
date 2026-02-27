@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getOrders } from "@/services/admin/getOrders";
-import { getStores } from "@/services/store/getStores";
 import { authClient } from "@/lib/authClient";
 import { getUserByEmail } from "@/services/user/getUserByEmail";
 import {
@@ -15,7 +14,6 @@ import {
   triggerAutoDeliver,
 } from "@/services/admin/orderActions";
 import type { AdminOrder } from "@/services/admin/getOrders";
-import type { Store } from "@/types/Store";
 import OrdersFilters from "./OrdersFilters";
 import OrdersTable from "./OrdersTable";
 import OrderDetailDialog from "./OrderDetailDialog";
@@ -34,26 +32,12 @@ export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
 
   const [orders, setOrders] = useState<AdminOrder[]>([]);
-  const [stores, setStores] = useState<(Store & { employeeCount: number })[]>(
-    []
-  );
   const [loading, setLoading] = useState(false);
   const [triggeringJob, setTriggeringJob] = useState<"deliver" | "complete" | null>(null);
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(15);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [total, setTotal] = useState<number>(0);
-
-  const fetchStores = useCallback(async () => {
-    try {
-      const res = await getStores({
-        query: { page: 1, sortBy: "createdAt", sortOrder: "desc" },
-      });
-      setStores(res.data || []);
-    } catch (e) {
-      console.error("Failed to fetch stores", e);
-    }
-  }, []);
 
   const fetchOrders = useCallback(
     async (pageArg: number, limitArg: number) => {
@@ -92,8 +76,6 @@ export default function Orders() {
 
           if (role === "SUPERADMIN") {
             setIsSuperAdmin(true);
-            // Only superadmin needs the full stores list
-            await fetchStores();
           } else if (role === "ADMIN") {
             // Scope UI to the admin's assigned store to avoid showing other stores
             if (dbUser?.storeId) setStoreFilter(dbUser.storeId);
@@ -107,7 +89,7 @@ export default function Orders() {
       fetchOrders(1, limit);
     };
     init();
-  }, [user, fetchOrders, fetchStores, limit]);
+  }, [user, fetchOrders, limit]);
 
   // Note: initial stores/orders fetch handled in auth-init useEffect above
 
@@ -235,7 +217,6 @@ export default function Orders() {
             setStatusFilter={setStatusFilter}
             storeFilter={storeFilter}
             setStoreFilter={setStoreFilter}
-            stores={stores}
             isSuperAdmin={isSuperAdmin}
           />
         </CardHeader>

@@ -125,7 +125,7 @@ export type  DiscountResponse = {
         categoryId: string;
         category?: {
             id: string;
-            category: string;
+            name: string;
         };
         productImages?: Array<{
             id: string;

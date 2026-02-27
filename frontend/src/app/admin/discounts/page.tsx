@@ -47,7 +47,7 @@ import {
 import { format } from "date-fns";
 import type { Discount } from "@/types/Discount";
 import type { Voucher } from "@/types/Voucher";
-import type { ProductWithDetails } from "@/services/product/getProducts";
+import { getProducts, type ProductWithDetails } from "@/services/product/getProducts";
 import {
   getDiscounts,
   createDiscount,
@@ -67,7 +67,7 @@ import { authClient } from "@/lib/authClient";
 import { getUserByEmail } from "@/services/user/getUserByEmail";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pagination } from "@/components/Pagination/Pagination";
-import ProductSelectionModal from "@/components/Dialog/ProductSelectionModal";
+import SelectionModal from "@/components/Dialog/SelectionModal";
 
 const discountTypeIcons = {
   PERCENTAGE: Percent,
@@ -1229,13 +1229,14 @@ export default function Discounts() {
       </Tabs>
 
       {/* Product Selection Modal */}
-      <ProductSelectionModal
+      <SelectionModal
         open={isProductModalOpen}
         onOpenChange={setIsProductModalOpen}
         onSelect={(product) => {
           setSelectedProduct(product);
         }}
-        selectedProductId={selectedProduct?.id}
+        getType={getProducts}
+        selectedSelectionId={selectedProduct?.id}
         title="Select Product"
         description="Search and select a product to apply the discount"
       />

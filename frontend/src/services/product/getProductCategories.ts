@@ -3,7 +3,7 @@ import { ReadonlyHeaders } from "next/dist/server/web/spec-extension/adapters/he
 
 export interface ProductCategory {
   id: string;
-  category: string;
+  name: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,7 +22,7 @@ export interface ProductCategoryPaginatedResponse {
 
 export interface GetProductCategoriesParams {
   id?: string;
-  category?: string;
+  name?: string;
   page?: number;
   limit?: number;
 }
@@ -34,7 +34,7 @@ export const getProductCategories = async (
   const query = new URLSearchParams();
 
   if (params.id) query.set("id", params.id);
-  if (params.category) query.set("category", params.category);
+  if (params.name) query.set("name", params.name);
   if (params.page) query.set("page", params.page.toString());
   if (params.limit) query.set("limit", params.limit.toString());
 
@@ -44,6 +44,6 @@ export const getProductCategories = async (
     method: HttpMethod.GET,
     headers,
   });
-  
+
   return res;
 };

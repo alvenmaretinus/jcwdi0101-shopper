@@ -1,20 +1,20 @@
 
 export type CreateProductCategoryReq = {
-    category: string
+    name: string
 }
 
 export type GetProductCategoryReq = {
     id?: string
-    category?: string
+    name?: string
 }
 
 export type UpdateProductCategoryReq = {
-    category: string // Required since we only have one field to update
+    name: string // Required since we only have one field to update
 }
 
 export type ProductCategory = {
     id: string
-    category: string
+    name: string
     createdAt: Date | string
     updatedAt: Date | string
 }

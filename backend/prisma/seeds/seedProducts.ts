@@ -4,14 +4,14 @@ export async function seedProducts() {
   console.log("Seeding products...");
 
   // Get categories
-  const tropical = await prisma.productCategory.findUnique({ where: { category: "Tropical Fruits" } });
-  const citrus = await prisma.productCategory.findUnique({ where: { category: "Citrus Fruits" } });
-  const berries = await prisma.productCategory.findUnique({ where: { category: "Berries" } });
-  const stone = await prisma.productCategory.findUnique({ where: { category: "Stone Fruits" } });
-  const exotic = await prisma.productCategory.findUnique({ where: { category: "Exotic Fruits" } });
-  const melons = await prisma.productCategory.findUnique({ where: { category: "Melons" } });
-  const apples = await prisma.productCategory.findUnique({ where: { category: "Apples & Pears" } });
-  const dried = await prisma.productCategory.findUnique({ where: { category: "Dried Fruits" } });
+  const tropical = await prisma.productCategory.findUnique({ where: { name: "Tropical Fruits" } });
+  const citrus = await prisma.productCategory.findUnique({ where: { name: "Citrus Fruits" } });
+  const berries = await prisma.productCategory.findUnique({ where: { name: "Berries" } });
+  const stone = await prisma.productCategory.findUnique({ where: { name: "Stone Fruits" } });
+  const exotic = await prisma.productCategory.findUnique({ where: { name: "Exotic Fruits" } });
+  const melons = await prisma.productCategory.findUnique({ where: { name: "Melons" } });
+  const apples = await prisma.productCategory.findUnique({ where: { name: "Apples & Pears" } });
+  const dried = await prisma.productCategory.findUnique({ where: { name: "Dried Fruits" } });
 
   if (!tropical || !citrus || !berries || !stone || !exotic || !melons || !apples || !dried) {
     throw new Error("Categories not found. Please run seedProductCategories first.");

@@ -9,26 +9,34 @@ import { Badge } from '@/components/ui/badge';
 import { getProducts } from '@/services/product/getProducts';
 import type { ProductWithDetails } from '@/services/product/getProducts';
 
-interface ProductSelectionModalProps {
+type SelectionGetParamsType = {
+    name: string | undefined;
+    page: number;
+    limit: number;
+};
+
+interface SelectionModalProps<SelectionType extends { id: string, name: string}> {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (product: ProductWithDetails | null) => void;
-  selectedProductId?: string | null;
+  onSelect: (product: SelectionType | null) => void;
+  selectedSelectionId?: string | null;
   title?: string;
   description?: string;
+  getType: (params: SelectionGetParamsType) => Promise<{ data: SelectionType[]; meta: { page: number; limit: number; total: number; totalPages: number } }>;
 }
 
-export default function ProductSelectionModal({
+export default function SelectionModal<SelectionType extends { id: string, name: string }>({
   open,
   onOpenChange,
   onSelect,
-  selectedProductId,
-  title = 'Select Product',
-  description = 'Search and select a product',
-}: ProductSelectionModalProps) {
+  selectedSelectionId: selectedSelectionId,
+  title = 'Select option',
+  description = 'Search and select from the possible options',
+  getType,
+}: SelectionModalProps<SelectionType>) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [products, setProducts] = useState<ProductWithDetails[]>([]);
+  const [items, setItems] = useState<SelectionType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -46,22 +54,22 @@ export default function ProductSelectionModal({
   const fetchProducts = async () => {
     setIsLoading(true);
     try {
-      const response = await getProducts({
+      const response = await getType({
         name: searchQuery || undefined,
         page: currentPage,
         limit: 10,
       });
-      setProducts(response.data);
+      setItems(response.data as unknown as SelectionType[]);
       setPagination(response.meta);
     } catch (error) {
-      console.error('Failed to load products:', error);
+      console.error(`Failed to load ${title.toLowerCase()}:`, error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleProductSelect = (product: ProductWithDetails) => {
-    onSelect(product);
+  const handleItemSelect = (item: SelectionType) => {
+    onSelect(item);
     onOpenChange(false);
   };
 
@@ -80,10 +88,10 @@ export default function ProductSelectionModal({
 
         <div className="flex-1 overflow-y-auto space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Search Products</label>
+            <label className="text-sm font-medium text-gray-700">Search {title}</label>
             <Input
               type="text"
-              placeholder="Enter product name..."
+              placeholder={`Enter ${title.toLowerCase()} name...`}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -96,27 +104,24 @@ export default function ProductSelectionModal({
             <div className="max-h-[300px] overflow-y-auto">
               {isLoading ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  Loading products...
+                  Loading {title.toLowerCase()}...
                 </div>
-              ) : products.length === 0 ? (
+              ) : items.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No products found
+                  No {title.toLowerCase()} found
                 </div>
               ) : (
                 <div className="divide-y">
-                  {products.map((product) => (
+                  {items.map((selection) => (
                     <button
-                      key={product.id}
-                      onClick={() => handleProductSelect(product)}
+                      key={selection.id}
+                      onClick={() => handleItemSelect(selection)}
                       className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center justify-between group"
                     >
                       <div className="flex-1">
-                        <span className="font-medium">{product.name}</span>
-                        <div className="text-xs text-muted-foreground">
-                          Rp {product.price?.toLocaleString('id-ID')}
-                        </div>
+                        <span className="font-medium">{selection.name}</span>
                       </div>
-                      {selectedProductId === product.id && (
+                      {selectedSelectionId === selection.id && (
                         <Badge variant="default" className="ml-2">Selected</Badge>
                       )}
                     </button>
@@ -167,7 +172,7 @@ export default function ProductSelectionModal({
           >
             Cancel
           </Button>
-          {selectedProductId && (
+          {selectedSelectionId && (
             <Button
               type="button"
               variant="ghost"

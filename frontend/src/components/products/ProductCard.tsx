@@ -132,7 +132,7 @@ export function ProductCard({
       {/* Content */}
       <div className="p-4">
         <span className="text-xs text-muted-foreground uppercase tracking-wide">
-          {product.category.category}
+          {product.category.name}
         </span>
 
         <Link href={`/products/${product.id}`}>
