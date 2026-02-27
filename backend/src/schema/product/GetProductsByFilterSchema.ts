@@ -5,6 +5,10 @@ const idField = z.preprocess((v) => (typeof v === "string" && v.trim() !== "" ? 
 const nameField = z.preprocess((v) => (typeof v === "string" && v.trim() !== "" ? v : undefined), z.string().max(255, "Product name must be at most 255 characters").optional());
 const categoryIdField = z.preprocess((v) => (typeof v === "string" && v.trim() !== "" ? v : undefined), z.string().uuid("Invalid category ID").optional());
 const storeIdField = z.preprocess((v) => (typeof v === "string" && v.trim() !== "" ? v : undefined), z.string().uuid("Invalid store ID").optional());
+const sortField = z
+  .enum(["featured", "name", "price-low", "price-high"])
+  .optional()
+  .default("featured");
 
 const inStockOnlyField = z.preprocess((v) => {
   if (v === undefined) return false;
@@ -56,6 +60,7 @@ export const GetProductsByFilterSchema = z
       }, z.boolean())
       .optional()
       .default(false),
+    sort: sortField,
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   })
@@ -72,6 +77,7 @@ export const GetProductsByFilterSchema = z
     pagination: {
       page: raw.page,
       limit: raw.limit,
+      sort: raw.sort,
     },
   }));
 

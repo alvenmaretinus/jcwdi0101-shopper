@@ -3,6 +3,7 @@ import { Product, GetProductReq, CreateProductReq, UpdateProductReq, ProductWith
 export interface PaginationParams {
     page: number;
     limit: number;
+    sort?: "featured" | "name" | "price-low" | "price-high";
 }
 
 export interface PaginatedResponse<T> {

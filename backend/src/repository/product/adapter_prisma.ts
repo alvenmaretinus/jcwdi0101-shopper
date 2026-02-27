@@ -13,8 +13,23 @@ export class PrismaRepository implements ProductsRepo {
         this.prisma = prisma;
     }
 
+    private buildOrderBy(sort?: PaginationParams["sort"]) {
+        switch (sort) {
+            case 'name':
+                return [{ name: 'asc' as const }, { createAt: 'desc' as const }];
+            case 'price-low':
+                return [{ price: 'asc' as const }, { createAt: 'desc' as const }];
+            case 'price-high':
+                return [{ price: 'desc' as const }, { createAt: 'desc' as const }];
+            case 'featured':
+            default:
+                return [{ createAt: 'desc' as const }];
+        }
+    }
+
     async getProductsByFilter(filter: Partial<GetProductReq>, pagination?: PaginationParams): Promise<PaginatedResponse<Product>> {
         const where = this.buildWhereClause(filter);
+        const orderBy = this.buildOrderBy(pagination?.sort);
         
         const skip = pagination ? (pagination.page - 1) * pagination.limit : 0;
         const take = pagination ? pagination.limit : undefined;
@@ -26,6 +41,7 @@ export class PrismaRepository implements ProductsRepo {
                     category: true,
                     productImages: true,
                 },
+                orderBy,
                 skip,
                 take,
             }),
@@ -45,6 +61,7 @@ export class PrismaRepository implements ProductsRepo {
 
     async getProductsByFilterWithStock(filter: Partial<GetProductReq>, pagination?: PaginationParams): Promise<PaginatedResponse<ProductWithStock>> {
         const baseWhere = this.buildWhereClause(filter);
+        const orderBy = this.buildOrderBy(pagination?.sort);
         
         // Build productStores filter based on inStockOnly and storeId
         let where = { ...baseWhere };
@@ -97,6 +114,7 @@ export class PrismaRepository implements ProductsRepo {
                         },
                     },
                 },
+                orderBy,
                 skip,
                 take,
             }),
