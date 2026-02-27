@@ -16,7 +16,7 @@ import { getProductCategories } from '@/services/product/getProductCategories';
 import SelectionModal from '@/components/Dialog/SelectionModal';
 import { Button } from '@/components/ui/button';
 import { getStores } from '@/services/store/getStores';
-import { set } from 'zod';
+import { getYearsForSelection } from '@/services/report/getYearsForSelection';
 
 interface SalesReportEntity {
   number: number;
@@ -36,7 +36,6 @@ const months = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 const currentYear = new Date().getFullYear();
-const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 
 export default function SalesReport() {
@@ -48,6 +47,7 @@ export default function SalesReport() {
   const [selectedStoreId, setSelectedStoreId] = useState<string>('all');
   const [selectedStoreName, setSelectedStoreName] = useState<string>('All Stores');
   const [isStoreSelectionModalOpen, setIsStoreSelectionModalOpen] = useState(false);
+  const [isYearSelectionModalOpen, setIsYearSelectionModalOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>(String(getMonth(new Date())));
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
   const [selectedCategory, setSelectedCategory] = useState<string>('Select Category');
@@ -108,6 +108,11 @@ export default function SalesReport() {
       data: (response.data || []).map((store) => ({ id: store.id, name: store.name })),
       meta: response.meta,
     };
+  };
+
+  const handleYearSelect = (year: { id: string; name: string } | null) => {
+    if (!year) return;
+    setSelectedYear(year.id);
   };
 
   useEffect(() => {
@@ -228,16 +233,14 @@ export default function SalesReport() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="w-full sm:w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map(year => (
-                      <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal sm:w-24"
+                  onClick={() => setIsYearSelectionModalOpen(true)}
+                >
+                  {selectedYear}
+                </Button>
               </div>
             </div>
           </div>
@@ -334,6 +337,16 @@ export default function SalesReport() {
           title="Select Store"
           description="Search and select a store to filter sales report"
           getType={getStoresForSelection}
+        />
+
+        <SelectionModal
+          open={isYearSelectionModalOpen}
+          onOpenChange={setIsYearSelectionModalOpen}
+          onSelect={handleYearSelect}
+          selectedSelectionId={selectedYear}
+          title="Select Year"
+          description="Search and select year to filter sales report"
+          getType={getYearsForSelection}
         />
     </div>
   );
