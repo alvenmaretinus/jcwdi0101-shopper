@@ -194,10 +194,13 @@ export default function SalesReport() {
                 />
               </div>
               <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                {/**TODO: REPLACE THIS WITH DYNAMIC CATEGORY OPTIONS */}
                 <Select value={selectedCategory} onValueChange={(value) => handleCategoryChange(value, value)}>
                   <SelectTrigger className="w-full sm:w-44">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
+
+                  
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
                     {categories.map(cat => (
@@ -207,6 +210,7 @@ export default function SalesReport() {
                     ))}
                   </SelectContent>
                 </Select>
+                {/**END TODO */}
                 <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                   <SelectTrigger className="w-full sm:w-36">
                     <SelectValue />
