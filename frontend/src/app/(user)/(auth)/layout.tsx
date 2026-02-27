@@ -39,7 +39,7 @@ function AuthLayoutContent({ children }: { children: ReactNode }) {
 
         const isAdmin = user.role === "ADMIN" || user.role === "SUPERADMIN";
         if (isAdmin) {
-          router.replace("/admin");
+          router.replace("/admin/orders");
         } else {
           router.replace(redirectTo);
         }

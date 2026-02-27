@@ -1,5 +1,4 @@
 import {
-  LayoutDashboard,
   Store,
   Users,
   Package,
@@ -33,31 +32,33 @@ import {
 } from "@/components/ui/tooltip";
 import { authClient } from "@/lib/authClient";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { getUserByEmail } from "@/services/user/getUserByEmail";
 import { useSidebar } from "@/components/ui/sidebar";
 
-const mainMenuItems = [
-  { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
-];
+type MenuItem = {
+  title: string;
+  url: string;
+  icon: ComponentType<{ className?: string }>;
+};
 
-const superAdminItems = [
+const superAdminItems: MenuItem[] = [
   { title: "Stores", url: "/admin/stores", icon: Store },
   { title: "Users", url: "/admin/users", icon: Users },
 ];
 
-const catalogItems = [
+const catalogItems: MenuItem[] = [
   { title: "Categories", url: "/admin/categories", icon: FolderTree },
   { title: "Products", url: "/admin/products", icon: Package },
 ];
 
-const operationsItems = [
+const operationsItems: MenuItem[] = [
   { title: "Inventory", url: "/admin/inventory", icon: Boxes },
   { title: "Orders", url: "/admin/orders", icon: ShoppingCart },
   { title: "Discounts", url: "/admin/discounts", icon: Percent },
 ];
 
-const reportItems = [
+const reportItems: MenuItem[] = [
   { title: "Sales Report", url: "/admin/sales", icon: BarChart3 },
   { title: "Stock Report", url: "/admin/stock", icon: PackageSearch },
 ];
@@ -109,16 +110,6 @@ export function AdminSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-4">
-        <SidebarGroup>
-          <SidebarGroupLabel>Main</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <AdminSidebarMenuItem
-              items={mainMenuItems}
-              onItemClick={() => isMobile && setOpenMobile(false)}
-            />
-          </SidebarGroupContent>
-        </SidebarGroup>
-
         {isSuperAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel>Management</SidebarGroupLabel>
@@ -194,7 +185,7 @@ const AdminSidebarMenuItem = ({
   items,
   onItemClick,
 }: {
-  items: typeof mainMenuItems;
+  items: MenuItem[];
   onItemClick?: () => void;
 }) => (
   <SidebarMenu>
