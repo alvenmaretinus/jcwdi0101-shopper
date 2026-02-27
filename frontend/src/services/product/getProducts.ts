@@ -76,6 +76,7 @@ export interface GetProductsParams {
   inStockOnly?: boolean;
   withStock?: boolean;
   withDiscounts?: boolean;
+  sort?: "featured" | "name" | "price-low" | "price-high";
   page?: number;
   limit?: number;
 }
@@ -115,6 +116,9 @@ export const getProducts = async (
   if (params?.limit !== undefined) {
     queryParams.append("limit", params.limit.toString());
   }
+  if (params?.sort) {
+    queryParams.append("sort", params.sort);
+  }
 
   const queryString = queryParams.toString();
   const url = queryString ? `/product?${queryString}` : "/product";
@@ -124,8 +128,6 @@ export const getProducts = async (
     method: HttpMethod.GET,
     headers,
   });
-
-  console.log(res)
   
   return res;
 };

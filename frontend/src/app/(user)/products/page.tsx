@@ -39,6 +39,9 @@ const Products = async ({
       limit,
       name: search,
       inStockOnly,
+      sort: (sort === "featured" || sort === "name" || sort === "price-low" || sort === "price-high")
+        ? sort
+        : "featured",
     }, nextHeaders),
     getProductCategories({ page: categoryPage, limit: categoryLimit }, nextHeaders),
     categoryId ? getProductCategoryById(categoryId, nextHeaders) : Promise.resolve(null),
