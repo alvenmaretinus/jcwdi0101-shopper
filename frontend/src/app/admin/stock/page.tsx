@@ -18,6 +18,7 @@ import { apiFetch, HttpMethod } from '@/lib/apiFetch';
 import { Product } from '@/types/Product';
 import SelectionModal from '@/components/Dialog/SelectionModal';
 import { getProducts, type ProductWithDetails } from '@/services/product/getProducts';
+import { getYearsForSelection } from '@/services/report/getYearsForSelection';
 
 export default function StockReports() {
   const { data, isPending } = authClient.useSession();
@@ -32,6 +33,7 @@ export default function StockReports() {
   const [activeTab, setActiveTab] = useState<string>('summary');
   const [reportMonth, setReportMonth] = useState<number>(new Date().getMonth() + 1);
   const [reportYear, setReportYear] = useState<number>(new Date().getFullYear());
+  const [isYearModalOpen, setIsYearModalOpen] = useState(false);
   
   // Summary Report State
   const [summaryReports, setSummaryReports] = useState<SummaryStockReportItem[]>([]);
@@ -222,6 +224,11 @@ export default function StockReports() {
     };
   };
 
+  const handleYearSelect = (year: { id: string; name: string } | null) => {
+    if (!year) return;
+    setReportYear(parseInt(year.id));
+  };
+
   // For detailed tab, set store automatically for non-superadmins
   useEffect(() => {
     if (activeTab === 'detailed' && !isSuperAdmin && userStoreId) {
@@ -272,18 +279,14 @@ export default function StockReports() {
                 </div>
                 <div className="space-y-2">
                   <Label>Year</Label>
-                  <Select value={reportYear.toString()} onValueChange={(v) => setReportYear(parseInt(v))}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                        <SelectItem key={year} value={year.toString()}>
-                          {year}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-32 justify-start text-left font-normal"
+                    onClick={() => setIsYearModalOpen(true)}
+                  >
+                    {reportYear}
+                  </Button>
                 </div>
                 {isSuperAdmin && (
                   <div className="space-y-2">
@@ -406,18 +409,14 @@ export default function StockReports() {
                 </div>
                 <div className="space-y-2">
                   <Label>Year</Label>
-                  <Select value={reportYear.toString()} onValueChange={(v) => setReportYear(parseInt(v))}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                        <SelectItem key={year} value={year.toString()}>
-                          {year}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-32 justify-start text-left font-normal"
+                    onClick={() => setIsYearModalOpen(true)}
+                  >
+                    {reportYear}
+                  </Button>
                 </div>
               </div>
               {selectedProductForDetail && !isDetailedLoading && detailedReports.length > 0 && (
@@ -508,6 +507,16 @@ export default function StockReports() {
         title="Select Store"
         description={`Choose a store to ${activeTab === 'detailed' ? 'view detailed inventory history' : 'filter the inventory reports'}`}
         getType={getStoresForSelection}
+      />
+
+      <SelectionModal
+        open={isYearModalOpen}
+        onOpenChange={setIsYearModalOpen}
+        onSelect={handleYearSelect}
+        selectedSelectionId={reportYear.toString()}
+        title="Select Year"
+        description="Search and select year to filter stock report"
+        getType={getYearsForSelection}
       />
     </div>
   );
