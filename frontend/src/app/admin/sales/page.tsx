@@ -50,6 +50,7 @@ export default function SalesReport() {
   const [isYearSelectionModalOpen, setIsYearSelectionModalOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>(String(getMonth(new Date())));
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
+  const [selectedYearName, setSelectedYearName] = useState<string>(String(currentYear));
   const [selectedCategory, setSelectedCategory] = useState<string>('Select Category');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [productSearch, setProductSearch] = useState('');
@@ -113,6 +114,7 @@ export default function SalesReport() {
   const handleYearSelect = (year: { id: string; name: string } | null) => {
     if (!year) return;
     setSelectedYear(year.id);
+    setSelectedYearName(year.name);
   };
 
   useEffect(() => {
@@ -239,7 +241,7 @@ export default function SalesReport() {
                   className="w-full justify-start text-left font-normal sm:w-24"
                   onClick={() => setIsYearSelectionModalOpen(true)}
                 >
-                  {selectedYear}
+                  {selectedYearName}
                 </Button>
               </div>
             </div>

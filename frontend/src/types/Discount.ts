@@ -14,6 +14,10 @@ export interface Discount {
   isVoucher?: boolean;
   isTiedToProduct: boolean;
   productId?: string;
+  product?: {
+    id: string;
+    name: string;
+  };
   buyQuantity?: number;
   freeQuantity?: number;
   startsAt?: Date;

@@ -240,7 +240,10 @@ export default function Discounts() {
     setEditingDiscount(discount);
     setSelectedDiscountType(discount.type);
     if (discount.productId) {
-      setSelectedProduct({ id: discount.productId } as ProductWithDetails);
+      setSelectedProduct({
+        id: discount.productId,
+        name: discount.product?.name ?? "Selected Product",
+      } as ProductWithDetails);
     } else {
       setSelectedProduct(null);
     }
