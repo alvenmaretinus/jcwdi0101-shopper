@@ -34,6 +34,7 @@ export default function StockReports() {
   const [reportMonth, setReportMonth] = useState<number>(new Date().getMonth() + 1);
   const [reportYear, setReportYear] = useState<number>(new Date().getFullYear());
   const [isYearModalOpen, setIsYearModalOpen] = useState(false);
+  const [reportYearName, setReportYearName] = useState<string>(String(new Date().getFullYear()));
   
   // Summary Report State
   const [summaryReports, setSummaryReports] = useState<SummaryStockReportItem[]>([]);
@@ -227,6 +228,7 @@ export default function StockReports() {
   const handleYearSelect = (year: { id: string; name: string } | null) => {
     if (!year) return;
     setReportYear(parseInt(year.id));
+    setReportYearName(year.name);
   };
 
   // For detailed tab, set store automatically for non-superadmins
@@ -285,7 +287,7 @@ export default function StockReports() {
                     className="w-32 justify-start text-left font-normal"
                     onClick={() => setIsYearModalOpen(true)}
                   >
-                    {reportYear}
+                    {reportYearName}
                   </Button>
                 </div>
                 {isSuperAdmin && (
@@ -415,7 +417,7 @@ export default function StockReports() {
                     className="w-32 justify-start text-left font-normal"
                     onClick={() => setIsYearModalOpen(true)}
                   >
-                    {reportYear}
+                    {reportYearName}
                   </Button>
                 </div>
               </div>
