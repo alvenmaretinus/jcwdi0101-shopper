@@ -150,15 +150,22 @@ const Deals = () => {
       const totalDiscount = pricing.totalDiscount;
       const discountedPrice = pricing.discountedPrice;
       const earliestEndsAt = pricing.earliestEndsAt ?? null;
-      const discountBadge = pricing.appliedCount > 1
-        ? `${pricing.appliedCount} discounts applied`
-        : (pricing.appliedDiscounts[0]?.label || `${Math.round((pricing.totalDiscount / product.price) * 100)}% off`);
+      
+      // BXGY/Quantity discount badge
       const bugoBadge = pricing.quantityDiscounts && pricing.quantityDiscounts.length > 0 ? {
         label: pricing.quantityDiscounts.length > 1
           ? `${pricing.quantityDiscounts.length} BXGY offers`
           : `Buy ${pricing.quantityDiscounts[0].buyQuantity} get ${pricing.quantityDiscounts[0].freeQuantity} free`,
         endsAt: pricing.quantityDiscounts[0].endsAt ?? null,
       } : undefined;
+      
+      // Regular discount badge (percentage/amount)
+      // Note: appliedCount only includes percentage/amount discounts, NOT quantity discounts
+      const discountBadge = pricing.appliedCount > 0 ? (
+        pricing.appliedCount > 1
+          ? `${pricing.appliedCount} discounts applied`
+          : (pricing.appliedDiscounts[0]?.label || `${Math.round((pricing.totalDiscount / product.price) * 100)}% off`)
+      ) : undefined;
 
       return {
         id: product.id,
@@ -195,10 +202,10 @@ const Deals = () => {
 
   const flashDealCards = transformedFlashDeals.map((product) => ({
     product,
-    discountBadge: {
-      label: product.discountBadge || "",
+    discountBadge: product.discountBadge ? {
+      label: product.discountBadge,
       endsAt: product.endsAt,
-    },
+    } : undefined,
     bugoBadge: product.bugoBadge,
   }));
 
@@ -255,10 +262,7 @@ const Deals = () => {
           createAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
-        discountBadge: {
-          label: "BXGY",
-          endsAt: earliestEndsAt,
-        },
+        discountBadge: undefined,
         bugoBadge: {
           label: group.length > 1
             ? `${group.length} BXGY offers`
