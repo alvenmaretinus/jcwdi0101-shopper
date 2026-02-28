@@ -21,9 +21,11 @@ export default function UserProtectedLayout({
         router.replace(`/login?redirectTo=${window.location.pathname}`);
       } else if (data && !isPending) {
         const userId = data.user.id;
-        const user = await apiFetch<User>(`/user/${userId}`, { method: HttpMethod.GET });
+        const user = await apiFetch<User>(`/user/${userId}`, {
+          method: HttpMethod.GET,
+        });
         if (user.role === "ADMIN" || user.role === "SUPERADMIN") {
-          router.replace("/admin");
+          router.replace("/admin/orders");
         }
       }
     };

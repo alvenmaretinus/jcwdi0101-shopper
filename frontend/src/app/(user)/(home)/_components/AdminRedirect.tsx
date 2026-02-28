@@ -18,7 +18,7 @@ export default function AdminRedirect() {
         const isAdmin =
           dbUser?.role === "ADMIN" || dbUser?.role === "SUPERADMIN";
         if (isAdmin) {
-          router.push("/admin");
+          router.push("/admin/orders");
         }
       }
     };
