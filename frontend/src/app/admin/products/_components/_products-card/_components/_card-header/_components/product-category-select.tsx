@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import SelectionModal from "@/components/Dialog/SelectionModal";
+import { useMemo } from "react";
+import SelectionSelect from "@/app/admin/_components/SelectionSelect";
 import { getProductCategories } from "@/services/product/getProductCategories";
 
 type Category = { id: string; name: string };
@@ -11,10 +10,7 @@ interface Props {
   setCategoryFilter: (value: string) => void;
 }
 
-
 export default function ProductCategorySelect(props: Props) {
-    const [isCategorySelectionModalOpen, setIsCategorySelectionModalOpen] = useState(false);
-
     const selectedCategoryName = useMemo(() => {
         if (props.categoryFilter === 'all') return 'All Categories';
         const selectedCategory = props.categories.find((category) => category.id === props.categoryFilter);
@@ -30,25 +26,15 @@ export default function ProductCategorySelect(props: Props) {
     };
 
     return (
-        <>
-            <Button
-                type="button"
-                variant="outline"
-                className="w-48 justify-start text-left font-normal"
-                onClick={() => setIsCategorySelectionModalOpen(true)}
-            >
-                {selectedCategoryName}
-            </Button>
-
-            <SelectionModal
-                open={isCategorySelectionModalOpen}
-                getType={getProductCategories}
-                onOpenChange={setIsCategorySelectionModalOpen}
-                onSelect={handleCategorySelect}
-                selectedSelectionId={props.categoryFilter === 'all' ? null : props.categoryFilter}
-                title="Select Category"
-                description="Search and select a category to filter products"
-            />
-        </>
+        <SelectionSelect
+            value={props.categoryFilter}
+            onChange={handleCategorySelect}
+            getType={getProductCategories}
+            title="Select Category"
+            description="Search and select a category to filter products"
+            className="w-48"
+            displayValue={selectedCategoryName}
+            showLabel={false}
+        />
     );
 }

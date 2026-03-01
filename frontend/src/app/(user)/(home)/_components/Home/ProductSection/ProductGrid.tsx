@@ -1,6 +1,6 @@
 "use client";
 
-import { ProductCard } from "@/app/(user)/_components/ProductCard";
+import { ProductCard } from "@/components/products/ProductCard";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { StoreProduct } from "@/types/StoreProduct";

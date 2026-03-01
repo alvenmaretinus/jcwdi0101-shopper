@@ -4,11 +4,17 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductWithDetails } from "@/services/product/getProducts";
+import { StoreProduct } from "@/types/StoreProduct";
 import Image from "next/image";
 import { useCart } from "@/hooks/useCart";
+import { authClient } from "@/lib/authClient";
+import { toast } from "sonner";
+import { useState } from "react";
+
+type ProductInput = ProductWithDetails | StoreProduct;
 
 interface ProductCardProps {
-  product: ProductWithDetails;
+  product: ProductInput;
   discountBadge?: {
     label: string;
     endsAt?: string | Date | null;
@@ -19,12 +25,19 @@ interface ProductCardProps {
   };
 }
 
+function isStoreProduct(product: ProductInput): product is StoreProduct {
+  return "quantity" in product && !("productStores" in product);
+}
+
 export function ProductCard({
   product,
   discountBadge,
   bugoBadge,
 }: ProductCardProps) {
+  const { data: session } = authClient.useSession();
+  const isLoggedIn = !!session;
   const { addToCart } = useCart({ autoFetch: false });
+  const [isAdding, setIsAdding] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -47,21 +60,45 @@ export function ProductCard({
     return `, ends ${formattedDate}`;
   };
 
-  const totalStock = product.productStores
-    ? product.productStores.reduce((sum, ps) => sum + ps.quantity, 0)
-    : 0;
+  // Normalize product data
+  const isStoreProductType = isStoreProduct(product);
+  const totalStock = isStoreProductType
+    ? product.quantity
+    : (product.productStores?.reduce((sum, ps) => sum + ps.quantity, 0) ?? 0);
+  
   const isOutOfStock = totalStock === 0;
-  const originalPrice =
-    typeof product.originalPrice === "number" ? product.originalPrice : null;
-  const hasDiscountedPrice =
-    originalPrice !== null && originalPrice > product.price;
-  const savingsAmount =
-    typeof product.savingsAmount === "number"
-      ? product.savingsAmount
-      : hasDiscountedPrice
-        ? originalPrice - product.price
-        : 0;
-  console.log("Product:", product);
+  
+  const originalPrice = isStoreProductType
+    ? (product.originalPrice ?? product.price)
+    : (typeof product.originalPrice === "number" ? product.originalPrice : null);
+  
+  const displayPrice = isStoreProductType
+    ? (product.finalPrice ?? product.price)
+    : product.price;
+  
+  const hasDiscount = isStoreProductType
+    ? (product.discountAmount ?? 0) > 0 && originalPrice !== null && originalPrice > displayPrice
+    : originalPrice !== null && originalPrice > displayPrice;
+  
+  const discountPercentage = isStoreProductType
+    ? hasDiscount && originalPrice ? Math.round((1 - displayPrice / originalPrice) * 100) : 0
+    : hasDiscount && originalPrice ? Math.round((1 - displayPrice / originalPrice) * 100) : 0;
+  
+  let savingsAmount: number;
+  if (isStoreProductType) {
+    savingsAmount = (product as StoreProduct).discountAmount ?? 0;
+  } else {
+    const productWithDetails = product as ProductWithDetails;
+    savingsAmount = 
+      typeof productWithDetails.savingsAmount === "number"
+        ? productWithDetails.savingsAmount
+        : (hasDiscount && originalPrice !== null ? originalPrice - displayPrice : 0);
+  }
+  savingsAmount = savingsAmount ?? 0;
+
+  const weightDisplay = isStoreProductType && product.weight 
+    ? `${product.weight}g/pcs` 
+    : null;
 
   const getImageUrl = (url?: string) => {
     if (!url) return "https://placehold.co/400x400?text=No+Image";
@@ -70,125 +107,158 @@ export function ProductCard({
     return `${apiBaseUrl}${url}`;
   };
 
-  const primaryImage = getImageUrl(product.productImages[0]?.url);
+  const primaryImage = isStoreProductType
+    ? product.images[0] || "https://placehold.co/400x400?text=No+Image"
+    : getImageUrl(product.productImages[0]?.url);
+
+  const productName = product.name;
+  const productId = product.id;
+  const categoryName = isStoreProductType ? product.category : product.category.name;
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isLoggedIn) {
+      toast.info("Please login to add items to cart");
+      return;
+    }
+
+    if (isOutOfStock) return;
+
+    try {
+      setIsAdding(true);
+      await addToCart(productId);
+    } catch (error) {
+      console.error("Add to cart failed:", error);
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   return (
-    <div className="card-product group relative">
+    <div className="card-product group relative flex flex-col bg-card rounded-xl border border-border/50 overflow-hidden hover:shadow-medium transition-all duration-300">
       {/* Badges */}
-      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
-        {isOutOfStock && (
-          <Badge className="bg-destructive text-destructive-foreground border-0">
-            Out of Stock
-          </Badge>
-        )}
-      </div>
+      <Link href={`/products/${productId}`} className="flex-1">
+        {/* Image with discount badge */}
+        <div className="relative aspect-square bg-muted/30 overflow-hidden">
+          {/* Out of stock badge - top left */}
+          {isOutOfStock && (
+            <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground border-0 text-xs z-10">
+              Out of Stock
+            </Badge>
+          )}
 
-      {/* Discount and BOGO Badges - positioned at top center */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex flex-col gap-2 w-full px-4 pt-4">
-        {discountBadge && (
-          <div className="flex justify-center">
-            <div
-              className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap"
-              style={{
-                background: "linear-gradient(to right, #ec4899, #db2777)",
-              }}
-            >
-              {discountBadge.label}
-              {formatEndsIn(discountBadge.endsAt)}
-            </div>
+          {/* Discount badge for simple discount (bottom right for home/products, centered top for deals) */}
+          {!discountBadge && !bugoBadge && hasDiscount && (
+            <Badge className="absolute top-2 right-2 bg-red-500 text-white border-0 text-xs z-10">
+              -{discountPercentage}%
+            </Badge>
+          )}
+          
+          <div className="relative h-full w-full">
+            <Image
+              fill
+              src={primaryImage}
+              alt={productName}
+              className="object-cover group-hover:scale-110 transition-transform duration-300"
+              sizes="(max-width: 640px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              unoptimized
+            />
           </div>
-        )}
-        {bugoBadge && (
-          <div className="flex justify-center">
-            <div
-              className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap"
-              style={{
-                background: "linear-gradient(to right, #f97316, #dc2626)",
-              }}
-            >
-              {bugoBadge.label}
-              {formatEndsIn(bugoBadge.endsAt)}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Image */}
-      <Link href={`/products/${product.id}`}>
-        <div
-          className={`aspect-square bg-muted/30 flex items-center justify-center overflow-hidden relative ${discountBadge || bugoBadge ? "pt-4" : ""}`}
-        >
-          <Image
-            src={primaryImage}
-            alt={product.name}
-            fill
-            className="object-cover group-hover:scale-110 transition-transform duration-300"
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            unoptimized
-          />
         </div>
-      </Link>
 
-      {/* Content */}
-      <div className="p-4">
-        <span className="text-xs text-muted-foreground uppercase tracking-wide">
-          {product.category.name}
-        </span>
+        {/* Discount and BOGO Badges - positioned at top center for deals */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 flex flex-col gap-2 w-full px-4 pt-4">
+          {discountBadge && (
+            <div className="flex justify-center">
+              <div
+                className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap"
+                style={{
+                  background: "linear-gradient(to right, #ec4899, #db2777)",
+                }}
+              >
+                {discountBadge.label}
+                {formatEndsIn(discountBadge.endsAt)}
+              </div>
+            </div>
+          )}
+          {bugoBadge && (
+            <div className="flex justify-center">
+              <div
+                className="text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap"
+                style={{
+                  background: "linear-gradient(to right, #f97316, #dc2626)",
+                }}
+              >
+                {bugoBadge.label}
+                {formatEndsIn(bugoBadge.endsAt)}
+              </div>
+            </div>
+          )}
+        </div>
 
-        <Link href={`/products/${product.id}`}>
-          <h3 className="font-semibold text-foreground mt-1 line-clamp-2 hover:text-primary transition-colors">
-            {product.name}
+        {/* Content */}
+        <div className="p-3 sm:p-4">
+          <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">
+            {categoryName}
+          </span>
+
+          <h3 className="font-semibold text-foreground mt-1 line-clamp-2 group-hover:text-primary transition-colors text-sm sm:text-base">
+            {productName}
           </h3>
-        </Link>
 
-        {/* Description */}
-        {product.description && (
-          <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-            {product.description}
-          </p>
-        )}
+          {/* Weight info */}
+          {weightDisplay && (
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
+              {weightDisplay}
+            </p>
+          )}
 
-        {/* Price and CTA */}
-        <div className="flex items-end justify-between mt-3">
-          <div>
-            {hasDiscountedPrice && originalPrice !== null && (
-              <span className="text-xs text-muted-foreground line-through block">
+          {/* Price */}
+          <div className="flex items-center gap-1.5 sm:gap-2 mt-2 flex-wrap">
+            <span className="text-sm sm:text-base font-bold text-primary">
+              {formatPrice(displayPrice)}
+            </span>
+            {hasDiscount && originalPrice !== null && (
+              <span className="text-[10px] sm:text-xs text-muted-foreground line-through">
                 {formatPrice(originalPrice)}
               </span>
             )}
-            <span className="text-lg font-bold text-foreground">
-              {formatPrice(product.price)}
-            </span>
-            {hasDiscountedPrice && savingsAmount > 0 && (
-              <p className="text-xs text-green-700 font-medium mt-1">
-                You saved {formatPrice(savingsAmount)}
-              </p>
-            )}
           </div>
 
-          <Button
-            size="icon"
-            disabled={isOutOfStock}
-            onClick={(e) => {
-              e.preventDefault();
-              addToCart(product.id);
-            }}
-            className={`h-9 w-9 rounded-full shrink-0 ${
-              isOutOfStock
-                ? "bg-muted text-muted-foreground"
-                : "bg-primary hover:bg-primary/90 text-primary-foreground"
-            }`}
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
-        </div>
+          {/* Savings message */}
+          {hasDiscount && savingsAmount > 0 && !isStoreProductType && (
+            <p className="text-xs text-green-700 font-medium mt-1">
+              You saved {formatPrice(savingsAmount)}
+            </p>
+          )}
 
-        {/* Stock status */}
-        {!isOutOfStock && totalStock <= 10 && (
-          <p className="text-sm text-secondary font-medium mt-2">
-            Only {totalStock} left
-          </p>
-        )}
+          {/* Stock status */}
+          {isOutOfStock && (
+            <p className="text-[10px] sm:text-xs text-red-500 font-medium mt-1">
+              Out of Stock
+            </p>
+          )}
+          {!isOutOfStock && totalStock <= 10 && totalStock > 0 && (
+            <p className="text-[10px] sm:text-xs text-amber-600 font-medium mt-1">
+              Only {totalStock} left in stock!
+            </p>
+          )}
+        </div>
+      </Link>
+
+      {/* Quick Add Button */}
+      <div className="px-3 sm:px-4 pb-3 sm:pb-4">
+        <Button
+          disabled={isOutOfStock || isAdding}
+          size="sm"
+          className="w-full h-9 sm:h-10 rounded-full"
+          onClick={handleAddToCart}
+        >
+          <Plus className="h-4 w-4 mr-1.5" />
+          {isAdding ? "Adding..." : "Add"}
+        </Button>
       </div>
     </div>
   );

@@ -191,31 +191,40 @@ export class PrismaRepository implements StockReportRepository {
       groupedByProduct[movement.productId].movements.push(movement);
     }
 
-    const missingEndStockProductIds = Object.entries(groupedByProduct)
-      .filter(([, data]) => data.movements[data.movements.length - 1]?.endStock === null)
-      .map(([productId]) => productId);
+    const productIds = Object.keys(groupedByProduct);
+    
+    // For "All Stores" case, fetch sum of quantities from ProductStore
+    // For store-specific case, fetch quantity only for that store
+    const allStoresEndingStockByProductId = new Map<string, number>();
+    const storeSpecificEndingStockByProductId = new Map<string, number>();
+    
+    const productStoreWhere: Prisma.ProductStoreWhereInput = {
+      productId: { in: productIds },
+    };
 
-    const fallbackEndingStockByProductId = new Map<string, number>();
-    if (missingEndStockProductIds.length > 0) {
-      const productStoreWhere: Prisma.ProductStoreWhereInput = {
-        productId: { in: missingEndStockProductIds },
-      };
+    if (filter.storeId) {
+      productStoreWhere.storeId = filter.storeId;
+    }
 
+    const productStoreRows = await this.prisma.productStore.findMany({
+      where: productStoreWhere,
+      select: {
+        productId: true,
+        storeId: true,
+        quantity: true,
+      },
+    });
+
+    // Organize by product and store
+    for (const row of productStoreRows) {
       if (filter.storeId) {
-        productStoreWhere.storeId = filter.storeId;
-      }
-
-      const productStoreRows = await this.prisma.productStore.findMany({
-        where: productStoreWhere,
-        select: {
-          productId: true,
-          quantity: true,
-        },
-      });
-
-      for (const row of productStoreRows) {
-        const current = fallbackEndingStockByProductId.get(row.productId) ?? 0;
-        fallbackEndingStockByProductId.set(row.productId, current + row.quantity);
+        // Store-specific: sum quantities for the specific store
+        const current = storeSpecificEndingStockByProductId.get(row.productId) ?? 0;
+        storeSpecificEndingStockByProductId.set(row.productId, current + row.quantity);
+      } else {
+        // All stores: sum quantities across all stores per product
+        const current = allStoresEndingStockByProductId.get(row.productId) ?? 0;
+        allStoresEndingStockByProductId.set(row.productId, current + row.quantity);
       }
     }
 
@@ -249,11 +258,17 @@ export class PrismaRepository implements StockReportRepository {
         }
       }
 
-      // Prefer movement endStock. Fallback to ProductStore for historical rows with null endStock.
-      const endingStock =
-        data.movements[data.movements.length - 1]?.endStock
-        ?? fallbackEndingStockByProductId.get(productId)
-        ?? 0;
+      // Calculate ending stock based on filter context
+      let endingStock: number;
+      if (filter.storeId) {
+        // For store-specific reports: use store-specific ending stock from ProductStore
+        // This ensures: endingStock = startingStock + additions - reductions
+        endingStock = storeSpecificEndingStockByProductId.get(productId) ?? 0;
+      } else {
+        // For all-stores reports: sum ending stocks from all stores for this product
+        // This gives the total inventory across all stores
+        endingStock = allStoresEndingStockByProductId.get(productId) ?? 0;
+      }
 
       return {
         productId,
