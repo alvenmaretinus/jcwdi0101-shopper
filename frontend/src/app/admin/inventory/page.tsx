@@ -1,23 +1,15 @@
 "use client";
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Package, Pencil, Save, X } from 'lucide-react';
-import { format } from 'date-fns';
-import { apiFetch, ApiInit, HttpMethod } from '@/lib/apiFetch';
 import { useState, useEffect } from 'react';
-import { Product } from '@/types/Product';
+import { apiFetch, ApiInit, HttpMethod } from '@/lib/apiFetch';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
 import { getStores } from '@/services/store/getStores';
-import { Pagination } from '@/components/Pagination/Pagination';
-import SelectionModal from '@/components/Dialog/SelectionModal';
 import { getProducts, ProductWithDetails } from '@/services/product/getProducts';
+import { Product } from '@/types/Product';
+import AddStockDialog from './_components/AddStockDialog';
+import StoreFilter from './_components/StoreFilter';
+import InventoryTable from './_components/InventoryTable';
+import InventoryModals from './_components/InventoryModals';
 
 
 export default function Inventory() {
@@ -193,60 +185,6 @@ export default function Inventory() {
       setSelectedAddProductName('');
     }
   };
-  
-  const handleAddStock = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedAddProduct) {
-      alert('Please select a product');
-      return;
-    }
-    
-    const storeId = isSuperAdmin ? selectedAddStore : userStoreId;
-    if (!storeId) {
-      alert('Please select a store');
-      return;
-    }
-    
-    if (addQuantity <= 0) {
-      alert('Please enter a quantity greater than 0');
-      return;
-    }
-    
-    try {
-      const body = {
-        productId: selectedAddProduct,
-        storeId: storeId,
-        quantity: addQuantity,
-      };
-      
-      const apiInit: ApiInit = {
-        method: HttpMethod.POST,
-        body,
-      };
-      
-      await apiFetch(`/product-store`, apiInit);
-      
-      // Reset form and close dialog
-      setSelectedAddProduct('');
-      setSelectedAddStore('');
-      setAddQuantity(0);
-      setIsAddDialogOpen(false);
-      
-      // Refresh stock records
-      const url = `/product?withStock=true&page=${currentPage}&limit=20&storeId=${selectedStoreId !== 'all' ? selectedStoreId : userStoreId}`;
-      const response = await apiFetch<any>(url, { method: HttpMethod.GET });
-      if (response && 'data' in response && 'meta' in response) {
-        setStockRecords(Array.isArray(response.data) ? response.data : []);
-        setPagination(response.meta);
-      }
-      
-      alert('Stock added successfully');
-    } catch (error) {
-      console.error('Failed to add stock:', error);
-      alert('Failed to add stock. Please try again.');
-    }
-  };
 
   const startEditing = (productStoreId: string, quantity: number, storeId: string) => {
     setEditingId(productStoreId);
@@ -389,369 +327,87 @@ export default function Inventory() {
         </div>
       </div>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-        setIsAddDialogOpen(open);
-        if (open) {
-          // Fetch products when modal opens
-          const fetchProducts = async () => {
-            try {
-              const apiInit: ApiInit = { method: HttpMethod.GET };
-              const response = await apiFetch<any>('/product?page=1&limit=100', apiInit);
-              const productsData = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
-              setProductsForDropdown(productsData);
-            } catch (error) {
-              console.error('Failed to fetch products:', error);
-              setProductsForDropdown([]);
-            }
-          };
-          fetchProducts();
-
-          if (isSuperAdmin) {
-            // Fetch stores when modal opens
-            const fetchAllStores = async () => {
-              try {
-                const response = await getStores();
-                const storesData = Array.isArray(response) ? response : response?.data || [];
-                setStores(storesData);
-              } catch (error) {
-                console.error('Failed to fetch stores for modal:', error);
-                setStores([]);
-              }
-            };
-            fetchAllStores();
-          }
-        } else if (!open) {
-          // Reset form when closing
-          setSelectedAddProduct('');
-          setSelectedAddStore('');
-          setAddQuantity(0);
-        }
-      }}>
-        <DialogTrigger asChild>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Stock
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Product Stock</DialogTitle>
-            <DialogDescription>
-              Assign a product to a store with an initial quantity
-            </DialogDescription>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={handleAddStock}>
-            <div className="space-y-2">
-              <Label>Product</Label>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-start text-left font-normal"
-                onClick={() => setIsProductModalOpen(true)}
-              >
-                {selectedAddProductName || 'Select a product'}
-              </Button>
-            </div>
-            {isSuperAdmin && (
-              <div className="space-y-2">
-                <Label>Store</Label>
-                <Select value={selectedAddStore} onValueChange={setSelectedAddStore}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select store" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {paginatedStores.map(store => (
-                      <SelectItem key={store.id} value={store.id}>
-                        {store.name}
-                      </SelectItem>
-                    ))}
-                    {getTotalPages(stores) > 1 && (
-                      <div className="border-t p-2 space-y-1">
-                        <div className="text-xs text-gray-500 px-2">Page {storesPage} of {getTotalPages(stores)}</div>
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setStoresPage(p => Math.max(1, p - 1));
-                            }}
-                            disabled={storesPage === 1}
-                            className="flex-1 text-xs px-2 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Previous
-                          </button>
-                          <button
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setStoresPage(p => Math.min(getTotalPages(stores), p + 1));
-                            }}
-                            disabled={storesPage === getTotalPages(stores)}
-                            className="flex-1 text-xs px-2 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label>Initial Quantity</Label>
-              <Input type="number" min={0} value={addQuantity} onChange={(e) => setAddQuantity(Number(e.target.value))} placeholder="e.g., 100" />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">Add Stock</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Store Filter */}
-      {isSuperAdmin && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <Label className="shrink-0">Select Store:</Label>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-64 justify-start text-left font-normal"
-                onClick={() => setIsStoreFilterModalOpen(true)}
-              >
-                {selectedStoreName || 'Select a store'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Stock Table */}
-      <Card>
-        <CardHeader>
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                {selectedStoreId === 'all' && <TableHead>Store</TableHead>}
-                <TableHead>Quantity</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Updated</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {stockRecords.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={selectedStoreId === 'all' ? 6 : 5} className="text-center text-muted-foreground py-8">
-                    No stock records found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                stockRecords.map((stock) => (
-                    stock.productStores?.map((ps) => (
-                        <TableRow key={ps.id}>
-                            <TableCell>
-                            <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded bg-muted flex items-center justify-center">
-                                <Package className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                                <span className="font-medium">{stock.name}</span>
-                            </div>
-                            </TableCell>
-                            {selectedStoreId === 'all' && (
-                            <TableCell>{ps.store.name}</TableCell>
-                            )}
-                            <TableCell>
-                            {editingId === ps.id ? (
-                                <div className="space-y-2">
-                                <Input
-                                type="number"
-                                min={0}
-                                value={editQuantity}
-                                onChange={(e) => setEditQuantity(Number(e.target.value))}
-                                className="w-24 h-8"
-                                autoFocus
-                                placeholder="Quantity"
-                                />
-                                <Select value={editMovementType} onValueChange={(value) => {
-                                  setEditMovementType(value);
-                                  if (value === 'REALLOCATED') {
-                                    setIsReallocationMode(true);
-                                  } else {
-                                    setIsReallocationMode(false);
-                                    setTargetStoreId('');
-                                  }
-                                }}>
-                                  <SelectTrigger className="w-80 h-8 text-xs">
-                                    <SelectValue placeholder="Movement type" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="ADJUSTMENT">Adjustment</SelectItem>
-                                    <SelectItem value="PURCHASED">Purchased</SelectItem>
-                                    <SelectItem value="SOLD">Sold</SelectItem>
-                                    {isSuperAdmin && <SelectItem value="REALLOCATED">Reallocated (Super Admin)</SelectItem>}
-                                    <SelectItem value="CANCELED">Canceled</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Input
-                                type="text"
-                                value={editMovementMessage}
-                                onChange={(e) => setEditMovementMessage(e.target.value)}
-                                className="w-80 h-8 text-xs"
-                                placeholder="Reason for stock change (optional)"
-                                />
-                                {isReallocationMode && (
-                                  <div className="space-y-2 border-t pt-2">
-                                    <div>
-                                      <Label className="text-xs">Select Target Store</Label>
-                                      <div className="mt-1 max-h-48 overflow-y-auto border rounded p-2">
-                                        {paginatedReallocateStores.length > 0 ? (
-                                          paginatedReallocateStores.map((store) => (
-                                            <div
-                                              key={store.id}
-                                              onClick={() => setTargetStoreId(store.id)}
-                                              className={`cursor-pointer p-2 rounded text-sm mb-1 ${
-                                                targetStoreId === store.id
-                                                  ? 'bg-blue-500 text-white'
-                                                  : 'bg-gray-100 hover:bg-gray-200'
-                                              }`}
-                                            >
-                                              {store.name}
-                                            </div>
-                                          ))
-                                        ) : (
-                                          <div className="text-xs text-gray-500">No stores available</div>
-                                        )}
-                                      </div>
-                                      {getTotalPages(storesForReallocation) > 1 && (
-                                        <div className="mt-2 space-y-1 border-t pt-2">
-                                          <div className="text-xs text-gray-500 px-1">Page {reallocateStoresPage} of {getTotalPages(storesForReallocation)}</div>
-                                          <div className="flex gap-1">
-                                            <button
-                                              type="button"
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setReallocateStoresPage(p => Math.max(1, p - 1));
-                                              }}
-                                              disabled={reallocateStoresPage === 1}
-                                              className="flex-1 text-xs px-2 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                              Previous
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setReallocateStoresPage(p => Math.min(getTotalPages(storesForReallocation), p + 1));
-                                              }}
-                                              disabled={reallocateStoresPage === getTotalPages(storesForReallocation)}
-                                              className="flex-1 text-xs px-2 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                              Next
-                                            </button>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                    {targetStoreId && (
-                                      <div className="text-xs text-blue-600 flex items-center gap-1">
-                                        ✓ Selected: {storesForReallocation.find(s => s.id === targetStoreId)?.name}
-                                      </div>
-                                    )}
-                                    {targetStoreId && (
-                                      <div className="text-xs text-gray-600">
-                                        Decrease quantity above to reallocate stock to {storesForReallocation.find(s => s.id === targetStoreId)?.name}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                </div>
-                            ) : (
-                                <span className="font-medium">{ps.quantity}</span>
-                            )}
-                            </TableCell>
-                            <TableCell>
-                            {(editingId === ps.id ? editQuantity : ps.quantity) === 0 ? (
-                                <Badge variant="destructive">Out of Stock</Badge>
-                            ) : (editingId === ps.id ? editQuantity : ps.quantity) <= 10 ? (
-                                <Badge className="bg-yellow-100 text-yellow-800">Low Stock</Badge>
-                            ) : (
-                                <Badge variant="secondary">In Stock</Badge>
-                            )}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                            {format(stock.updatedAt, 'MMM dd, yyyy')}
-                            </TableCell>
-                            <TableCell className="text-right">
-                            {editingId === ps.id ? (
-                                <div className="flex items-center justify-end gap-1">
-                                <Button size="sm" variant="ghost" onClick={saveQuantity}>
-                                    <Save className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={cancelEditing}>
-                                    <X className="h-4 w-4" />
-                                </Button>
-                                </div>
-                            ) : (
-                                <Button size="sm" variant="ghost" onClick={() => startEditing(ps.id, ps.quantity, ps.storeId)}>
-                                <Pencil className="h-4 w-4" />
-                                </Button>
-                            )}
-                            </TableCell>
-                        </TableRow>
-                        )
-                    )
-              )))}
-            </TableBody>
-          </Table>
-        </CardContent>
-        <Pagination
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          total={pagination.total}
-          onChange={setCurrentPage}
-        />
-      </Card>
-      {/* Product Selection Modal */}
-      <SelectionModal
-        open={isProductModalOpen}
-        onOpenChange={setIsProductModalOpen}
-        onSelect={handleProductSelect}
-        selectedSelectionId={selectedAddProduct}
-        title="Select Product"
-        description="Search and select a product to view its detailed inventory history"
-        getType={getProducts}
+      <AddStockDialog
+        isOpen={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        selectedAddProduct={selectedAddProduct}
+        selectedAddProductName={selectedAddProductName}
+        setSelectedAddProduct={setSelectedAddProduct}
+        setSelectedAddProductName={setSelectedAddProductName}
+        selectedAddStore={selectedAddStore}
+        setSelectedAddStore={setSelectedAddStore}
+        addQuantity={addQuantity}
+        setAddQuantity={setAddQuantity}
+        isSuperAdmin={isSuperAdmin}
+        paginatedStores={paginatedStores}
+        stores={stores}
+        storesPage={storesPage}
+        setStoresPage={setStoresPage}
+        getTotalPages={getTotalPages}
+        onProductSelect={() => setIsProductModalOpen(true)}
+        currentPage={currentPage}
+        selectedStoreId={selectedStoreId}
+        userStoreId={userStoreId}
+        setProductsForDropdown={setProductsForDropdown}
+        setStores={setStores}
+        setStockRecords={setStockRecords}
+        setPagination={setPagination}
+        getStores={getStores}
       />
 
-      <SelectionModal
-        open={isStoreFilterModalOpen}
+      <StoreFilter
+        isSuperAdmin={isSuperAdmin}
+        selectedStoreName={selectedStoreName}
         onOpenChange={setIsStoreFilterModalOpen}
-        onSelect={handleStoreFilterSelect}
-        selectedSelectionId={selectedStoreId === 'all' ? undefined : selectedStoreId}
-        title="Select Store"
-        description="Choose a store to filter the inventory"
-        getType={getStoresForSelection}
+      />
+
+      <InventoryTable
+        stockRecords={stockRecords}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        pagination={pagination}
+        onPageChange={setCurrentPage}
+        selectedStoreId={selectedStoreId}
+        editingId={editingId}
+        editingStoreId={editingStoreId}
+        editQuantity={editQuantity}
+        setEditQuantity={setEditQuantity}
+        editMovementMessage={editMovementMessage}
+        setEditMovementMessage={setEditMovementMessage}
+        editMovementType={editMovementType}
+        setEditMovementType={setEditMovementType}
+        isReallocationMode={isReallocationMode}
+        setIsReallocationMode={setIsReallocationMode}
+        targetStoreId={targetStoreId}
+        setTargetStoreId={setTargetStoreId}
+        paginatedReallocateStores={paginatedReallocateStores}
+        storesForReallocation={storesForReallocation}
+        reallocateStoresPage={reallocateStoresPage}
+        setReallocateStoresPage={setReallocateStoresPage}
+        getTotalPages={getTotalPages}
+        originalQuantity={originalQuantity}
+        isSuperAdmin={isSuperAdmin}
+        onStartEditing={startEditing}
+        onSaveQuantity={saveQuantity}
+        onCancelEditing={cancelEditing}
+        currentPage={currentPage}
+        userStoreId={userStoreId}
+        setStockRecords={setStockRecords}
+        setPagination={setPagination}
+      />
+
+      <InventoryModals
+        isProductModalOpen={isProductModalOpen}
+        onProductModalOpenChange={setIsProductModalOpen}
+        onProductSelect={handleProductSelect}
+        selectedProductId={selectedAddProduct}
+        getProducts={getProducts}
+        
+        isStoreFilterModalOpen={isStoreFilterModalOpen}
+        onStoreFilterModalOpenChange={setIsStoreFilterModalOpen}
+        onStoreFilterSelect={handleStoreFilterSelect}
+        selectedStoreId={selectedStoreId}
+        getStoresForSelection={getStoresForSelection}
       />
     </div>
   );

@@ -2,18 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { apiFetch, ApiInit, HttpMethod } from '@/lib/apiFetch';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-
-import { Plus, Pencil, Trash2, Search, FolderTree } from 'lucide-react';
-import { format } from 'date-fns';
 import { authClient } from '@/lib/authClient';
 import { getUserByEmail } from '@/services/user/getUserByEmail';
-import { Pagination } from '@/components/Pagination/Pagination';
+import { CategoryDialog } from './_components/CategoryDialog';
+import { CategoriesCard } from './_components/CategoriesCard';
 
 type Categories = {
   id: string;
@@ -100,12 +92,6 @@ export default function Categories() {
     fetchCategories();
   }, [currentPage, searchQuery]);
 
-  const categoriesWithCount = categories.map(cat => ({
-    ...cat,
-    productCount: cat.productCount ?? 0,
-    createdAt: cat.createdAt ?? null,
-  }));
-
   const safeCurrentPage = Math.min(paginationMeta.page, paginationMeta.totalPages);
   const totalPages = paginationMeta.totalPages;
 
@@ -180,108 +166,31 @@ export default function Categories() {
             {isSuperAdmin ? 'Manage product categories' : 'View product categories'}
           </p>
         </div>
-        {isSuperAdmin && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleCreate}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Category
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
-                <DialogDescription>
-                  {editingCategory ? 'Update category name' : 'Create a new product category'}
-                </DialogDescription>
-              </DialogHeader>
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category Name</Label>
-                  <Input 
-                    id="category" 
-                    placeholder="e.g., Fruits & Vegetables" 
-                    value={categoryName}
-                    onChange={(e) => setCategoryName(e.target.value)}
-                  />
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={submitting}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={submitting}>
-                    {editingCategory ? 'Save Changes' : 'Create Category'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
+        <CategoryDialog
+          isOpen={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          editingCategory={editingCategory}
+          categoryName={categoryName}
+          onCategoryNameChange={setCategoryName}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+          isSuperAdmin={isSuperAdmin}
+          onCreateClick={handleCreate}
+        />
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search categories..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Category</TableHead>
-                {/*<TableHead>Products</TableHead>*/}
-                <TableHead>Created</TableHead>
-                {isSuperAdmin && <TableHead className="text-right">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {categoriesWithCount.map((category) => (
-                <TableRow key={category.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <FolderTree className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{category.name}</span>
-                    </div>
-                  </TableCell>
-                  {/*
-                  <TableCell>
-                    <span className="text-muted-foreground">{category.productCount} products</span>
-                  </TableCell>
-                  */}
-                  <TableCell className="text-muted-foreground">
-                    {category.createdAt ? format(new Date(category.createdAt), 'MMM dd, yyyy') : '-'}
-                  </TableCell>
-                  {isSuperAdmin && (
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(category)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(category)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <Pagination
-            page={safeCurrentPage}
-            totalPages={totalPages}
-            total={paginationMeta.total}
-            onChange={setCurrentPage}
-          />
-        </CardContent>
-      </Card>
+      <CategoriesCard
+        categories={categories}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        currentPage={safeCurrentPage}
+        totalPages={totalPages}
+        total={paginationMeta.total}
+        onPageChange={setCurrentPage}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        isSuperAdmin={isSuperAdmin}
+      />
     </div>
   );
 }
