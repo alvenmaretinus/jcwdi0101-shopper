@@ -4,9 +4,13 @@ import {
   GetStoreByIdSchema,
 } from "@/schemas/store/GetStoreByIdSchema";
 import { Store } from "@/types/Store";
+import { ReadonlyHeaders } from "next/dist/server/web/spec-extension/adapters/headers";
 import { toast } from "sonner";
 
-export const getStoreById = async (inputData: GetStoreByIdInput) => {
+export const getStoreById = async (
+  inputData: GetStoreByIdInput,
+  headers?: ReadonlyHeaders
+) => {
   const parseResult = GetStoreByIdSchema.safeParse(inputData);
 
   if (!parseResult.success) {
@@ -19,6 +23,7 @@ export const getStoreById = async (inputData: GetStoreByIdInput) => {
 
   const res = await apiFetch<Store | null>(`/stores/${inputData.id}`, {
     method: "GET",
+    headers,
   });
   return res;
 };

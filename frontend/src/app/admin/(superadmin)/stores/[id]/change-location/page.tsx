@@ -1,5 +1,6 @@
 import { getStoreById } from "@/services/store/getStoreById";
 import StoreChangeLocation from "./_components/StoreChangeLocation";
+import { headers } from "next/dist/server/request/headers";
 
 export default async function StoreChangeLocationPage({
   params,
@@ -7,7 +8,8 @@ export default async function StoreChangeLocationPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const store = await getStoreById({ id });
+  const nextHeaders = await headers();
+  const store = await getStoreById({ id }, nextHeaders);
 
   if (!store) return <p> Store Not Found </p>;
 
