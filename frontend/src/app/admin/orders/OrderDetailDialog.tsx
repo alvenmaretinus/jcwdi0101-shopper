@@ -295,6 +295,7 @@ export default function OrderDetailDialog({
                         height={500}
                         alt="Payment proof"
                         className="w-full max-h-90 object-contain rounded-md border"
+                        unoptimized
                       />
                     </div>
                   </div>
