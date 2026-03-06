@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sheet";
 import { ProductWithDetails } from "@/services/product/getProducts";
 import { ProductCard } from "../../../../components/products/ProductCard";
+import { useUserProductsStore } from "@/store/user";
 
 interface ProductCategory {
   id: string;
@@ -51,12 +52,8 @@ export function ProductsList({
   initialProducts,
   categories,
   categoryPagination,
-  selectedCategoryId: initialCategoryId,
   selectedCategoryName,
   pagination,
-  initialSearch = "",
-  initialInStockOnly = false,
-  initialSort = "featured",
 }: ProductsListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,13 +61,13 @@ export function ProductsList({
     { id: "all", name: "All Categories" },
     ...categories,
   ];
+  const {
+    searchQuery, setSearchQuery,
+    selectedCategoryId, setSelectedCategoryId,
+    sortBy, setSortBy,
+    showInStock, setShowInStock,
+  } = useUserProductsStore();
 
-  const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
-    initialCategoryId || "all"
-  );
-  const [sortBy, setSortBy] = useState(initialSort);
-  const [showInStock, setShowInStock] = useState(initialInStockOnly);
 
   const safeCategoryPage = Math.min(categoryPagination.page, categoryPagination.totalPages);
   const totalCategoryPages = categoryPagination.totalPages;

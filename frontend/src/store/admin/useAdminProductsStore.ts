@@ -8,27 +8,20 @@ interface PaginationMeta {
   totalPages: number;
 }
 
-interface ProductsState {
-  // Data
+interface AdminProductsState {
   products: any[];
   categories: any[];
-  
-  // UI State
   loading: boolean;
   isDialogOpen: boolean;
   editingProduct: any | null;
-  
-  // Filters
   searchQuery: string;
   categoryFilter: string;
   currentPage: number;
   pagination: PaginationMeta;
-  
-  // Actions
-  fetchProducts: (options?: { 
-    categoryFilter?: string; 
-    searchQuery?: string; 
-    page?: number 
+  fetchProducts: (options?: {
+    categoryFilter?: string;
+    searchQuery?: string;
+    page?: number;
   }) => Promise<void>;
   fetchCategories: () => Promise<void>;
   setSearchQuery: (query: string) => void;
@@ -58,10 +51,7 @@ const initialState = {
   },
 };
 
-/**
- * Products store - manages product listing, filtering, and CRUD operations
- */
-export const useProductsStore = create<ProductsState>((set, get) => ({
+export const useAdminProductsStore = create<AdminProductsState>((set, get) => ({
   ...initialState,
 
   fetchProducts: async (options) => {
@@ -73,7 +63,7 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
     set({ loading: true });
     try {
       const apiInit: ApiInit = { method: HttpMethod.GET };
-      
+
       const filterStrings = ['withStock=true', `page=${page}`, 'limit=20'];
       if (categoryFilter !== undefined && categoryFilter !== 'all') {
         filterStrings.push(`categoryId=${categoryFilter}`);
@@ -81,20 +71,20 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
       if (searchQuery !== undefined && searchQuery.trim() !== '') {
         filterStrings.push(`name=${searchQuery}`);
       }
-      
+
       const filterQuery = filterStrings.length > 0 ? `?${filterStrings.join('&')}` : '';
       const response = await apiFetch<any>(`/product${filterQuery}`, apiInit);
-      
+
       if (response && 'data' in response && 'meta' in response) {
-        set({ 
+        set({
           products: response.data,
           pagination: response.meta,
-          loading: false 
+          loading: false,
         });
       } else {
-        set({ 
+        set({
           products: Array.isArray(response) ? response : [],
-          loading: false 
+          loading: false,
         });
       }
     } catch (error) {

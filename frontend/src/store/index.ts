@@ -1,13 +1,10 @@
 /**
  * Centralized Zustand Stores
  * 
- * This barrel export provides easy access to all application stores.
- * Import stores individually to avoid unnecessary re-renders.
+ * Role-based entry points:
+ * - '@/store/admin' for admin pages
+ * - '@/store/user' for user pages
  */
 
-export { useAuthStore } from './useAuthStore';
-export { useProductsStore } from './useProductsStore';
-export { useDiscountsStore } from './useDiscountsStore';
-export { useInventoryStore } from './useInventoryStore';
-export { useSalesReportStore } from './useSalesReportStore';
-export { useStockReportStore } from './useStockReportStore';
+export * from './admin';
+export * from './user';

@@ -12,7 +12,7 @@
 
 import { useEffect } from 'react';
 import { authClient } from '@/lib/authClient';
-import { useAuthStore, useProductsStore } from '@/store';
+import { useAuthStore, useAdminProductsStore } from '@/store/admin';
 import ProductForm from './_components/_product-form/product-form';
 import ProductsCard from './_components/_products-card/products-card';
 import { Pagination } from '@/components/Pagination/Pagination';
@@ -44,7 +44,7 @@ export default function ProductsRefactored() {
     openEditDialog,
     closeDialog,
     deleteProduct,
-  } = useProductsStore();
+  } = useAdminProductsStore();
 
   // Fetch user role on mount
   useEffect(() => {
