@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -6,35 +5,37 @@ interface CardCarouselSectionProps {
   title: string;
   icon: React.ReactNode;
   items: any[];
-  itemsPerPage: number;
   renderCard: (item: any, index: number, gradients: Array<{ from: string; to: string }>) => React.ReactNode;
   gradients: Array<{ from: string; to: string }>;
   emptyMessage?: string;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  loading?: boolean;
 }
 
 export const CardCarouselSection: React.FC<CardCarouselSectionProps> = ({
   title,
   icon,
   items,
-  itemsPerPage,
   renderCard,
   gradients,
   emptyMessage = "No items available at the moment",
+  currentPage,
+  totalPages,
+  onPageChange,
+  loading = false,
 }) => {
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const totalPages = Math.ceil(items.length / itemsPerPage);
-  const paginatedItems = items.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
   const handleNext = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+    if (currentPage < totalPages) {
+      onPageChange(currentPage + 1);
+    }
   };
 
   const handlePrev = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
+    if (currentPage > 1) {
+      onPageChange(currentPage - 1);
+    }
   };
 
   return (
@@ -50,7 +51,7 @@ export const CardCarouselSection: React.FC<CardCarouselSectionProps> = ({
               variant="outline"
               size="sm"
               onClick={handlePrev}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || loading}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -61,7 +62,7 @@ export const CardCarouselSection: React.FC<CardCarouselSectionProps> = ({
               variant="outline"
               size="sm"
               onClick={handleNext}
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || loading}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -69,13 +70,13 @@ export const CardCarouselSection: React.FC<CardCarouselSectionProps> = ({
         )}
       </div>
       <div className="grid md:grid-cols-3 gap-6">
-        {paginatedItems.length > 0 ? (
-          paginatedItems.map((item, index) =>
-            renderCard(
-              item,
-              (currentPage - 1) * itemsPerPage + index,
-              gradients
-            )
+        {loading ? (
+          <div className="col-span-3 text-center py-8 text-muted-foreground">
+            Loading...
+          </div>
+        ) : items.length > 0 ? (
+          items.map((item, index) =>
+            renderCard(item, index, gradients)
           )
         ) : (
           <div className="col-span-3 text-center py-8 text-muted-foreground">

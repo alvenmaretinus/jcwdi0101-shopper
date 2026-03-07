@@ -6,12 +6,13 @@ export interface GetProductsWithDiscountsParams {
   productId?: string;
   storeId?: string;
   isActive?: boolean;
+  inStock?: boolean;
   page?: number;
   limit?: number;
 }
 
 export interface ProductWithDiscount extends Discount {
-  product?: {
+  product: {
     id: string;
     name: string;
     description: string | null;
@@ -84,6 +85,9 @@ export const getProductsWithDiscounts = async (params?: GetProductsWithDiscounts
   if (params?.isActive !== undefined && params.isActive) {
     // Backend expects activeOnDate, so we send current date to filter active discounts
     queryParams.append('activeOnDate', new Date().toISOString());
+  }
+  if (params?.inStock !== undefined) {
+    queryParams.append('inStock', String(params.inStock));
   }
   if (params?.page) {
     queryParams.append('page', String(params.page));

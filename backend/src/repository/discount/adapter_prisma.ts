@@ -200,6 +200,20 @@ export class PrismaRepository implements DiscountRepo {
         formattedFilter.isTiedToProduct = true;
         formattedFilter.productId = { not: null };
         
+        // Only include products that have stock in at least one store (if inStock filter is true)
+        if (filter.inStock === true) {
+            formattedFilter.product = {
+                ...(formattedFilter.product as any || {}),
+                productStores: {
+                    some: {
+                        quantity: {
+                            gt: 0
+                        }
+                    }
+                }
+            };
+        }
+        
         // If pagination is provided, use it; otherwise default to page 1, limit 20
         const page = pagination?.page ?? 1;
         const limit = pagination?.limit ?? 20;

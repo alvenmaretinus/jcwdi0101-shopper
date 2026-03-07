@@ -156,14 +156,24 @@ export class PrismaVoucherRepository implements VoucherRepo {
    * - Vouchers with userId are private and only visible to that user.
    * - Public vouchers (userId null) remain visible to everyone.
    * - Referral vouchers stay private (always tied to userId).
+   * - voucherType can be a single value or an array of values.
    */
   private formatFilter(filter: Partial<VoucherFilter>, options?: VoucherQueryOptions): Prisma.VoucherWhereInput {
-    const { activeOnDate, name, percentage, amount, type, isWithMinimum, minimumPrice, userId, ...voucherFields } = filter;
+    const { activeOnDate, name, percentage, amount, type, isWithMinimum, minimumPrice, userId, voucherType, ...voucherFields } = filter;
     const includeAllReferral = options?.includeAllReferral === true;
 
     const formattedFilter: Prisma.VoucherWhereInput = {
       ...voucherFields,
     };
+
+    // Handle voucherType - can be a single value or an array
+    if (voucherType !== undefined) {
+      if (Array.isArray(voucherType)) {
+        formattedFilter.voucherType = { in: voucherType as any };
+      } else {
+        formattedFilter.voucherType = voucherType;
+      }
+    }
 
     // Filter user-assigned vouchers to only show to their designated user.
     // Public vouchers are userId=null.

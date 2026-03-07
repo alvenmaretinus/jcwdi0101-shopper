@@ -2,7 +2,7 @@ import { apiFetch, HttpMethod } from '@/lib/apiFetch';
 import { Voucher } from '@/types/Voucher';
 
 interface GetVouchersParams {
-  voucherType?: string;
+  voucherType?: string | string[];
   isRedeemed?: boolean;
   page?: number;
   limit?: number;
@@ -21,8 +21,13 @@ export interface PaginatedVouchersResponse {
 export async function getVouchers(params?: GetVouchersParams): Promise<PaginatedVouchersResponse> {
   const searchParams = new URLSearchParams();
   
-  if (params?.voucherType && params.voucherType !== 'all') {
-    searchParams.append('voucherType', params.voucherType);
+  if (params?.voucherType) {
+    const types = Array.isArray(params.voucherType) ? params.voucherType : [params.voucherType];
+    types.forEach(type => {
+      if (type !== 'all') {
+        searchParams.append('voucherType', type);
+      }
+    });
   }
   
   if (params?.isRedeemed !== undefined) {

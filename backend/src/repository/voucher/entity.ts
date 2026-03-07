@@ -51,7 +51,7 @@ export type VoucherFilter = {
   percentage?: Decimal;
   amount?: number;
   type?: "PERCENTAGE" | "FIXED_AMOUNT" | "QUANTITY";
-  voucherType?: "REFERRAL" | "TRANSACTIONAL" | "FREEDELIVERY";
+  voucherType?: "REFERRAL" | "TRANSACTIONAL" | "FREEDELIVERY" | ("REFERRAL" | "TRANSACTIONAL" | "FREEDELIVERY")[];
   isWithMinimum?: boolean;
   minimumPrice?: number;
   buyQuantity?: number;

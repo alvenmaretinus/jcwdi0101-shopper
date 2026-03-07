@@ -31,6 +31,8 @@ export const GetDiscountsByFilterSchema = z.strictObject({
     isSoftDeleted: z.string().transform(val => val === '' ? undefined : val === 'true').pipe(z.boolean()).optional(),
     /** Filter discounts that are active/valid on this specific date */
     activeOnDate: z.coerce.date().optional(),
+    /** Only include products that have stock in at least one store */
+    inStock: z.string().transform(val => val === '' ? undefined : val === 'true').pipe(z.boolean()).optional(),
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 });
