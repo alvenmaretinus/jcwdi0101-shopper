@@ -45,7 +45,7 @@ export const CardCarouselSection: React.FC<CardCarouselSectionProps> = ({
           {icon}
           {title}
         </h2>
-        {totalPages > 1 && (
+        {totalPages > 1 && items.length > 0 && (
           <div className="flex items-center gap-2">
             <Button
               variant="outline"

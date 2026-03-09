@@ -66,6 +66,8 @@ export async function ProductsList({
       showInStock={showInStock}
       categoryPage={searchParams.categoryPage}
       categoryLimit={searchParams.categoryLimit}
+      search={searchParams.search}
+      sort={searchParams.sort}
     />
   );
 

@@ -114,7 +114,7 @@ export class PrismaRepository implements DiscountRepo {
      * - AND endsAt IS NULL OR endsAt >= activeOnDate
      */
     private formatFilter(filter: Partial<DiscountFilter>): Prisma.DiscountWhereInput {
-        const { activeOnDate, name, ...rest } = filter;
+        const { activeOnDate, name, inStock, ...rest } = filter;
         const formattedFilter: Prisma.DiscountWhereInput = { ...rest };
 
         // Handle case-insensitive name search

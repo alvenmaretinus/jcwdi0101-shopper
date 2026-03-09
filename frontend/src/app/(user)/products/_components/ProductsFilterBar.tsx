@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { SlidersHorizontal } from "lucide-react";
 import { useUserProductsStore } from "@/store/user";
+import { useSearchParams } from "next/navigation";
 
 interface ProductsFilterBarProps {
   filterContent: ReactNode;
@@ -18,6 +19,11 @@ export function ProductsFilterBar({
   filterContent,
 }: ProductsFilterBarProps) {
   const currentSort = useUserProductsStore((state) => state.sortBy);
+  const searchParams = useSearchParams();
+  const preservedParams = Array.from(searchParams.entries()).filter(
+    ([key]) => key !== "sort",
+  );
+
   return (
     <div className="flex gap-3">
       <Sheet>
@@ -36,6 +42,14 @@ export function ProductsFilterBar({
       </Sheet>
 
       <form method="GET" action="/products">
+        {preservedParams.map(([key, value], index) => (
+          <input
+            key={`${key}-${value}-${index}`}
+            type="hidden"
+            name={key}
+            value={value}
+          />
+        ))}
         <select
           name="sort"
           defaultValue={currentSort}

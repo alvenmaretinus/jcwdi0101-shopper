@@ -1,13 +1,15 @@
 import { getProductCategories } from "@/services/product/getProductCategories";
-import { ProductsInStockOnlyToggle } from "./ProductsInStockOnlyToggle";
-import { ProductsCategoryPagination } from "./ProductsCategoryPagination";
 import { parseOptionalPositiveInt } from "@/lib/parsers";
+import { ProductsCategoryFilter } from "./ProductsCategoryFilter";
+import { ProductsToggleFilter } from "./ProductsToggleFilter";
 
 interface ProductsFilterContentProps {
   selectedCategoryId: string;
   showInStock: boolean;
   categoryPage?: string;
   categoryLimit?: string;
+  search?: string;
+  sort?: string;
 }
 
 export async function ProductsFilterContent({
@@ -15,6 +17,8 @@ export async function ProductsFilterContent({
   showInStock,
   categoryPage,
   categoryLimit,
+  search,
+  sort,
 }: ProductsFilterContentProps) {
   const categoryPageValue = parseOptionalPositiveInt(categoryPage);
   const categoryLimitValue = parseOptionalPositiveInt(categoryLimit);
@@ -37,42 +41,17 @@ export async function ProductsFilterContent({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="font-semibold mb-3">Categories</h3>
-        <div className="space-y-2">
-          {categoryOptions.map((category) => (
-            <form key={category.id} method="GET" action="/products" className="block">
-              {showInStock && (
-                <input type="hidden" name="inStockOnly" value="true" />
-              )}
-              <button
-                type="submit"
-                name="categoryId"
-                value={category.id === "all" ? "" : category.id}
-                className={`block w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                  selectedCategoryId === category.id
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-muted"
-                }`}
-              >
-                {category.name}
-              </button>
-            </form>
-          ))}
-        </div>
+      <ProductsCategoryFilter
+        categoryOptions={categoryOptions}
+        selectedCategoryId={selectedCategoryId}
+        showInStock={showInStock}
+        safeCategoryPage={safeCategoryPage}
+        totalCategoryPages={totalCategoryPages}
+        search={search}
+        sort={sort}
+      />
 
-        <ProductsCategoryPagination
-          currentPage={safeCategoryPage}
-          totalPages={totalCategoryPages}
-        />
-      </div>
-
-      <div>
-        <h3 className="font-semibold mb-3">Filters</h3>
-        <div className="space-y-3">
-          <ProductsInStockOnlyToggle showInStock={showInStock} />
-        </div>
-      </div>
+      <ProductsToggleFilter showInStock={showInStock} />
     </div>
   );
 }

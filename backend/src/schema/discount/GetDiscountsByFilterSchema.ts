@@ -17,6 +17,7 @@ export const GetDiscountsByFilterSchema = z.strictObject({
     percentage: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid decimal format").transform(val => parseFloat(val)).pipe(z.number().min(0).max(100)).optional(),
     amount: z.coerce.number().int().min(0).optional(),
     type: z.enum(['PERCENTAGE', 'FIXED_AMOUNT', 'QUANTITY']).optional(),
+    isVoucher: z.string().transform(val => val === '' ? undefined : val === 'true').pipe(z.boolean()).optional(),
     isWithMinimum: z.string().transform(val => val === '' ? undefined : val === 'true').pipe(z.boolean()).optional(),
     minimumPrice: z.coerce.number().int().min(0).optional(),
     hasDiscountAmountCap: z.string().transform(val => val === '' ? undefined : val === 'true').pipe(z.boolean()).optional(),

@@ -7,6 +7,8 @@ export interface GetDiscountsParams {
   type?: string;
   productId?: string;
   storeId?: string;
+  isVoucher?: boolean;
+  isTiedToProduct?: boolean;
   isActive?: boolean;
   page?: number;
   limit?: number;
@@ -36,6 +38,12 @@ export const getDiscounts = async (params?: GetDiscountsParams): Promise<Paginat
   }
   if (params?.storeId) {
     queryParams.append('storeId', params.storeId);
+  }
+  if (params?.isVoucher !== undefined) {
+    queryParams.append('isVoucher', String(params.isVoucher));
+  }
+  if (params?.isTiedToProduct !== undefined) {
+    queryParams.append('isTiedToProduct', String(params.isTiedToProduct));
   }
   if (params?.isActive !== undefined && params.isActive) {
     // Backend expects activeOnDate, so we send current date to filter active discounts

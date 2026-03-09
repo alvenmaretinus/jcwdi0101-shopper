@@ -6,7 +6,6 @@ import { useUserProductsStore } from "@/store/user";
 
 export function ProductsDisplay() {
   const products = useUserProductsStore((state) => state.products);
-  const pagination = useUserProductsStore((state) => state.pagination);
 
   if (products.length === 0) {
     return (

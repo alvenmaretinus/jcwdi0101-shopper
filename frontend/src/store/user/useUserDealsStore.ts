@@ -121,12 +121,11 @@ export const useUserDealsStore = create<UserDealsState>((set, get) => ({
         try {
             const response = await getDiscounts({ 
                 isActive: true,
+                isTiedToProduct: false,
                 page,
                 limit: DEALS_STOREWIDE_PER_PAGE
             });
-            const storewide = response.data.filter(
-                (discount) => !discount.isTiedToProduct && !discount.isVoucher
-            );
+            const storewide = response.data.filter((discount) => !discount.isVoucher);
             set({ 
                 storeWideDiscounts: storewide,
                 storewideDiscountsMeta: response.meta
