@@ -1,5 +1,3 @@
-"use client";
-
 import { ReactNode } from "react";
 import { ProductsSearchBar } from "./ProductsSearchBar";
 import { ProductsFilterBar } from "./ProductsFilterBar";

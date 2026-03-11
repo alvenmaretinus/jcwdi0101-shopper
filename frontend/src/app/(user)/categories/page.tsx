@@ -1,52 +1,9 @@
-import Link from "next/link";
 import { Layout } from "@/components/layout/Layout";
 import { getProductCategories } from "@/services/product/getProductCategories";
 import { getProducts } from "@/services/product/getProducts";
 import { headers } from "next/headers";
-
-// Icon and color mapping for fruit categories
-const categoryStyles: Record<string, { icon: string; color: string; description: string }> = {
-  "Tropical Fruits": {
-    icon: "🍌",
-    color: "from-yellow-100 to-amber-100",
-    description: "Bananas, pineapples, and more"
-  },
-  "Citrus Fruits": {
-    icon: "🍊",
-    color: "from-orange-100 to-yellow-100",
-    description: "Oranges, lemons, and citrus"
-  },
-  "Berries": {
-    icon: "🍓",
-    color: "from-red-100 to-pink-100",
-    description: "Strawberries, blueberries, and more"
-  },
-  "Stone Fruits": {
-    icon: "🍑",
-    color: "from-pink-100 to-rose-100",
-    description: "Peaches, plums, and cherries"
-  },
-  "Exotic Fruits": {
-    icon: "🐲",
-    color: "from-purple-100 to-fuchsia-100",
-    description: "Dragon fruit, passion fruit, and more"
-  },
-  "Melons": {
-    icon: "🍉",
-    color: "from-green-100 to-emerald-100",
-    description: "Watermelons, cantaloupes, and more"
-  },
-  "Apples & Pears": {
-    icon: "🍎",
-    color: "from-red-100 to-orange-100",
-    description: "Fresh apples and pears"
-  },
-  "Dried Fruits": {
-    icon: "🥭",
-    color: "from-amber-100 to-orange-100",
-    description: "Dried mango, dates, and more"
-  }
-};
+import { Header } from "./_components/Header";
+import { CategoriesGrid } from "./_components/CategoriesGrid";
 
 const ITEMS_PER_PAGE = 8;
 
@@ -126,103 +83,16 @@ const Categories = async ({
       <div className="bg-muted/30 min-h-screen">
         <div className="container-app py-8">
           {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-foreground mb-4">
-              Shop by Category
-            </h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Browse through our wide selection of fresh groceries organized by category
-            </p>
-          </div>
+          <Header />
 
-          {/* Categories grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {productCounts.map((category) => {
-              const style = categoryStyles[category.name] || {
-                icon: "🍇",
-                color: "from-purple-100 to-pink-100",
-                description: "Fresh fruits"
-              };
-              
-              return (
-                <Link
-                  key={category.id}
-                  href={`/products?categoryId=${category.id}`}
-                  className="group"
-                >
-                  <div className={`bg-gradient-to-br ${style.color} rounded-2xl p-6 h-full transition-all duration-300 hover:shadow-elevated hover:-translate-y-1`}>
-                    <div className="flex items-start justify-between">
-                      <div className="text-6xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                        {style.icon}
-                      </div>
-                      <span className="text-xs font-medium bg-white/50 backdrop-blur-sm px-2 py-1 rounded-full">
-                        {category.productCount} items
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-bold text-foreground mb-2">
-                      {category.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {style.description}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="mt-8 flex items-center justify-center gap-2">
-              <Link
-                href={buildPageHref(safeCurrentPage - 1)}
-                className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                  safeCurrentPage === 1
-                    ? "pointer-events-none opacity-50"
-                    : "hover:bg-muted"
-                }`}
-              >
-                Previous
-              </Link>
-
-              {visiblePages.map((item, index) => {
-                if (item === "ellipsis") {
-                  return (
-                    <span
-                      key={`ellipsis-${index}`}
-                      className="px-2 py-2 text-sm text-muted-foreground"
-                    >
-                      ...
-                    </span>
-                  );
-                }
-
-                const isActive = item === safeCurrentPage;
-
-                return (
-                  <Link
-                    key={item}
-                    href={buildPageHref(item)}
-                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                      isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                    }`}
-                  >
-                    {item}
-                  </Link>
-                );
-              })}
-
-              <Link
-                href={buildPageHref(safeCurrentPage + 1)}
-                className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                  safeCurrentPage === totalPages
-                    ? "pointer-events-none opacity-50"
-                    : "hover:bg-muted"
-                }`}
-              >
-                Next
-              </Link>
-            </div>
-          )}
+          {/* Categories Grid and Pagination */}
+          <CategoriesGrid
+            categories={productCounts}
+            totalPages={totalPages}
+            currentPage={safeCurrentPage}
+            visiblePages={visiblePages}
+            buildPageHref={buildPageHref}
+          />
         </div>
       </div>
     </Layout>

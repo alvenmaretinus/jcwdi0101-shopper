@@ -1,8 +1,13 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useUserProductsStore } from "@/store/user";
+import { useSearchParams } from "next/navigation";
 
 export function ProductsPagination() {
   const pagination = useUserProductsStore((state) => state.pagination);
+  const searchParams = useSearchParams();
+  const preservedParams = Array.from(searchParams.entries()).filter(
+    ([key]) => key !== "page",
+  );
 
   if (pagination.totalPages <= 1) {
     return null;
@@ -11,6 +16,14 @@ export function ProductsPagination() {
   return (
     <div className="mt-8 flex items-center justify-center gap-2">
       <form method="GET" action="/products" className="inline">
+        {preservedParams.map(([key, value], index) => (
+          <input
+            key={`prev-${key}-${value}-${index}`}
+            type="hidden"
+            name={key}
+            value={value}
+          />
+        ))}
         <button
           type="submit"
           name="page"
@@ -42,6 +55,14 @@ export function ProductsPagination() {
                   <span className="px-2 text-muted-foreground">...</span>
                 )}
                 <form method="GET" action="/products" className="inline">
+                  {preservedParams.map(([key, value], hiddenIndex) => (
+                    <input
+                      key={`page-${page}-${key}-${value}-${hiddenIndex}`}
+                      type="hidden"
+                      name={key}
+                      value={value}
+                    />
+                  ))}
                   <button
                     type="submit"
                     name="page"
@@ -61,6 +82,14 @@ export function ProductsPagination() {
       </div>
 
       <form method="GET" action="/products" className="inline">
+        {preservedParams.map(([key, value], index) => (
+          <input
+            key={`next-${key}-${value}-${index}`}
+            type="hidden"
+            name={key}
+            value={value}
+          />
+        ))}
         <button
           type="submit"
           name="page"

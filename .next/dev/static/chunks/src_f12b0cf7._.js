@@ -160,7 +160,7 @@ function ProductsSearchBar() {
         "ProductsSearchBar.useUserProductsStore[currentSearch]": (state)=>state.searchQuery
     }["ProductsSearchBar.useUserProductsStore[currentSearch]"]);
     const searchParams = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSearchParams"])();
-    const preservedParams = Array.from(searchParams.entries()).filter(([key])=>key !== "search");
+    const preservedParams = Array.from(searchParams.entries()).filter(([key])=>key !== "search" && key !== "page");
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
         method: "GET",
         action: "/products",
@@ -256,7 +256,7 @@ function ProductsFilterBar({ filterContent }) {
         "ProductsFilterBar.useUserProductsStore[currentSort]": (state)=>state.sortBy
     }["ProductsFilterBar.useUserProductsStore[currentSort]"]);
     const searchParams = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSearchParams"])();
-    const preservedParams = Array.from(searchParams.entries()).filter(([key])=>key !== "sort");
+    const preservedParams = Array.from(searchParams.entries()).filter(([key])=>key !== "sort" && key !== "page");
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "flex gap-3",
         children: [
@@ -552,7 +552,6 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$plus$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Plus$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/plus.js [app-client] (ecmascript) <export default as Plus>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/button.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$badge$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/components/ui/badge.tsx [app-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/image.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$hooks$2f$useCart$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/hooks/useCart.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$authClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/lib/authClient.ts [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$sonner$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/sonner/dist/index.mjs [app-client] (ecmascript)");
@@ -560,7 +559,6 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 ;
 var _s = __turbopack_context__.k.signature();
 "use client";
-;
 ;
 ;
 ;
@@ -673,12 +671,13 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "relative h-full w-full",
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$image$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Image, {
                                     fill: true,
                                     src: primaryImage,
                                     alt: productName,
                                     className: "object-cover group-hover:scale-110 transition-transform duration-300",
                                     sizes: "(max-width: 640px) 100vw, (max-width: 1200px) 50vw, 33vw",
+                                    loading: "lazy",
                                     unoptimized: true
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/products/ProductCard.tsx",
@@ -712,12 +711,12 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/products/ProductCard.tsx",
-                                    lineNumber: 175,
+                                    lineNumber: 176,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/components/products/ProductCard.tsx",
-                                lineNumber: 174,
+                                lineNumber: 175,
                                 columnNumber: 13
                             }, this),
                             bugoBadge && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -733,18 +732,18 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/products/ProductCard.tsx",
-                                    lineNumber: 188,
+                                    lineNumber: 189,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/components/products/ProductCard.tsx",
-                                lineNumber: 187,
+                                lineNumber: 188,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/products/ProductCard.tsx",
-                        lineNumber: 172,
+                        lineNumber: 173,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -755,7 +754,7 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                                 children: categoryName
                             }, void 0, false, {
                                 fileName: "[project]/src/components/products/ProductCard.tsx",
-                                lineNumber: 203,
+                                lineNumber: 204,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -763,7 +762,7 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                                 children: productName
                             }, void 0, false, {
                                 fileName: "[project]/src/components/products/ProductCard.tsx",
-                                lineNumber: 207,
+                                lineNumber: 208,
                                 columnNumber: 11
                             }, this),
                             weightDisplay && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -771,7 +770,7 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                                 children: weightDisplay
                             }, void 0, false, {
                                 fileName: "[project]/src/components/products/ProductCard.tsx",
-                                lineNumber: 213,
+                                lineNumber: 214,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -782,7 +781,7 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                                         children: formatPrice(displayPrice)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/products/ProductCard.tsx",
-                                        lineNumber: 220,
+                                        lineNumber: 221,
                                         columnNumber: 13
                                     }, this),
                                     hasDiscount && originalPrice !== null && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -790,13 +789,13 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                                         children: formatPrice(originalPrice)
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/products/ProductCard.tsx",
-                                        lineNumber: 224,
+                                        lineNumber: 225,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/products/ProductCard.tsx",
-                                lineNumber: 219,
+                                lineNumber: 220,
                                 columnNumber: 11
                             }, this),
                             hasDiscount && savingsAmount > 0 && !isStoreProductType && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -807,7 +806,7 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/products/ProductCard.tsx",
-                                lineNumber: 232,
+                                lineNumber: 233,
                                 columnNumber: 13
                             }, this),
                             isOutOfStock && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -815,7 +814,7 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                                 children: "Out of Stock"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/products/ProductCard.tsx",
-                                lineNumber: 239,
+                                lineNumber: 240,
                                 columnNumber: 13
                             }, this),
                             !isOutOfStock && totalStock <= 10 && totalStock > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -827,13 +826,13 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/components/products/ProductCard.tsx",
-                                lineNumber: 244,
+                                lineNumber: 245,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/products/ProductCard.tsx",
-                        lineNumber: 202,
+                        lineNumber: 203,
                         columnNumber: 9
                     }, this)
                 ]
@@ -854,19 +853,19 @@ function ProductCard({ product, discountBadge, bugoBadge }) {
                             className: "h-4 w-4 mr-1.5"
                         }, void 0, false, {
                             fileName: "[project]/src/components/products/ProductCard.tsx",
-                            lineNumber: 259,
+                            lineNumber: 260,
                             columnNumber: 11
                         }, this),
                         isAdding ? "Adding..." : "Add"
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/products/ProductCard.tsx",
-                    lineNumber: 253,
+                    lineNumber: 254,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/components/products/ProductCard.tsx",
-                lineNumber: 252,
+                lineNumber: 253,
                 columnNumber: 7
             }, this)
         ]
@@ -958,8 +957,10 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$right$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronRight$3e$__ = __turbopack_context__.i("[project]/node_modules/lucide-react/dist/esm/icons/chevron-right.js [app-client] (ecmascript) <export default as ChevronRight>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$store$2f$user$2f$index$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/src/store/user/index.ts [app-client] (ecmascript) <locals>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$store$2f$user$2f$useUserProductsStore$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/store/user/useUserProductsStore.ts [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/navigation.js [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature();
+;
 ;
 ;
 function ProductsPagination() {
@@ -967,6 +968,8 @@ function ProductsPagination() {
     const pagination = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$store$2f$user$2f$useUserProductsStore$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useUserProductsStore"])({
         "ProductsPagination.useUserProductsStore[pagination]": (state)=>state.pagination
     }["ProductsPagination.useUserProductsStore[pagination]"]);
+    const searchParams = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSearchParams"])();
+    const preservedParams = Array.from(searchParams.entries()).filter(([key])=>key !== "page");
     if (pagination.totalPages <= 1) {
         return null;
     }
@@ -977,30 +980,41 @@ function ProductsPagination() {
                 method: "GET",
                 action: "/products",
                 className: "inline",
-                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                    type: "submit",
-                    name: "page",
-                    value: Math.max(1, pagination.page - 1).toString(),
-                    disabled: pagination.page === 1,
-                    className: "inline-flex items-center justify-center px-3 py-2 rounded-full text-sm font-medium bg-card border border-input hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed",
-                    children: [
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$left$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronLeft$3e$__["ChevronLeft"], {
-                            className: "h-4 w-4 mr-1"
-                        }, void 0, false, {
+                children: [
+                    preservedParams.map(([key, value], index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                            type: "hidden",
+                            name: key,
+                            value: value
+                        }, `prev-${key}-${value}-${index}`, false, {
                             fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-                            lineNumber: 21,
+                            lineNumber: 20,
                             columnNumber: 11
-                        }, this),
-                        "Previous"
-                    ]
-                }, void 0, true, {
-                    fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-                    lineNumber: 14,
-                    columnNumber: 9
-                }, this)
-            }, void 0, false, {
+                        }, this)),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "submit",
+                        name: "page",
+                        value: Math.max(1, pagination.page - 1).toString(),
+                        disabled: pagination.page === 1,
+                        className: "inline-flex items-center justify-center px-3 py-2 rounded-full text-sm font-medium bg-card border border-input hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed",
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$left$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronLeft$3e$__["ChevronLeft"], {
+                                className: "h-4 w-4 mr-1"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
+                                lineNumber: 34,
+                                columnNumber: 11
+                            }, this),
+                            "Previous"
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
+                        lineNumber: 27,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
                 fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-                lineNumber: 13,
+                lineNumber: 18,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1020,81 +1034,104 @@ function ProductsPagination() {
                                 children: "..."
                             }, void 0, false, {
                                 fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-                                lineNumber: 42,
+                                lineNumber: 55,
                                 columnNumber: 19
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
                                 method: "GET",
                                 action: "/products",
                                 className: "inline",
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                    type: "submit",
-                                    name: "page",
-                                    value: page.toString(),
-                                    className: `inline-flex items-center justify-center px-3 py-2 rounded-full text-sm font-medium w-10 h-10 ${pagination.page === page ? "bg-primary text-primary-foreground" : "bg-card border border-input hover:bg-muted"}`,
-                                    children: page
-                                }, void 0, false, {
-                                    fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-                                    lineNumber: 45,
-                                    columnNumber: 19
-                                }, this)
-                            }, void 0, false, {
+                                children: [
+                                    preservedParams.map(([key, value], hiddenIndex)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                            type: "hidden",
+                                            name: key,
+                                            value: value
+                                        }, `page-${page}-${key}-${value}-${hiddenIndex}`, false, {
+                                            fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
+                                            lineNumber: 59,
+                                            columnNumber: 21
+                                        }, this)),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                        type: "submit",
+                                        name: "page",
+                                        value: page.toString(),
+                                        className: `inline-flex items-center justify-center px-3 py-2 rounded-full text-sm font-medium w-10 h-10 ${pagination.page === page ? "bg-primary text-primary-foreground" : "bg-card border border-input hover:bg-muted"}`,
+                                        children: page
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
+                                        lineNumber: 66,
+                                        columnNumber: 19
+                                    }, this)
+                                ]
+                            }, void 0, true, {
                                 fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-                                lineNumber: 44,
+                                lineNumber: 57,
                                 columnNumber: 17
                             }, this)
                         ]
                     }, page, true, {
                         fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-                        lineNumber: 40,
+                        lineNumber: 53,
                         columnNumber: 15
                     }, this);
                 })
             }, void 0, false, {
                 fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-                lineNumber: 26,
+                lineNumber: 39,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
                 method: "GET",
                 action: "/products",
                 className: "inline",
-                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                    type: "submit",
-                    name: "page",
-                    value: Math.min(pagination.totalPages, pagination.page + 1).toString(),
-                    disabled: pagination.page === pagination.totalPages,
-                    className: "inline-flex items-center justify-center px-3 py-2 rounded-full text-sm font-medium bg-card border border-input hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed",
-                    children: [
-                        "Next",
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$right$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronRight$3e$__["ChevronRight"], {
-                            className: "h-4 w-4 ml-1"
-                        }, void 0, false, {
+                children: [
+                    preservedParams.map(([key, value], index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                            type: "hidden",
+                            name: key,
+                            value: value
+                        }, `next-${key}-${value}-${index}`, false, {
                             fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-                            lineNumber: 72,
+                            lineNumber: 86,
                             columnNumber: 11
-                        }, this)
-                    ]
-                }, void 0, true, {
-                    fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-                    lineNumber: 64,
-                    columnNumber: 9
-                }, this)
-            }, void 0, false, {
+                        }, this)),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "submit",
+                        name: "page",
+                        value: Math.min(pagination.totalPages, pagination.page + 1).toString(),
+                        disabled: pagination.page === pagination.totalPages,
+                        className: "inline-flex items-center justify-center px-3 py-2 rounded-full text-sm font-medium bg-card border border-input hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed",
+                        children: [
+                            "Next",
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$right$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronRight$3e$__["ChevronRight"], {
+                                className: "h-4 w-4 ml-1"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
+                                lineNumber: 101,
+                                columnNumber: 11
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
+                        lineNumber: 93,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
                 fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-                lineNumber: 63,
+                lineNumber: 84,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/(user)/products/_components/ProductsPagination.tsx",
-        lineNumber: 12,
+        lineNumber: 17,
         columnNumber: 5
     }, this);
 }
-_s(ProductsPagination, "TcU+KjGktMUyq0zRK0Lb9VjE88k=", false, function() {
+_s(ProductsPagination, "ohLVfYFjYitAuV3bnBsL18zXy/M=", false, function() {
     return [
-        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$store$2f$user$2f$useUserProductsStore$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useUserProductsStore"]
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$store$2f$user$2f$useUserProductsStore$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useUserProductsStore"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSearchParams"]
     ];
 });
 _c = ProductsPagination;

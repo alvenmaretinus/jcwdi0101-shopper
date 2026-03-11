@@ -1,40 +1,38 @@
+"use client";
+
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useUserProductsStore } from "@/store/user";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export function ProductsSearchBar() {
-  const currentSearch = useUserProductsStore((state) => state.searchQuery);
-  const searchParams = useSearchParams();
-  const preservedParams = Array.from(searchParams.entries()).filter(
-    ([key]) => key !== "search",
-  );
+  const router = useRouter();
+  const searchQuery = useUserProductsStore((state) => state.searchQuery);
+  const setSearchQuery = useUserProductsStore((state) => state.setSearchQuery);
+  const syncWithUrl = useUserProductsStore((state) => state.syncWithUrl);
+  const [inputValue, setInputValue] = useState(searchQuery);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(inputValue);
+      const url = syncWithUrl();
+      router.push(url);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [inputValue, setSearchQuery, syncWithUrl, router]);
 
   return (
-    <form method="GET" action="/products" className="relative flex-1">
-      {preservedParams.map(([key, value], index) => (
-        <input
-          key={`${key}-${value}-${index}`}
-          type="hidden"
-          name={key}
-          value={value}
-        />
-      ))}
-      <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+    <div className="relative flex-1">
+      <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10 pointer-events-none" />
       <Input
         type="search"
-        name="search"
         placeholder="Search products..."
-        defaultValue={currentSearch}
-        className="pl-12 h-12 rounded-full bg-card border-0 shadow-soft"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        className="pl-12 h-12 rounded-full bg-card border-0 shadow-soft pr-9"
       />
-      <button
-        type="submit"
-        className="absolute right-4 top-1/2 -translate-y-1/2"
-        title="Search"
-      >
-        <Search className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-      </button>
-    </form>
+    </div>
   );
 }

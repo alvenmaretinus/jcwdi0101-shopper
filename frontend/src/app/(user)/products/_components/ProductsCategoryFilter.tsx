@@ -30,6 +30,7 @@ export function ProductsCategoryFilter({
       <div className="space-y-2">
         {categoryOptions.map((category) => (
           <form key={category.id} method="GET" action="/products" className="block">
+            <input type="hidden" name="page" value="1" />
             {showInStock && <input type="hidden" name="inStockOnly" value="true" />}
             {search && <input type="hidden" name="search" value={search} />}
             {sort && <input type="hidden" name="sort" value={sort} />}

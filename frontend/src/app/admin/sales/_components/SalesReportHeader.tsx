@@ -23,7 +23,7 @@ export function SalesReportHeader({
           <SelectionSelect
             value={selectedStoreName}
             onChange={onStoreSelect}
-            getType={async ({ name, page, limit }) => {
+            getType={async ({ name, page }) => {
               const response = await getStores({ query: { page, search: name, sortBy: 'createdAt', sortOrder: 'desc' } });
               return { data: (response.data || []).map((store) => ({ id: store.id, name: store.name })), meta: response.meta };
             }}

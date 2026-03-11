@@ -1,42 +1,32 @@
+"use client";
+
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination } from '@/components/Pagination/Pagination';
 import MonthSelect from '@/app/admin/_components/MonthSelect';
 import SelectionSelect from '@/app/admin/_components/SelectionSelect';
 import { getYearsForSelection } from '@/services/report/getYearsForSelection';
-import { SummaryStockReportItem } from '@/services/stock-report/getSummaryStockReport';
-import { PaginationState } from '@/types/common';
 import { StockBadge } from './StockBadge';
 import { ReportEmptyState } from './ReportEmptyState';
 import { StoreSelector } from './StoreSelector';
+import { useStockReportStore } from '@/store/admin';
+import { useAuthStore } from '@/store';
+import { useStockReportHandlers } from '../_hooks/useStockReportHandlers';
 
-interface SummaryReportTabProps {
-  isSuperAdmin: boolean;
-  selectedStoreName: string;
-  reportMonth: number;
-  reportYear: number;
-  summaryReports: SummaryStockReportItem[];
-  pagination: PaginationState;
-  isLoading: boolean;
-  onMonthChange: (month: number) => void;
-  onYearChange: (year: number) => void;
-  onStoreSelect: (store: any) => void;
-  onPageChange: (page: number) => void;
-}
+export function SummaryReportTab() {
+  const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin);
+  const reportMonth = useStockReportStore((s) => s.reportMonth);
+  const reportYear = useStockReportStore((s) => s.reportYear);
+  const selectedStoreName = useStockReportStore((s) => s.selectedStoreName);
+  const summaryReports = useStockReportStore((s) => s.summaryReports);
+  const summaryPagination = useStockReportStore((s) => s.summaryPagination);
+  const isSummaryLoading = useStockReportStore((s) => s.isSummaryLoading);
+  const setReportMonth = useStockReportStore((s) => s.setReportMonth);
+  const setReportYear = useStockReportStore((s) => s.setReportYear);
+  const setSummaryPage = useStockReportStore((s) => s.setSummaryPage);
 
-export function SummaryReportTab({
-  isSuperAdmin,
-  selectedStoreName,
-  reportMonth,
-  reportYear,
-  summaryReports,
-  pagination,
-  isLoading,
-  onMonthChange,
-  onYearChange,
-  onStoreSelect,
-  onPageChange,
-}: SummaryReportTabProps) {
+  const { handleStoreSelect } = useStockReportHandlers();
+
   return (
     <Card>
       <CardHeader>
@@ -49,13 +39,13 @@ export function SummaryReportTab({
         <div className="flex gap-4 pt-4 flex-wrap">
           <MonthSelect
             value={String(reportMonth - 1)}
-            onChange={(v) => onMonthChange(parseInt(v) + 1)}
+            onChange={(v) => setReportMonth(parseInt(v) + 1)}
             className="w-32"
           />
           <SelectionSelect
             value={reportYear}
             label="Year"
-            onChange={(year: any) => onYearChange(Number(year?.id || year))}
+            onChange={(year: { id: string; name: string } | null) => setReportYear(Number(year?.id || reportYear))}
             getType={getYearsForSelection}
             title="Select Year"
             description="Choose a year for the report"
@@ -64,18 +54,18 @@ export function SummaryReportTab({
           <StoreSelector
             isSuperAdmin={isSuperAdmin}
             selectedStoreName={selectedStoreName}
-            onStoreSelect={onStoreSelect}
+            onStoreSelect={handleStoreSelect}
             className="w-64"
           />
         </div>
       </CardHeader>
       <CardContent>
         <ReportEmptyState
-          isLoading={isLoading}
+          isLoading={isSummaryLoading}
           hasData={summaryReports.length > 0}
           message="No data available for the selected period"
         />
-        {!isLoading && summaryReports.length > 0 && (
+        {!isSummaryLoading && summaryReports.length > 0 && (
           <Table>
             <TableHeader>
               <TableRow>
@@ -101,10 +91,10 @@ export function SummaryReportTab({
         )}
       </CardContent>
       <Pagination
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        onChange={onPageChange}
+        page={summaryPagination.page}
+        totalPages={summaryPagination.totalPages}
+        total={summaryPagination.total}
+        onChange={setSummaryPage}
       />
     </Card>
   );

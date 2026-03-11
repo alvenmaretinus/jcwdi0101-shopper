@@ -47,6 +47,7 @@ interface UserProductsState {
     products: ProductWithDetails[];
     pagination: PaginationMeta;
   }) => void;
+  syncWithUrl: () => string;
   reset: () => void;
 }
 
@@ -69,7 +70,7 @@ const initialState = {
   },
 };
 
-export const useUserProductsStore = create<UserProductsState>((set) => ({
+export const useUserProductsStore = create<UserProductsState>((set, get) => ({
   ...initialState,
   initializeSearchQuery: (query: string) => {
     if (!query) return;
@@ -116,6 +117,31 @@ export const useUserProductsStore = create<UserProductsState>((set) => ({
       products,
       pagination,
     });
+  },
+  syncWithUrl: () => {
+    const state = get();
+    const params = new URLSearchParams();
+    
+    if (state.selectedCategoryId && state.selectedCategoryId !== 'all') {
+      params.append('categoryId', state.selectedCategoryId);
+    }
+    if (state.searchQuery) {
+      params.append('search', state.searchQuery);
+    }
+    if (state.page !== initialState.page) {
+      params.append('page', String(state.page));
+    }
+    if (state.limit !== initialState.limit) {
+      params.append('limit', String(state.limit));
+    }
+    if (state.sortBy !== initialState.sortBy) {
+      params.append('sort', state.sortBy);
+    }
+    if (state.showInStock) {
+      params.append('inStockOnly', 'true');
+    }
+    
+    return `/products${params.toString() ? '?' + params.toString() : ''}`;
   },
   reset: () => set(initialState),
 }));

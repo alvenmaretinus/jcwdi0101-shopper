@@ -1,3 +1,5 @@
+"use client";
+
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { SlidersHorizontal } from "lucide-react";
 import { useUserProductsStore } from "@/store/user";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 interface ProductsFilterBarProps {
   filterContent: ReactNode;
@@ -18,11 +20,16 @@ interface ProductsFilterBarProps {
 export function ProductsFilterBar({
   filterContent,
 }: ProductsFilterBarProps) {
+  const router = useRouter();
   const currentSort = useUserProductsStore((state) => state.sortBy);
-  const searchParams = useSearchParams();
-  const preservedParams = Array.from(searchParams.entries()).filter(
-    ([key]) => key !== "sort",
-  );
+  const setSortBy = useUserProductsStore((state) => state.setSortBy);
+  const syncWithUrl = useUserProductsStore((state) => state.syncWithUrl);
+
+  const handleSortChange = (sortValue: string) => {
+    setSortBy(sortValue);
+    const url = syncWithUrl();
+    router.push(url);
+  };
 
   return (
     <div className="flex gap-3">
@@ -41,27 +48,16 @@ export function ProductsFilterBar({
         </SheetContent>
       </Sheet>
 
-      <form method="GET" action="/products">
-        {preservedParams.map(([key, value], index) => (
-          <input
-            key={`${key}-${value}-${index}`}
-            type="hidden"
-            name={key}
-            value={value}
-          />
-        ))}
-        <select
-          name="sort"
-          defaultValue={currentSort}
-          onChange={(e) => e.currentTarget.form?.submit()}
-          className="w-[180px] h-12 rounded-full bg-card border-0 shadow-soft px-4 py-2"
-        >
-          <option value="featured">Featured</option>
-          <option value="name">Name</option>
-          <option value="price-low">Price: Low to High</option>
-          <option value="price-high">Price: High to Low</option>
-        </select>
-      </form>
+      <select
+        value={currentSort}
+        onChange={(e) => handleSortChange(e.target.value)}
+        className="w-[180px] h-12 rounded-full bg-card border-0 shadow-soft px-4 py-2"
+      >
+        <option value="featured">Featured</option>
+        <option value="name">Name</option>
+        <option value="price-low">Price: Low to High</option>
+        <option value="price-high">Price: High to Low</option>
+      </select>
     </div>
   );
 }
