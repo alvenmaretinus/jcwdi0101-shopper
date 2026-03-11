@@ -98,7 +98,6 @@ const generateStores = () => {
 };
 
 export async function seedStores() {
-  console.log("Seeding stores...");
 
   // Find super admin
   const superAdmin = await prisma.user.findFirst({
@@ -121,8 +120,6 @@ export async function seedStores() {
       },
     });
 
-    console.log(`Created store: ${store.name} with super admin as owner`);
   }
 
-  console.log(`Store seeding completed. Created ${stores.length} stores.`);
 }

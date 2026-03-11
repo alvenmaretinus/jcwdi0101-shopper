@@ -3,7 +3,6 @@ import { prisma } from "../../src/lib/db/prisma";
 import { UserRole } from "../generated/enums";
 
 async function seedDenpasarPanjer() {
-  console.log("Seeding Denpasar - Panjer store and products...");
 
   // Use idempotent upsert by unique name + postCode combination
   const storeName = "Store Denpasar Panjer";
@@ -15,7 +14,6 @@ async function seedDenpasarPanjer() {
 
   let store;
   if (existing) {
-    console.log("Store already exists, skipping create:", existing.id);
     store = existing;
   } else {
     store = await prisma.store.create({
@@ -32,7 +30,6 @@ async function seedDenpasarPanjer() {
         isSoftDeleted: false,
       },
     });
-    console.log("Created store:", store.id);
   }
 
   // Ensure admin@example.com is assigned to this store (idempotent)
@@ -55,7 +52,6 @@ async function seedDenpasarPanjer() {
         employeeJoinedAt: new Date(),
       },
     });
-    console.log("Ensured admin user assigned to store:", adminUser.email, adminUser.storeId);
   } catch (e) {
     console.error("Failed to assign admin to store:", e);
   }
@@ -80,7 +76,6 @@ async function seedDenpasarPanjer() {
     let product;
     if (prod) {
       product = prod;
-      console.log("Product exists, skipping:", product.id);
     } else {
       product = await prisma.product.create({
         data: {
@@ -91,7 +86,6 @@ async function seedDenpasarPanjer() {
           productImages: { create: [{ url: `https://picsum.photos/seed/${encodeURIComponent(prodName)}/600/400` }] },
         },
       });
-      console.log("Created product:", product.id);
     }
 
     // Ensure productStore entry with sufficient stock
@@ -99,14 +93,11 @@ async function seedDenpasarPanjer() {
     if (existingPS) {
       // update stock to ensure sufficient quantity for tests
       await prisma.productStore.update({ where: { id: existingPS.id }, data: { quantity: Math.max(existingPS.quantity ?? 0, 50) } });
-      console.log("Updated productStore stock for", product.id);
     } else {
       await prisma.productStore.create({ data: { productId: product.id, storeId: store.id, quantity: 50 } });
-      console.log("Created productStore for", product.id);
     }
   }
 
-  console.log("Denpasar Panjer seed finished.");
 }
 
 export default seedDenpasarPanjer;

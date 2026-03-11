@@ -166,7 +166,6 @@ export class OrderAdminService {
         }
       });
 
-      console.info(`[OrderAdminService] Admin cancelled order ${orderId} (status was ${order.status}), stock refunded. Reason: ${reason || "No reason provided"}`);
     } else {
       // For PAYMENT_PENDING or PAYMENT_WAITING_CONFIRMATION, just mark as cancelled (no stock to refund)
       // But if PAYMENT_WAITING_CONFIRMATION + BANK_TRANSFER, mark for manual refund
@@ -182,7 +181,6 @@ export class OrderAdminService {
         },
       });
 
-      console.info(`[OrderAdminService] Admin cancelled order ${orderId} (status was ${order.status}). Reason: ${reason || "No reason provided"}`);
     }
 
     // Return updated order
@@ -215,10 +213,6 @@ export class OrderAdminService {
         deliveredAt: new Date(),
       },
     });
-
-    if (deliveredOrders.count > 0) {
-      console.info(`[OrderAdminService] auto-delivered ${deliveredOrders.count} orders past ${days}-day shipping window`);
-    }
 
     return deliveredOrders;
   }
@@ -288,12 +282,6 @@ export class OrderAdminService {
       rewardGrantedCount,
     };
 
-    if (completedOrders.count > 0) {
-      console.info(
-        `[OrderAdminService] auto-completed ${completedOrders.count} orders past ${days}-day shipping window, granted ${completedOrders.rewardGrantedCount} reward vouchers`,
-      );
-    }
-
     return completedOrders;
   }
 
@@ -322,10 +310,6 @@ export class OrderAdminService {
       },
       data: { status: "CANCELLED" },
     });
-
-    if (expiredOrders.count > 0) {
-      console.info(`[OrderAdminService] expired ${expiredOrders.count} pending orders past paymentDueAt`);
-    }
 
     return expiredOrders;
   }

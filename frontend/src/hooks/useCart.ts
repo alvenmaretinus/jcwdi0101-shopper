@@ -42,11 +42,9 @@ export function useCart({ autoFetch = true }: UseCartOptions = {}) {
 
       try {
         if (!silent) setLoading(true);
-        console.log("[useCart] Fetching cart...");
         const response = await apiFetch<CartResponse>("/cart", {
           method: HttpMethod.GET,
         });
-        console.log("[useCart] Cart response:", response);
         // Backend returns { cartId, cartItems } — normalize to frontend CartItem shape
         const data = response?.data;
         let items: CartItem[] = [];
@@ -141,7 +139,6 @@ export function useCart({ autoFetch = true }: UseCartOptions = {}) {
           setServerProductPromotionDiscount(0);
           setServerGlobalDiscount(0);
         }
-        console.log("[useCart] Setting cart items:", items);
         setCartItems(items);
       } catch (error) {
         console.error("[useCart] Failed to fetch cart:", error);

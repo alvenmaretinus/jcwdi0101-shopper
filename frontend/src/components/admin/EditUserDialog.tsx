@@ -37,7 +37,6 @@ export function EditUserDialog({
   onClose,
   onSuccess,
 }: EditUserDialogProps) {
-  console.log('EditUserDialog props:', { user, stores, isOpen });
   const [formData, setFormData] = useState({
     email: user?.email || '',
     role: user?.role || 'USER',

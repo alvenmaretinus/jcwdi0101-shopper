@@ -66,7 +66,6 @@ export default function AddStockDialog({
   
   const handleAddStock = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted with:', { selectedAddProduct, selectedAddStore, addQuantity, isSuperAdmin, userStoreId });
     
     if (!selectedAddProduct) {
       alert('Please select a product');
@@ -91,7 +90,6 @@ export default function AddStockDialog({
         quantity: addQuantity,
       };
       
-      console.log('Sending API request with body:', body);
       
       const apiInit: ApiInit = {
         method: HttpMethod.POST,
@@ -99,7 +97,6 @@ export default function AddStockDialog({
       };
       
       const result = await apiFetch(`/product-store`, apiInit);
-      console.log('API response:', result);
       
       // Reset form and close dialog
       setSelectedAddProduct('');

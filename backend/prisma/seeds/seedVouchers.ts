@@ -1,7 +1,6 @@
 import { prisma } from "../../src/lib/db/prisma";
 
 export async function seedVouchers() {
-  console.log("🎫 Seeding vouchers...");
 
   // Clear existing vouchers
   await prisma.voucher.deleteMany();
@@ -217,5 +216,4 @@ export async function seedVouchers() {
     });
   }
 
-  console.log(`✅ Created ${vouchers.length} vouchers`);
 }

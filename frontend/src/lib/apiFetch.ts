@@ -31,12 +31,6 @@ export async function apiFetch<T>(url: string, input: ApiInit): Promise<T> {
       credentials: "include",
     });
 
-    console.log("API Request:", {
-      url: `${apiUrl}/api${url}`,
-      method: input.method,
-      headers,
-      body: input.body,
-    });
 
     const contentType = res.headers.get("content-type") || "";
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

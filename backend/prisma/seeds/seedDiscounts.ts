@@ -1,7 +1,6 @@
 import { prisma } from "../../src/lib/db/prisma";
 
 export async function seedDiscounts() {
-  console.log("🎯 Seeding discounts...");
 
   // Clear existing vouchers first (due to foreign key constraint)
   await prisma.voucher.deleteMany();
@@ -418,5 +417,4 @@ export async function seedDiscounts() {
     });
   }
 
-  console.log(`✅ Created ${discounts.length} discounts`);
 }

@@ -44,7 +44,6 @@ function AuthLayoutContent({ children }: { children: ReactNode }) {
           router.replace(redirectTo);
         }
       } catch (error) {
-        console.log(error);
         setLoading(false);
       }
     };

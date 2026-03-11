@@ -135,12 +135,9 @@ export class PrismaRepository implements StockReportRepository {
   async findStockReportsByFilter(filter: FindStockReportsByFilterReq): Promise<{ items: StockReport[]; total: number }> {
     const { where, select } = this.buildStockReportQuery(filter);
     
-    console.log('[Stock Report Repository] Query filter:', JSON.stringify(where, null, 2));
-    console.log('[Stock Report Repository] Date range:', this.buildDateRange(filter.createdAtYear, filter.createdAtMonth));
     
     const [rows, count] = await this.fetchRowsAndCount(where, select, filter);
     
-    console.log('[Stock Report Repository] Found rows:', rows.length, 'Total count:', count);
     
     return { items: toDomainModels(rows, filter), total: count };
   }

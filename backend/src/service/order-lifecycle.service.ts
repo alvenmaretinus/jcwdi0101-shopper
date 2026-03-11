@@ -474,8 +474,6 @@ export class OrderLifecycleService {
           // Update order status to PROCESSING and store info if store changed
           const updateData: any = { status: "PROCESSING" };
           if (store.id !== order.storeId) {
-            console.info(`[OrderLifecycleService] Order ${orderId} store changed from ${order.storeId} to ${store.id} at confirmation`);
-
             // Recalculate shipping cost for the new store to ensure correct total
             const distanceKm = storesWithDistance.find((s) => s.store.id === store.id)?.distanceKm ?? 0;
             const costPerKm = 1000;
@@ -680,10 +678,6 @@ export class OrderLifecycleService {
         userId: updated.userId,
         subtotal: updated.subtotal,
       });
-
-      if (rewardResult.granted) {
-        console.info(`[OrderLifecycleService] Reward voucher granted for completed order ${updated.id}: ${rewardResult.voucherCode}`);
-      }
 
       return updated;
     });

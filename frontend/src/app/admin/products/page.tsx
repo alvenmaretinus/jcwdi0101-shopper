@@ -49,7 +49,6 @@ export default function Products() {
       try {
         const data = await apiFetch<any>(`/product-category?page=1&limit=100`, apiInit);
         const categoriesArray = Array.isArray(data) ? data : data?.data || [];
-        console.log('Fetched categories:', categoriesArray);
         setCategories(categoriesArray);
       } catch (error) {
         console.error('Failed to fetch categories:', error);
@@ -60,7 +59,6 @@ export default function Products() {
   }, []);
 
   const fetchProducts = useCallback(async () => {
-    console.log('Fetching products with', { categoryFilter, searchQuery, currentPage });
     setLoading(true);
     try {
       const apiInit: ApiInit = {
@@ -75,7 +73,6 @@ export default function Products() {
       }
       const filterQuery = filterStrings.length > 0 ? `?${filterStrings.join('&')}` : '';
       const response = await apiFetch<any>(`/product${filterQuery}`, apiInit);
-      console.log('Fetched products:', response);
       // Check if response has data and meta properties (paginated response)
       if (response && 'data' in response && 'meta' in response) {
         setProducts(response.data);

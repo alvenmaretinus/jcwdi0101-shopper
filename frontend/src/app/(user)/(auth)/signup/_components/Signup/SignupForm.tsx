@@ -93,7 +93,6 @@ export function SignupForm() {
       );
       await authClient.sendVerificationEmail({ email });
     } catch (error) {
-      console.log(error);
       setIsLoading(false);
     }
   };

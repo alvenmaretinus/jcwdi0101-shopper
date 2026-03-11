@@ -20,14 +20,11 @@ if (isProduction) {
     console.error("Please configure all required env vars in .env file");
     process.exit(1);
   }
-  console.log("✅ All required payment environment variables loaded for production");
 } else {
   const missingVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
   if (missingVars.length > 0) {
     console.warn(`⚠️  Warning: Missing environment variables in ${process.env.NODE_ENV || "development"} mode: ${missingVars.join(", ")}`);
     console.warn("   Payment features may not work. Configure .env file if needed.");
-  } else {
-    console.log("✅ All required payment environment variables loaded");
   }
 }
 
@@ -73,10 +70,8 @@ app.use("/api", appRouter);
 app.use(errorHandler);
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
 
   // Initialize cron jobs after server is ready
-  console.log("Initializing scheduled tasks...");
 
   // Auto-expire pending orders every hour
   cron.schedule("0 * * * *", async () => {

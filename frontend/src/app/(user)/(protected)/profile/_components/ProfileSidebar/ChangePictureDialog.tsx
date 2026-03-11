@@ -71,7 +71,6 @@ export const ChangePictureDialog = ({
       setSelectedFile(file);
       setPreviewImageUrl(URL.createObjectURL(file));
     } catch (err: any) {
-      console.log(err);
     }
   };
 

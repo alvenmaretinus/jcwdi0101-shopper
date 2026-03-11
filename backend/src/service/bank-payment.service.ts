@@ -97,8 +97,6 @@ export class BankPaymentService {
       },
     });
 
-    console.info(`[BankPaymentService] Rejected payment proof for order ${orderId}. Reason: ${rejectionReason || "N/A"}`);
-
     return updated;
   }
 

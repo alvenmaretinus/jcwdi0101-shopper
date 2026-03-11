@@ -9,12 +9,10 @@ export type UpdateUserInput = {
 };
 
 export const updateUser = async (userId: string, data: UpdateUserInput) => {
-  console.log(data)
   const res = await apiFetch<User>(`/user/${userId}`, {
     method: HttpMethod.PATCH,
     body: data,
   });
-  console.log(JSON.stringify(data))
 
   return res;
 };

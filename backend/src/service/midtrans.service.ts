@@ -77,8 +77,6 @@ export class MidtransService {
       const transactionStatus = notificationData.transaction_status;
       const fraudStatus = notificationData.fraud_status;
 
-      console.info(`[MidtransService] Webhook received for order ${orderId}, status: ${transactionStatus}`);
-
       // Map Midtrans status to order status
       let orderStatus = "";
       let shouldConfirmPayment = false;

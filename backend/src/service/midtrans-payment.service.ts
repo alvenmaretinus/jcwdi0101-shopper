@@ -214,8 +214,6 @@ export class MidtransPaymentService {
       // Create Midtrans transaction
       const transaction = await MidtransService.createCharge(orderId, order.grandTotal, order.user.email, order.user.name, itemDetails);
 
-      console.info(`[MidtransPaymentService] Midtrans charge created for order ${orderId}, transaction: ${transaction.transactionId}`);
-
       return transaction;
     } catch (error) {
       console.error(`[MidtransPaymentService] Failed to create Midtrans charge for order ${orderId}:`, error);
@@ -241,8 +239,6 @@ export class MidtransPaymentService {
       // Process webhook data
       const processedData = await MidtransService.handleWebhook(webhookData);
       const { orderId, shouldConfirmPayment, orderStatus } = processedData;
-
-      console.info(`[MidtransPaymentService] Processing Midtrans webhook for order ${orderId}, status: ${orderStatus}`);
 
       // Get current order
       const order = await db.order.findUnique({
@@ -274,14 +270,12 @@ export class MidtransPaymentService {
             },
           });
 
-          console.info(`[MidtransPaymentService] Order ${orderId} cancelled from Midtrans webhook (status: ${orderStatus})`);
         }
         return;
       }
 
       // Handle interim PAYMENT_PENDING status - no-op, keep order pending
       if (orderStatus === "PAYMENT_PENDING") {
-        console.info(`[MidtransPaymentService] Order ${orderId} payment still pending (interim Midtrans status)`);
         return;
       }
 
@@ -334,12 +328,9 @@ export class MidtransPaymentService {
           });
         }
 
-        console.info(`[MidtransPaymentService] Order ${orderId} refunded from Midtrans - marked for refund processing`);
         return;
       }
 
-      // For other statuses, just log
-      console.info(`[MidtransPaymentService] Order ${orderId} webhook processed, status: ${orderStatus}`);
     } catch (error) {
       console.error("[MidtransPaymentService] Error handling Midtrans webhook:", error);
       throw error;

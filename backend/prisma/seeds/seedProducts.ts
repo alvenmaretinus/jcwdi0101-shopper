@@ -1,7 +1,6 @@
 import { prisma } from "../../src/lib/db/prisma";
 
 export async function seedProducts() {
-  console.log("Seeding products...");
 
   // Get categories
   const tropical = await prisma.productCategory.findUnique({ where: { name: "Tropical Fruits" } });
@@ -380,11 +379,9 @@ export async function seedProducts() {
     });
 
     if (existingProduct) {
-      console.log(`Product already exists: ${productData.name}`);
       
       // Check if images exist, if not, create them
       if (existingProduct.productImages.length === 0) {
-        console.log(`Adding images for: ${productData.name}`);
         for (const imageUrl of images) {
           await prisma.productImage.create({
             data: {
@@ -411,8 +408,6 @@ export async function seedProducts() {
       });
     }
 
-    console.log(`Created product: ${createdProduct.name}`);
   }
 
-  console.log("Products seeding completed.");
 }

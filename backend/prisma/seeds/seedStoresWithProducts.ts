@@ -1,13 +1,11 @@
 import { prisma } from "../../src/lib/db/prisma";
 
 export async function seedStoresWithProducts() {
-  console.log("Seeding stores with products...");
 
   // Get all products
   const allProducts = await prisma.product.findMany();
   
   if (allProducts.length === 0) {
-    console.log("No products found. Please run seedProducts first.");
     return;
   }
 
@@ -52,7 +50,6 @@ export async function seedStoresWithProducts() {
     });
 
     if (existingStore) {
-      console.log(`Store already exists: ${storeData.name}`);
       continue;
     }
 
@@ -60,7 +57,6 @@ export async function seedStoresWithProducts() {
       data: storeData,
     });
 
-    console.log(`Created store: ${createdStore.name}`);
 
     // Distribute products across stores with varying quantities
     // Main store gets more stock, other stores get less
@@ -92,8 +88,6 @@ export async function seedStoresWithProducts() {
       });
     }
 
-    console.log(`Added ${isMainStore ? 'all' : 'most'} products to ${createdStore.name}`);
   }
 
-  console.log("Stores with products seeding completed.");
 }

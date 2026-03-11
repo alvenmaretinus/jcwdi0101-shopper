@@ -39,7 +39,6 @@ export async function StoreWithProductSeed({
   withCleanup?: boolean;
 }) {
   if (withCleanup) {
-    console.log("Cleaning up existing data...");
     // Cleanup in reverse order of dependencies
     await prisma.productStore.deleteMany();
     await prisma.productImage.deleteMany();
@@ -48,16 +47,13 @@ export async function StoreWithProductSeed({
     await prisma.productCategory.deleteMany();
   }
 
-  console.log("Creating categories...");
   const category = await prisma.productCategory.upsert({
     where: { name: "General" },
     update: {},
     create: { name: "General" },
   });
 
-  console.log("Creating stores...");
 
-  console.log("Creating stores and products...");
   let totalProducts = 0;
   for (const s of storeData) {
     const store = await prisma.store.create({ data: s });
@@ -89,7 +85,4 @@ export async function StoreWithProductSeed({
     }
   }
 
-  console.log("Seed completed successfully!");
-  console.log(`Created ${storeData.length} stores.`);
-  console.log(`Created ${totalProducts} total products.`);
 }

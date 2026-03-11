@@ -1,7 +1,6 @@
 import { prisma } from "../../src/lib/db/prisma";
 
 export async function seedOrders() {
-  console.log("🧾 Seeding completed sample order...");
 
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
@@ -15,14 +14,12 @@ export async function seedOrders() {
     }));
 
   if (!user) {
-    console.log("No user found. Please run seedAccounts first.");
     return;
   }
 
   const store = (await prisma.store.findFirst({ where: { isDefault: true } })) ?? (await prisma.store.findFirst());
 
   if (!store) {
-    console.log("No store found. Please run seedStoresWithProducts first.");
     return;
   }
 
@@ -37,7 +34,6 @@ export async function seedOrders() {
   });
 
   if (productStores.length === 0) {
-    console.log("No stocked products found. Please run product/store seed first.");
     return;
   }
 
@@ -176,5 +172,4 @@ export async function seedOrders() {
     });
   }
 
-  console.log(`✅ Created completed order ${createdOrder.id} with voucher and discount applied`);
 }

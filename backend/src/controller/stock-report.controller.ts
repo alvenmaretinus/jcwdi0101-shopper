@@ -17,15 +17,6 @@ const router = Router();
 router.get("/", isAuth, isAdmin, async (req, res) => {
     const inputData = GetStockReportByFilterSchema.parse(req.query);
     
-    console.log('[Stock Report] Request:', {
-        storeId: inputData.storeId,
-        month: inputData.createdAtMonth,
-        year: inputData.createdAtYear,
-        skip: inputData.skip,
-        take: inputData.take,
-        userRole: req.user?.role,
-        userStoreId: req.user?.storeId
-    });
     
     // Additional check: if the user is ADMIN, ensure they can only access their own store's data
     // Note: The repository filters by fromStoreId OR toStoreId, so admins see all movements
@@ -47,10 +38,6 @@ router.get("/", isAuth, isAdmin, async (req, res) => {
     
     const result = await stockReportService.getStockReportsByFilter(inputData);
     
-    console.log('[Stock Report] Result:', {
-        itemsCount: result.items.length,
-        total: result.total
-    });
     
     return res.json({
         data: result.items,
@@ -68,13 +55,6 @@ router.get("/", isAuth, isAdmin, async (req, res) => {
 router.get("/summary", isAuth, isAdmin, async (req, res) => {
     const inputData = GetSummaryStockReportSchema.parse(req.query);
     
-    console.log('[Stock Report Summary] Request:', {
-        storeId: inputData.storeId,
-        month: inputData.createdAtMonth,
-        year: inputData.createdAtYear,
-        userRole: req.user?.role,
-        userStoreId: req.user?.storeId
-    });
     
     // Authorization: same as main report endpoint
     if (req.user?.role === UserRole.ADMIN) {
@@ -89,10 +69,6 @@ router.get("/summary", isAuth, isAdmin, async (req, res) => {
     
     const result = await stockReportService.getSummaryStockReport(inputData);
     
-    console.log('[Stock Report Summary] Result:', {
-        itemsCount: result.items.length,
-        total: result.total
-    });
     
     return res.json({
         data: result.items,
@@ -110,14 +86,6 @@ router.get("/summary", isAuth, isAdmin, async (req, res) => {
 router.get("/detailed", isAuth, isAdmin, async (req, res) => {
     const inputData = GetDetailedStockReportSchema.parse(req.query);
     
-    console.log('[Stock Report Detailed] Request:', {
-        productId: inputData.productId,
-        storeId: inputData.storeId,
-        month: inputData.createdAtMonth,
-        year: inputData.createdAtYear,
-        userRole: req.user?.role,
-        userStoreId: req.user?.storeId
-    });
     
     // Authorization: store admins can only see their own store; superadmins can view any store
     if (req.user?.role === UserRole.ADMIN) {
@@ -129,12 +97,6 @@ router.get("/detailed", isAuth, isAdmin, async (req, res) => {
     
     const result = await stockReportService.getDetailedStockReport(inputData);
     
-    console.log('[Stock Report Detailed] Result:', {
-        itemsCount: result.items.length,
-        total: result.total,
-        startingStock: result.startingStock,
-        endingStock: result.endingStock
-    });
     
     return res.json({
         data: result.items,

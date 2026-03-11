@@ -64,24 +64,20 @@ export default function ProductForm(props: {
     
     // Debug: Log product images
     if (props.editingProduct?.productImages) {
-      console.log('Product images:', props.editingProduct.productImages);
     }
   }, [props.editingProduct, props.isDialogOpen]);
 
   const getImageUrl = (url?: string) => {
     if (!url) {
-      console.log('No URL provided, using placeholder');
       return 'https://placehold.co/400x400?text=No+Image';
     }
     // If URL is already absolute (starts with http:// or https://), return as-is
     if (url.startsWith('http://') || url.startsWith('https://')) {
-      console.log('Absolute URL:', url);
       return url;
     }
     // Otherwise, prepend API base URL for relative paths
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
     const fullUrl = `${apiBaseUrl}${url}`;
-    console.log('Relative URL converted:', url, '->', fullUrl);
     return fullUrl;
   };
 

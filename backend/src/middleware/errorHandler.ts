@@ -10,7 +10,7 @@ import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 
 const isPrismaError = (
-  err: unknown
+  err: unknown,
 ): err is
   | PrismaClientKnownRequestError
   | PrismaClientUnknownRequestError
@@ -30,21 +30,21 @@ export const errorHandler = (
   err: unknown,
   _req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) => {
   if (err instanceof AppError) {
-    console.log(err);
+    console.error(err);
     return res.status(err.statusCode).json({ error: err.message });
   }
 
   if (err instanceof ZodError) {
     const message = err.message;
-    console.log("ZodError: " + message);
+    console.error("ZodError: " + message);
     return res.status(400).json({ error: "Bad Request", details: err.issues });
   }
 
   if (isPrismaError(err)) {
-    console.log("PrismaError: " + err.message);
+    console.error("PrismaError: " + err.message);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 

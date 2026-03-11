@@ -10,7 +10,6 @@ export const ourFileRouter = {
       minFileCount: 1,
     },
   }).onUploadComplete(async ({ file }) => {
-    console.log("file url", file.ufsUrl);
   }),
 } satisfies FileRouter;
 

@@ -25,7 +25,6 @@ const ensureCredentialAccount = async (
 };
 
 export async function seedAccounts() {
-  console.log("Seeding accounts...");
 
   const defaultPassword = "Password123!";
 
@@ -41,7 +40,6 @@ export async function seedAccounts() {
       role: UserRole.SUPERADMIN,
     },
   });
-  console.log(`Created super admin: ${superAdmin.email}`);
   await ensureCredentialAccount(
     superAdmin.id,
     superAdmin.email,
@@ -61,7 +59,6 @@ export async function seedAccounts() {
       storeId: null, // Admin doesn't belong to a specific store
     },
   });
-  console.log(`Created admin: ${admin.email}`);
   await ensureCredentialAccount(admin.id, admin.email, defaultPassword);
 
   // Create Store Admin
@@ -77,7 +74,6 @@ export async function seedAccounts() {
       storeId: null,
     },
   });
-  console.log(`Created store admin: ${storeAdmin.email}`);
   await ensureCredentialAccount(storeAdmin.id, storeAdmin.email, defaultPassword);
 
   // Create Normal User
@@ -93,12 +89,10 @@ export async function seedAccounts() {
       role: UserRole.USER,
     },
   });
-  console.log(`Created normal user: ${normalUser.email}`);
   await ensureCredentialAccount(
     normalUser.id,
     normalUser.email,
     defaultPassword,
   );
 
-  console.log("Account seeding completed.");
 }

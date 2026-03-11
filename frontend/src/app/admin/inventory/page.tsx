@@ -80,9 +80,7 @@ export default function Inventory() {
       const fetchAllStores = async () => {
         try {
           const response = await getStores();
-          console.log('getStores response:', response);
           const storesData = Array.isArray(response) ? response : response?.data || [];
-          console.log('Processed stores:', storesData);
           setStores(storesData);
         } catch (error) {
           console.error('Failed to fetch stores:', error);
@@ -116,8 +114,6 @@ export default function Inventory() {
     const fetchStockRecords = async () => {
         try {
             let url = `/product?withStock=true&page=${currentPage}&limit=20`
-            console.log('Selected store ID for fetching stock records:', selectedStoreId);
-            console.log('Session user:', sessionUser);
             if (selectedStoreId === '') {
               return; // Don't fetch if store ID is not set yet
             }
@@ -127,9 +123,7 @@ export default function Inventory() {
             if (searchQuery.trim() !== '') {
                 url += `&name=${searchQuery}`;
             }
-            console.log('Fetching stock records with URL:', url);
             const response = await apiFetch<any>(url, apiInit);
-            console.log('Stock records API response:', response);
             // Check if response has data and meta properties (paginated response)
             if (response && 'data' in response && 'meta' in response) {
                 setStockRecords(Array.isArray(response.data) ? response.data : []);

@@ -198,12 +198,6 @@ router.post("/webhook/midtrans", async (req: Request, res: Response, _next: Next
     const webhookData = req.body;
     const { MidtransService } = await import("../service/midtrans.service");
 
-    console.info("[Webhook] Midtrans webhook received:", {
-      orderId: webhookData.order_id,
-      transactionId: webhookData.transaction_id,
-      status: webhookData.transaction_status,
-    });
-
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
     if (!serverKey) {
       console.error("[Webhook] MIDTRANS_SERVER_KEY not configured");

@@ -1,7 +1,6 @@
 import { prisma } from "../../src/lib/db/prisma";
 
 export async function seedProductCategories() {
-  console.log("Seeding product categories...");
 
   const categories = [
     { name: "Tropical Fruits" },
@@ -32,8 +31,6 @@ export async function seedProductCategories() {
       update: {},
       create: cat,
     });
-    console.log(`Created category: ${cat.name}`);
   }
 
-  console.log("Product categories seeding completed.");
 }
