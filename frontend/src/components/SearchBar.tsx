@@ -10,12 +10,13 @@ export type SearchBarProps = {
 
 export const SearchBar = ({ placeholder, input, setInput }: SearchBarProps) => (
   <div className="relative flex-1">
-    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
     <Input
+      type="text"
       placeholder={placeholder}
       value={input}
       onChange={(e) => setInput(e.target.value)}
-      className="pl-9"
+      className="pl-9 pr-9"
     />
   </div>
 );

@@ -114,7 +114,7 @@ export class PrismaRepository implements DiscountRepo {
      * - AND endsAt IS NULL OR endsAt >= activeOnDate
      */
     private formatFilter(filter: Partial<DiscountFilter>): Prisma.DiscountWhereInput {
-        const { activeOnDate, name, ...rest } = filter;
+        const { activeOnDate, name, inStock, ...rest } = filter;
         const formattedFilter: Prisma.DiscountWhereInput = { ...rest };
 
         // Handle case-insensitive name search
@@ -199,6 +199,20 @@ export class PrismaRepository implements DiscountRepo {
         formattedFilter.isSoftDeleted = false;
         formattedFilter.isTiedToProduct = true;
         formattedFilter.productId = { not: null };
+        
+        // Only include products that have stock in at least one store (if inStock filter is true)
+        if (filter.inStock === true) {
+            formattedFilter.product = {
+                ...(formattedFilter.product as any || {}),
+                productStores: {
+                    some: {
+                        quantity: {
+                            gt: 0
+                        }
+                    }
+                }
+            };
+        }
         
         // If pagination is provided, use it; otherwise default to page 1, limit 20
         const page = pagination?.page ?? 1;

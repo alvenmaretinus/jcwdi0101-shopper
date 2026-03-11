@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -5,53 +7,31 @@ import { Pagination } from '@/components/Pagination/Pagination';
 import MonthSelect from '@/app/admin/_components/MonthSelect';
 import SelectionSelect from '@/app/admin/_components/SelectionSelect';
 import { getYearsForSelection } from '@/services/report/getYearsForSelection';
-import { DetailedMovementRecord } from '@/services/stock-report/getDetailedStockReport';
-import { PaginationState } from '@/types/common';
 import { formatMovementDate } from '@/lib/dateUtils';
 import { ReportEmptyState } from './ReportEmptyState';
 import { StoreSelector } from './StoreSelector';
+import { useStockReportStore } from '@/store/admin';
+import { useAuthStore } from '@/store';
+import { useStockReportHandlers } from '../_hooks/useStockReportHandlers';
 
-interface DetailedReportTabProps {
-  isSuperAdmin: boolean;
-  userStoreId: string;
-  selectedStoreName: string;
-  selectedProductName: string;
-  selectedProductForDetail: string;
-  reportMonth: number;
-  reportYear: number;
-  detailedReports: DetailedMovementRecord[];
-  detailedStartingStock: number;
-  detailedEndingStock: number;
-  pagination: PaginationState;
-  isLoading: boolean;
-  onStoreSelect: (store: any) => void;
-  onProductSelect: (product: any) => void;
-  onMonthChange: (month: number) => void;
-  onYearChange: (year: number) => void;
-  onPageChange: (page: number) => void;
-  fetchProductsForDetailedTab: (params: { name: string | undefined; page: number; limit: number }) => Promise<any>;
-}
+export function DetailedReportTab() {
+  const isSuperAdmin = useAuthStore((s) => s.isSuperAdmin);
+  const userStoreId = useAuthStore((s) => s.userStoreId);
+  const reportMonth = useStockReportStore((s) => s.reportMonth);
+  const reportYear = useStockReportStore((s) => s.reportYear);
+  const selectedStoreName = useStockReportStore((s) => s.selectedStoreName);
+  const selectedProductName = useStockReportStore((s) => s.selectedProductName);
+  const selectedProductForDetail = useStockReportStore((s) => s.selectedProductForDetail);
+  const detailedReports = useStockReportStore((s) => s.detailedReports);
+  const detailedStartingStock = useStockReportStore((s) => s.detailedStartingStock);
+  const detailedEndingStock = useStockReportStore((s) => s.detailedEndingStock);
+  const detailedPagination = useStockReportStore((s) => s.detailedPagination);
+  const isDetailedLoading = useStockReportStore((s) => s.isDetailedLoading);
+  const setReportMonth = useStockReportStore((s) => s.setReportMonth);
+  const setReportYear = useStockReportStore((s) => s.setReportYear);
+  const setDetailedPage = useStockReportStore((s) => s.setDetailedPage);
 
-export function DetailedReportTab({
-  isSuperAdmin,
-  userStoreId,
-  selectedStoreName,
-  selectedProductName,
-  selectedProductForDetail,
-  reportMonth,
-  reportYear,
-  detailedReports,
-  detailedStartingStock,
-  detailedEndingStock,
-  pagination,
-  isLoading,
-  onStoreSelect,
-  onProductSelect,
-  onMonthChange,
-  onYearChange,
-  onPageChange,
-  fetchProductsForDetailedTab,
-}: DetailedReportTabProps) {
+  const { handleStoreSelect, handleProductSelect, fetchProductsForDetailedTab } = useStockReportHandlers();
   return (
     <Card>
       <CardHeader>
@@ -66,13 +46,13 @@ export function DetailedReportTab({
             isSuperAdmin={isSuperAdmin}
             selectedStoreName={selectedStoreName}
             userStoreId={userStoreId}
-            onStoreSelect={onStoreSelect}
+            onStoreSelect={handleStoreSelect}
             className="w-64"
           />
           <SelectionSelect
             value={selectedProductName}
             label="Product *"
-            onChange={onProductSelect}
+            onChange={handleProductSelect}
             getType={fetchProductsForDetailedTab}
             title="Select Product"
             description="Search and select a product"
@@ -81,20 +61,20 @@ export function DetailedReportTab({
           />
           <MonthSelect
             value={String(reportMonth - 1)}
-            onChange={(v) => onMonthChange(parseInt(v) + 1)}
+            onChange={(v) => setReportMonth(parseInt(v) + 1)}
             className="w-32"
           />
           <SelectionSelect
             value={reportYear}
             label="Year"
-            onChange={(year: any) => onYearChange(Number(year?.id || year))}
+            onChange={(year: { id: string; name: string } | null) => setReportYear(Number(year?.id || reportYear))}
             getType={getYearsForSelection}
             title="Select Year"
             description="Choose a year for the report"
             className="w-32"
           />
         </div>
-        {selectedProductForDetail && !isLoading && detailedReports.length > 0 && (
+        {selectedProductForDetail && !isDetailedLoading && detailedReports.length > 0 && (
           <div className="flex gap-8 pt-4">
             <div>
               <p className="text-sm text-muted-foreground">Starting Stock</p>
@@ -113,11 +93,11 @@ export function DetailedReportTab({
         ) : (
           <>
             <ReportEmptyState
-              isLoading={isLoading}
+              isLoading={isDetailedLoading}
               hasData={detailedReports.length > 0}
               message="No movements recorded for the selected period"
             />
-            {!isLoading && detailedReports.length > 0 && (
+            {!isDetailedLoading && detailedReports.length > 0 && (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -156,12 +136,12 @@ export function DetailedReportTab({
           </>
         )}
       </CardContent>
-      {selectedProductForDetail && pagination.totalPages > 0 && (
+      {selectedProductForDetail && detailedPagination.totalPages > 0 && (
         <Pagination
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          total={pagination.total}
-          onChange={onPageChange}
+          page={detailedPagination.page}
+          totalPages={detailedPagination.totalPages}
+          total={detailedPagination.total}
+          onChange={setDetailedPage}
         />
       )}
     </Card>

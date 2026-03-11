@@ -80,6 +80,7 @@ export type DiscountFilter = {
 
     activeOnDate?: Date;
     isSoftDeleted?: boolean;
+    inStock?: boolean;
 }
 
 export type  DiscountResponse = {

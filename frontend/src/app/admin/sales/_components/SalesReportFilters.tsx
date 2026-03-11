@@ -12,7 +12,7 @@ interface SalesReportFiltersProps {
   selectedCategoryName: string;
   productSearch: string;
   onMonthChange: (month: string) => void;
-  onYearChange: (year: any) => void;
+  onYearChange: (year: { id: string; name: string } | null) => void;
   onCategoryChange: (category: { id: string; name: string } | null) => void;
   onSearchChange: (search: string) => void;
 }

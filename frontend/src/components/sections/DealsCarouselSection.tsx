@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -23,31 +22,33 @@ interface DealsCarouselSectionProps {
   title: string;
   icon: React.ReactNode;
   deals: Deal[];
-  dealsPerPage: number;
   emptyMessage?: string;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  loading?: boolean;
 }
 
 export const DealsCarouselSection: React.FC<DealsCarouselSectionProps> = ({
   title,
   icon,
   deals,
-  dealsPerPage,
   emptyMessage = "No deals available at the moment",
+  currentPage,
+  totalPages,
+  onPageChange,
+  loading = false,
 }) => {
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const totalPages = Math.ceil(deals.length / dealsPerPage);
-  const paginatedDeals = deals.slice(
-    (currentPage - 1) * dealsPerPage,
-    currentPage * dealsPerPage
-  );
-
   const handleNext = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+    if (currentPage < totalPages) {
+      onPageChange(currentPage + 1);
+    }
   };
 
   const handlePrev = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
+    if (currentPage > 1) {
+      onPageChange(currentPage - 1);
+    }
   };
 
   return (
@@ -64,7 +65,7 @@ export const DealsCarouselSection: React.FC<DealsCarouselSectionProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handlePrev}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || loading}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -75,7 +76,7 @@ export const DealsCarouselSection: React.FC<DealsCarouselSectionProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handleNext}
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || loading}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -84,8 +85,12 @@ export const DealsCarouselSection: React.FC<DealsCarouselSectionProps> = ({
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-        {paginatedDeals.length > 0 ? (
-          paginatedDeals.map((deal) => (
+        {loading ? (
+          <div className="col-span-4 text-center py-8 text-muted-foreground">
+            Loading...
+          </div>
+        ) : deals.length > 0 ? (
+          deals.map((deal) => (
             <ProductCard
               key={deal.product.id}
               product={deal.product}

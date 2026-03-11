@@ -6,7 +6,10 @@ export const GetVouchersByFilterSchema = z.object({
     percentage: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid decimal format").transform(val => parseFloat(val)).pipe(z.number().min(0).max(100)).optional(),
     amount: z.string().transform(val => parseInt(val, 10)).pipe(z.number().int().min(0)).optional(),
     type: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']).optional(),
-    voucherType: z.enum(['REFERRAL', 'TRANSACTIONAL', 'FREEDELIVERY']).optional(),
+    voucherType: z.union([
+      z.enum(['REFERRAL', 'TRANSACTIONAL', 'FREEDELIVERY']),
+      z.enum(['REFERRAL', 'TRANSACTIONAL', 'FREEDELIVERY']).array().min(1)
+    ]).optional(),
     referralRole: z.enum(['REFERRER', 'REFEREE']).optional(),
     activeOnDate: z.coerce.date().optional(),
     page: z.coerce.number().int().min(1).optional().default(1),

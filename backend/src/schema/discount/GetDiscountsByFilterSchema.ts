@@ -17,6 +17,7 @@ export const GetDiscountsByFilterSchema = z.strictObject({
     percentage: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid decimal format").transform(val => parseFloat(val)).pipe(z.number().min(0).max(100)).optional(),
     amount: z.coerce.number().int().min(0).optional(),
     type: z.enum(['PERCENTAGE', 'FIXED_AMOUNT', 'QUANTITY']).optional(),
+    isVoucher: z.string().transform(val => val === '' ? undefined : val === 'true').pipe(z.boolean()).optional(),
     isWithMinimum: z.string().transform(val => val === '' ? undefined : val === 'true').pipe(z.boolean()).optional(),
     minimumPrice: z.coerce.number().int().min(0).optional(),
     hasDiscountAmountCap: z.string().transform(val => val === '' ? undefined : val === 'true').pipe(z.boolean()).optional(),
@@ -31,6 +32,8 @@ export const GetDiscountsByFilterSchema = z.strictObject({
     isSoftDeleted: z.string().transform(val => val === '' ? undefined : val === 'true').pipe(z.boolean()).optional(),
     /** Filter discounts that are active/valid on this specific date */
     activeOnDate: z.coerce.date().optional(),
+    /** Only include products that have stock in at least one store */
+    inStock: z.string().transform(val => val === '' ? undefined : val === 'true').pipe(z.boolean()).optional(),
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 });

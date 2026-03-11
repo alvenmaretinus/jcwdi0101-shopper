@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProductWithDetails } from "@/services/product/getProducts";
 import { StoreProduct } from "@/types/StoreProduct";
-import Image from "next/image";
 import { useCart } from "@/hooks/useCart";
 import { authClient } from "@/lib/authClient";
 import { toast } from "sonner";
 import { useState } from "react";
+import { ProductImageWithFallback } from "@/components/ProductImageWithFallback";
 
 type ProductInput = ProductWithDetails | StoreProduct;
 
@@ -157,13 +157,13 @@ export function ProductCard({
           )}
           
           <div className="relative h-full w-full">
-            <Image
-              fill
+            <ProductImageWithFallback
               src={primaryImage}
               alt={productName}
+              productName={productName}
+              fill={true}
               className="object-cover group-hover:scale-110 transition-transform duration-300"
-              sizes="(max-width: 640px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              unoptimized
+              loading="lazy"
             />
           </div>
         </div>
