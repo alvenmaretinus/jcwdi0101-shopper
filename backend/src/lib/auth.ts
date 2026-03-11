@@ -4,6 +4,7 @@ import { prisma } from "./db/prisma";
 import { LRUCache } from "lru-cache";
 import { sendEmailVerification, sendResetPasswordEmail } from "./email/mailer";
 import { BadRequestError } from "../error/BadRequestError";
+import { AppError } from "../error/AppError";
 
 const _rateLimit = new LRUCache<string, { email: string; lastRequest: Date }>({
   ttl: 1000 * 60, // reset limit every 60 sec
@@ -76,14 +77,13 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendVerificationEmail: async ({ user, url, token: _token }, _request) => {
-      // TODO: uncomment in prod
-      // const record = rateLimit.get(user.email);
-      // if (record)
-      //   throw new AppError({
-      //     statusCode: 429,
-      //     message: "Too many requests, please try again later.",
-      //   });
-      // rateLimit.set(user.email, { email: user.email, lastRequest: new Date() });
+      const record = _rateLimit.get(user.email);
+      if (record)
+        throw new AppError({
+          statusCode: 429,
+          message: "Too many requests, please try again later.",
+        });
+      _rateLimit.set(user.email, { email: user.email, lastRequest: new Date() });
       sendEmailVerification({
         email: user.email,
         url,
